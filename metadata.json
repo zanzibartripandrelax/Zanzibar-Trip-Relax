@@ -1,0 +1,6 @@
+{
+  "name": "Zanzibar Trip & Relax",
+  "description": "Professional booking, CMS admin, and client portals for dynamic tours, safaris, Mount Kilimanjaro treks, and private transfers in Zanzibar, Tanzania.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
