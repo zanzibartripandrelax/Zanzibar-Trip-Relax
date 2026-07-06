@@ -5,14 +5,14 @@ export type Page =
   | 'contact' | 'packages' | 'safaris' | 'transfers' | 'blog'
   | 'reviews' | 'trip-builder' | 'blog-detail' | 'kilimanjaro'
   | 'faq' | 'tour-detail' | 'policies' | 'admin' | 'trip-results' | 'manage-booking'
-  | 'careers' | 'sustainability' | 'admin/login' | 'dashboard' | 'admin/dashboard';
+  | 'careers' | 'sustainability' | 'admin/login' | 'dashboard' | 'admin/dashboard' | 'my-account';
 
 const VALID_PAGES: Page[] = [
   'home', 'about', 'tours', 'booking', 'gallery',
   'contact', 'packages', 'safaris', 'transfers', 'blog',
   'reviews', 'trip-builder', 'blog-detail', 'kilimanjaro',
   'faq', 'tour-detail', 'policies', 'admin', 'trip-results', 'manage-booking',
-  'careers', 'sustainability', 'admin/login', 'dashboard', 'admin/dashboard'
+  'careers', 'sustainability', 'admin/login', 'dashboard', 'admin/dashboard', 'my-account'
 ];
 
 interface RouteState {

@@ -34,16 +34,23 @@ const navigationMenu: MenuItem[] = [
     type: 'link'
   },
   {
-    label: 'Destinations',
-    swLabel: 'Destinasi',
-    type: 'dropdown',
-    items: [
-      { label: 'Zanzibar Tours', swLabel: 'Ziara za Zanzibar', page: 'tours' },
-      { label: 'Tanzania Safaris', swLabel: 'Safari za Tanzania', page: 'safaris' },
-      { label: 'Kilimanjaro Treks', swLabel: 'Kupanda Kilimanjaro', page: 'kilimanjaro' }
-    ]
+    label: 'Zanzibar Tours',
+    swLabel: 'Ziara za Zanzibar',
+    page: 'tours',
+    type: 'link'
   },
-
+  {
+    label: 'Tanzania Safaris',
+    swLabel: 'Safari za Tanzania',
+    page: 'safaris',
+    type: 'link'
+  },
+  {
+    label: 'Kilimanjaro',
+    swLabel: 'Kupanda Kilimanjaro',
+    page: 'kilimanjaro',
+    type: 'link'
+  },
   {
     label: 'Experiences',
     swLabel: 'Uzoefu',
@@ -64,24 +71,10 @@ const navigationMenu: MenuItem[] = [
     type: 'link'
   },
   {
-    label: 'Blog',
-    swLabel: 'Blogu',
-    page: 'blog',
-    type: 'link'
-  },
-  {
     label: 'About',
     swLabel: 'Kuhusu Sisi',
-    type: 'dropdown',
-    items: [
-      { label: 'About Us', swLabel: 'Kuhusu Sisi', page: 'about' },
-      { label: 'Why Choose Us', swLabel: 'Kwa Nini Utuchague', page: 'about', id: 'why-choose-us' },
-      { label: 'Meet Our Team', swLabel: 'Kutana na Timu', page: 'about', id: 'team' },
-      { label: 'Reviews', swLabel: 'Maoni ya Wageni', page: 'reviews' },
-      { label: 'Frequently Asked Questions', swLabel: 'Maswali ya Kawaida', page: 'faq' },
-      { label: 'Sustainability', swLabel: 'Uendelevu & Uhifadhi', page: 'sustainability' },
-      { label: 'Careers & Vacancies', swLabel: 'Nafasi za Kazi', page: 'careers' }
-    ]
+    page: 'about',
+    type: 'link'
   },
   {
     label: 'Contact',
@@ -208,7 +201,7 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
           <ProgressiveImage
             src="/src/assets/images/logo.jpg"
             alt="Zanzibar Trip and Relax Logo"
-            className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 object-contain rounded-full bg-white/10 p-1 border border-white/10 shadow-md group-hover:scale-105 transition-all duration-300"
+            className="h-13 w-13 sm:h-16 sm:w-16 md:h-18 md:w-18 object-contain rounded-full bg-white/10 p-1 border border-white/10 shadow-md group-hover:scale-105 transition-all duration-300"
           />
           <div className="flex flex-col leading-tight select-none">
             <span className="text-white font-black text-xs sm:text-sm md:text-base tracking-[0.18em] uppercase group-hover:text-[#D4A017] transition-colors font-sans">
@@ -222,7 +215,7 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
 
         {/* Center/Desktop Menu - Reorganized and Simplified */}
         <div className="hidden lg:flex items-center justify-center flex-grow">
-          <nav className="flex items-center gap-1 xl:gap-2">
+          <nav className="flex items-center gap-2.5 xl:gap-4.5">
             {navigationMenu.map((item) => {
               const labelText = language === 'en' ? item.label : item.swLabel;
               const isActive = isItemActive(item);
@@ -319,19 +312,19 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
             <Search size={16} />
           </button>
 
-          {/* Elegant "Portal" Menu */}
+          {/* Elegant "My Account" Menu */}
           <div className="relative" ref={portalRef}>
             <button
               onClick={() => setIsPortalOpen(!isPortalOpen)}
-              className="text-white hover:text-[#D4A017] px-3 py-2 text-[10px] sm:text-xs font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 rounded-full border border-white/10 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm select-none"
-              title="Access secure portals"
+              className="text-white hover:text-[#D4A017] px-3.5 py-2 text-[10px] sm:text-xs font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 rounded-full border border-white/10 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm select-none animate-pulse-gentle"
+              title="Access your customer account"
               id="portal-dropdown-btn"
             >
-              <span>Portal</span>
+              <span>My Account</span>
               <ChevronDown size={11} className={`transition-transform duration-200 ${isPortalOpen ? 'rotate-180 text-[#D4A017]' : 'text-white/40'}`} />
             </button>
 
-            {/* Portal Dropdown Menu */}
+            {/* My Account Dropdown Menu */}
             <AnimatePresence>
               {isPortalOpen && (
                 <motion.div
@@ -343,33 +336,23 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
                 >
                   <button
                     onClick={() => {
-                      navigate('admin/login');
+                      navigate('my-account');
                       setIsPortalOpen(false);
                     }}
                     className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-white/5 text-white/90 hover:text-white transition-all text-xs font-semibold flex items-center gap-2 cursor-pointer"
                   >
-                    <span className="text-[#D4A017] text-xs">👤</span>
-                    <span>Customer Login</span>
+                    <span className="text-[#D4A017] text-xs font-mono">👤</span>
+                    <span>My Dashboard</span>
                   </button>
                   <button
                     onClick={() => {
-                      navigate('admin/login');
+                      navigate('my-account');
                       setIsPortalOpen(false);
                     }}
                     className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-white/5 text-white/90 hover:text-white transition-all text-xs font-semibold flex items-center gap-2 cursor-pointer"
                   >
-                    <span className="text-[#D4A017] text-xs">💼</span>
-                    <span>Staff Login</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      navigate('admin/login');
-                      setIsPortalOpen(false);
-                    }}
-                    className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-white/5 text-white/90 hover:text-white transition-all text-xs font-semibold flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="text-[#D4A017] text-xs">👑</span>
-                    <span>Admin Login</span>
+                    <span className="text-[#D4A017] text-xs font-mono">🔑</span>
+                    <span>Reset Credentials</span>
                   </button>
                 </motion.div>
               )}
@@ -486,39 +469,19 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
 
               {/* Quick Contacts and Help Desk inside Mobile Menu */}
               <div className="pt-6 border-t border-white/10 space-y-4">
-                {/* Portal Links for Mobile */}
+                {/* My Account Links for Mobile */}
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-3 space-y-2">
-                  <p className="text-[10px] font-bold text-[#D4A017] uppercase tracking-widest text-center">Secure Portals</p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <p className="text-[10px] font-bold text-[#D4A017] uppercase tracking-widest text-center">My Account</p>
+                  <div className="text-center">
                     <button
                       onClick={() => {
-                        navigate('admin/login');
+                        navigate('my-account');
                         setIsOpen(false);
                       }}
-                      className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-white/95 hover:text-white transition-all cursor-pointer"
+                      className="w-full bg-[#D4A017]/20 hover:bg-[#D4A017]/30 border border-[#D4A017]/30 rounded-xl py-2.5 px-3 text-center text-xs font-bold text-[#D4A017] transition-all cursor-pointer flex items-center justify-center gap-2"
                     >
-                      <div className="text-sm">👤</div>
-                      <div className="mt-0.5 truncate">Customer</div>
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigate('admin/login');
-                        setIsOpen(false);
-                      }}
-                      className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-white/95 hover:text-white transition-all cursor-pointer"
-                    >
-                      <div className="text-sm">💼</div>
-                      <div className="mt-0.5 truncate">Staff</div>
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigate('admin/login');
-                        setIsOpen(false);
-                      }}
-                      className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-white/95 hover:text-white transition-all cursor-pointer"
-                    >
-                      <div className="text-sm">👑</div>
-                      <div className="mt-0.5 truncate">Admin</div>
+                      <span>👤</span>
+                      <span>Access My Account / Register</span>
                     </button>
                   </div>
                 </div>

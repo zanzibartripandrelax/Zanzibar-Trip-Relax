@@ -213,25 +213,25 @@ export default function Home({ navigate }: HomeProps) {
           </div>
         ))}
         {/* Dark Elegant Scrim with optimal overlay to guarantee 4.5:1 contrast on white text */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0A1224]/80 via-[#0A1224]/45 to-[#0A1224]/85 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#020C1F]/90 via-[#020C1F]/60 to-[#020C1F]/95 pointer-events-none" />
         
         <div className="relative z-10 text-center px-4 pt-24 pb-12 w-full max-w-5xl mx-auto" style={{ transform: `translateY(-${scrollY * 0.08}px)` }}>
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full mb-6 select-none animate-shimmer">
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/25 px-4 py-2 rounded-full mb-6 select-none animate-shimmer shadow-lg">
             <Palmtree className="text-[#D4A017] shrink-0" size={16} />
-            <span className="text-white text-xs md:text-sm font-semibold tracking-wider uppercase font-mono">Zanzibar Trip & Relax</span>
+            <span className="text-white text-xs md:text-sm font-semibold tracking-widest uppercase font-mono">Zanzibar Trip & Relax</span>
           </div>
           
-          <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight tracking-tight drop-shadow-sm" style={{ fontFamily: '"Playfair Display", Georgia, serif' }}>
+          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold text-white mb-6 leading-[1.08] tracking-tight drop-shadow-lg" style={{ fontFamily: '"Playfair Display", Georgia, serif' }}>
             {tDefault('hero.headingPart1', content.hero?.headingPart1 || 'Discover Zanzibar.')}<br />
             <span className="text-[#D4A017]">{tDefault('hero.headingPart2', content.hero?.headingPart2 || 'Explore Tanzania.')}</span><br />
             <span className="text-white/95">{tDefault('hero.headingPart3', content.hero?.headingPart3 || 'Relax in Paradise.')}</span>
           </h1>
           
-          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/90 max-w-2xl mx-auto mb-10 font-medium leading-relaxed drop-shadow-sm">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/90 max-w-2xl mx-auto mb-12 font-medium leading-relaxed drop-shadow-md">
             {tDefault('hero.subtitle', content.hero?.subtitle || 'Authentic Experiences. Personalized Holidays. Unforgettable Memories.')}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4.5 justify-center items-center mb-10 max-w-md sm:max-w-xl mx-auto">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-10 max-w-md sm:max-w-2xl mx-auto">
             <button 
               type="button" 
               onClick={() => navigate((content.hero?.primaryButtonAction as any) || 'tours')} 

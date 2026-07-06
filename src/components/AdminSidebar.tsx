@@ -37,153 +37,228 @@ export default function AdminSidebar({
 }: AdminSidebarProps) {
   if (!session) return null;
 
-  // We define the exact 18 requested items in order
-  const sidebarItems = [
-    { 
-      id: 'dashboard', 
-      label: 'Dashboard', 
-      icon: Layout,
-      action: () => setActiveTab('dashboard'),
-      isActive: activeTab === 'dashboard'
-    },
-    { 
-      id: 'bookings', 
-      label: 'Bookings', 
-      icon: Calendar,
-      badge: bookingsCount > 0 ? bookingsCount : undefined,
-      action: () => setActiveTab('bookings'),
-      isActive: activeTab === 'bookings'
-    },
-    { 
-      id: 'customers', 
-      label: 'Customers', 
-      icon: Users,
-      badge: subscribersCount > 0 ? subscribersCount : undefined,
-      action: () => setActiveTab('customers'),
-      isActive: activeTab === 'customers'
-    },
-    { 
-      id: 'tours', 
-      label: 'Tours', 
-      icon: MapPin,
-      action: () => {
-        setActiveTab('cms');
-        setCmsEditSection('tours');
+  // Define sidebar items conditionally based on role to prevent administrative leaks
+  let sidebarItems = [];
+
+  const normalizedRole = session.role ? session.role.trim().toLowerCase() : '';
+
+  if (normalizedRole === 'customer') {
+    sidebarItems = [
+      { 
+        id: 'customerPortal', 
+        label: 'My Reservations', 
+        icon: Calendar,
+        action: () => setActiveTab('customerPortal'),
+        isActive: activeTab === 'customerPortal'
       },
-      isActive: activeTab === 'cms' && cmsEditSection === 'tours'
-    },
-    { 
-      id: 'transfers', 
-      label: 'Transfers', 
-      icon: Activity,
-      action: () => setActiveTab('transportZones'),
-      isActive: activeTab === 'transportZones'
-    },
-    { 
-      id: 'payments', 
-      label: 'Payments', 
-      icon: TrendingUp,
-      action: () => setActiveTab('finances'),
-      isActive: activeTab === 'finances'
-    },
-    { 
-      id: 'reports', 
-      label: 'Reports', 
-      icon: FileText,
-      action: () => setActiveTab('logs'), // Map to logs and report outputs
-      isActive: activeTab === 'logs'
-    },
-    { 
-      id: 'staff', 
-      label: 'Staff', 
-      icon: Shield,
-      badge: usersCount > 0 ? usersCount : undefined,
-      action: () => setActiveTab('users'),
-      isActive: activeTab === 'users'
-    },
-    { 
-      id: 'vehicles', 
-      label: 'Vehicles', 
-      icon: Activity,
-      badge: vehiclesCount > 0 ? vehiclesCount : undefined,
-      action: () => setActiveTab('vehicles'),
-      isActive: activeTab === 'vehicles'
-    },
-    { 
-      id: 'drivers', 
-      label: 'Drivers', 
-      icon: User,
-      action: () => setActiveTab('driverPortal'),
-      isActive: activeTab === 'driverPortal'
-    },
-    { 
-      id: 'guides', 
-      label: 'Guides', 
-      icon: Sparkles,
-      action: () => setActiveTab('guidePortal'),
-      isActive: activeTab === 'guidePortal'
-    },
-    { 
-      id: 'content-management', 
-      label: 'Website Content', 
-      icon: Layers,
-      action: () => {
-        setActiveTab('cms');
-        // If not editing visual CMS, default to contact.
-        if (cmsEditSection === 'tours' || cmsEditSection === 'blog') {
-          setCmsEditSection('contact');
-        }
+      { 
+        id: 'logout', 
+        label: 'Logout', 
+        icon: LogOut,
+        action: handleLogout,
+        isActive: false,
+        isDanger: true
+      }
+    ];
+  } else if (normalizedRole === 'driver') {
+    sidebarItems = [
+      { 
+        id: 'driverPortal', 
+        label: 'My Transfer Sheets', 
+        icon: Calendar,
+        action: () => setActiveTab('driverPortal'),
+        isActive: activeTab === 'driverPortal'
       },
-      isActive: activeTab === 'cms' && cmsEditSection !== 'tours' && cmsEditSection !== 'blog'
-    },
-    { 
-      id: 'gallery', 
-      label: 'Gallery', 
-      icon: Image,
-      action: () => setActiveTab('media'),
-      isActive: activeTab === 'media'
-    },
-    { 
-      id: 'blog', 
-      label: 'Blog', 
-      icon: BookOpen,
-      action: () => {
-        setActiveTab('cms');
-        setCmsEditSection('blog');
+      { 
+        id: 'logout', 
+        label: 'Logout', 
+        icon: LogOut,
+        action: handleLogout,
+        isActive: false,
+        isDanger: true
+      }
+    ];
+  } else if (normalizedRole === 'guide' || normalizedRole === 'tour guide') {
+    sidebarItems = [
+      { 
+        id: 'guidePortal', 
+        label: 'My Guide Assignments', 
+        icon: Calendar,
+        action: () => setActiveTab('guidePortal'),
+        isActive: activeTab === 'guidePortal'
       },
-      isActive: activeTab === 'cms' && cmsEditSection === 'blog'
-    },
-    { 
-      id: 'careers', 
-      label: 'Careers', 
-      icon: Briefcase,
-      badge: jobsCount > 0 ? jobsCount : undefined,
-      action: () => setActiveTab('careers'),
-      isActive: activeTab === 'careers'
-    },
-    { 
-      id: 'sustainability', 
-      label: 'Sustainability', 
-      icon: Leaf,
-      action: () => setActiveTab('sustainability'),
-      isActive: activeTab === 'sustainability'
-    },
-    { 
-      id: 'settings', 
-      label: 'Settings', 
-      icon: Settings,
-      action: () => setActiveTab('settings'),
-      isActive: activeTab === 'settings'
-    },
-    { 
-      id: 'logout', 
-      label: 'Logout', 
-      icon: LogOut,
-      action: handleLogout,
-      isActive: false,
-      isDanger: true
-    }
-  ];
+      { 
+        id: 'logout', 
+        label: 'Logout', 
+        icon: LogOut,
+        action: handleLogout,
+        isActive: false,
+        isDanger: true
+      }
+    ];
+  } else {
+    // All possible administrative and operations items
+    const allItems = [
+      { 
+        id: 'dashboard', 
+        label: 'Dashboard', 
+        icon: Layout,
+        action: () => setActiveTab('dashboard'),
+        isActive: activeTab === 'dashboard'
+      },
+      { 
+        id: 'bookings', 
+        label: 'Bookings', 
+        icon: Calendar,
+        badge: bookingsCount > 0 ? bookingsCount : undefined,
+        action: () => setActiveTab('bookings'),
+        isActive: activeTab === 'bookings'
+      },
+      { 
+        id: 'customers', 
+        label: 'Customers', 
+        icon: Users,
+        badge: subscribersCount > 0 ? subscribersCount : undefined,
+        action: () => setActiveTab('customers'),
+        isActive: activeTab === 'customers'
+      },
+      { 
+        id: 'tours', 
+        label: 'Tours', 
+        icon: MapPin,
+        action: () => {
+          setActiveTab('cms');
+          setCmsEditSection('tours');
+        },
+        isActive: activeTab === 'cms' && cmsEditSection === 'tours'
+      },
+      { 
+        id: 'transfers', 
+        label: 'Transfers', 
+        icon: Activity,
+        action: () => setActiveTab('transportZones'),
+        isActive: activeTab === 'transportZones'
+      },
+      { 
+        id: 'payments', 
+        label: 'Payments', 
+        icon: TrendingUp,
+        action: () => setActiveTab('finances'),
+        isActive: activeTab === 'finances'
+      },
+      { 
+        id: 'reports', 
+        label: 'Reports', 
+        icon: FileText,
+        action: () => setActiveTab('logs'), 
+        isActive: activeTab === 'logs'
+      },
+      { 
+        id: 'staff', 
+        label: 'Staff', 
+        icon: Shield,
+        badge: usersCount > 0 ? usersCount : undefined,
+        action: () => setActiveTab('users'),
+        isActive: activeTab === 'users'
+      },
+      { 
+        id: 'vehicles', 
+        label: 'Vehicles', 
+        icon: Activity,
+        badge: vehiclesCount > 0 ? vehiclesCount : undefined,
+        action: () => setActiveTab('vehicles'),
+        isActive: activeTab === 'vehicles'
+      },
+      { 
+        id: 'drivers', 
+        label: 'Drivers', 
+        icon: User,
+        action: () => setActiveTab('driverPortal'),
+        isActive: activeTab === 'driverPortal'
+      },
+      { 
+        id: 'guides', 
+        label: 'Guides', 
+        icon: Sparkles,
+        action: () => setActiveTab('guidePortal'),
+        isActive: activeTab === 'guidePortal'
+      },
+      { 
+        id: 'content-management', 
+        label: 'Website Content', 
+        icon: Layers,
+        action: () => {
+          setActiveTab('cms');
+          if (cmsEditSection === 'tours' || cmsEditSection === 'blog') {
+            setCmsEditSection('contact');
+          }
+        },
+        isActive: activeTab === 'cms' && cmsEditSection !== 'tours' && cmsEditSection !== 'blog'
+      },
+      { 
+        id: 'gallery', 
+        label: 'Gallery', 
+        icon: Image,
+        action: () => setActiveTab('media'),
+        isActive: activeTab === 'media'
+      },
+      { 
+        id: 'blog', 
+        label: 'Blog', 
+        icon: BookOpen,
+        action: () => {
+          setActiveTab('cms');
+          setCmsEditSection('blog');
+        },
+        isActive: activeTab === 'cms' && cmsEditSection === 'blog'
+      },
+      { 
+        id: 'careers', 
+        label: 'Careers', 
+        icon: Briefcase,
+        badge: jobsCount > 0 ? jobsCount : undefined,
+        action: () => setActiveTab('careers'),
+        isActive: activeTab === 'careers'
+      },
+      { 
+        id: 'sustainability', 
+        label: 'Sustainability', 
+        icon: Leaf,
+        action: () => setActiveTab('sustainability'),
+        isActive: activeTab === 'sustainability'
+      },
+      { 
+        id: 'settings', 
+        label: 'Settings', 
+        icon: Settings,
+        action: () => setActiveTab('settings'),
+        isActive: activeTab === 'settings'
+      },
+      { 
+        id: 'logout', 
+        label: 'Logout', 
+        icon: LogOut,
+        action: handleLogout,
+        isActive: false,
+        isDanger: true
+      }
+    ];
+
+    // Allowed module IDs mapped per authorized role
+    const permissions: Record<string, string[]> = {
+      'owner': ['dashboard', 'bookings', 'customers', 'tours', 'transfers', 'payments', 'reports', 'staff', 'vehicles', 'drivers', 'guides', 'content-management', 'gallery', 'blog', 'careers', 'sustainability', 'settings', 'logout'],
+      'super admin': ['dashboard', 'bookings', 'customers', 'tours', 'transfers', 'payments', 'reports', 'staff', 'vehicles', 'drivers', 'guides', 'content-management', 'gallery', 'blog', 'careers', 'sustainability', 'settings', 'logout'],
+      'manager': ['dashboard', 'bookings', 'customers', 'tours', 'transfers', 'reports', 'vehicles', 'drivers', 'guides', 'content-management', 'gallery', 'blog', 'careers', 'sustainability', 'settings', 'logout'],
+      'reservation officer': ['dashboard', 'bookings', 'customers', 'guides', 'logout'],
+      'sales': ['dashboard', 'bookings', 'customers', 'guides', 'logout'],
+      'accountant': ['dashboard', 'payments', 'reports', 'settings', 'logout'],
+      'marketing': ['dashboard', 'customers', 'gallery', 'blog', 'sustainability', 'logout'],
+      'customer support': ['dashboard', 'customers', 'logout']
+    };
+
+    const allowedIds = permissions[normalizedRole] || ['dashboard', 'logout'];
+    sidebarItems = allItems.filter(item => allowedIds.includes(item.id));
+  }
 
   return (
     <aside className="w-full md:w-64 bg-[#0A1224] border-r border-white/5 shrink-0 flex flex-col justify-between h-screen max-h-screen sticky top-0">

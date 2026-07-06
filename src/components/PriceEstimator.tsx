@@ -160,7 +160,9 @@ export default function PriceEstimator({
           </div>
           <div className="flex justify-between">
             <span>Travel Date:</span>
-            <span className="text-white font-extrabold">{preferredDate || 'Not selected yet'}</span>
+            <span className="text-white font-extrabold">
+              {preferredDate ? preferredDate : (arrivalDate && departureDate) ? `${arrivalDate} to ${departureDate}` : arrivalDate ? arrivalDate : 'Not selected yet'}
+            </span>
           </div>
           <div className="flex justify-between">
             <span>Headcount:</span>
@@ -178,6 +180,12 @@ export default function PriceEstimator({
               </span>
             </div>
           )}
+          <div className="flex justify-between">
+            <span>Pickup Location:</span>
+            <span className="text-white font-extrabold text-right truncate max-w-[180px]">
+              {pricing.pickupZoneLabel || 'Not selected yet'}
+            </span>
+          </div>
           <div className="flex justify-between pt-1.5 border-t border-white/10 font-bold text-sm">
             <span>Grand Booking Total:</span>
             <span className="text-[#D4A017] font-mono font-black">{pricing.currencySymbol}{pricing.displayTotal}</span>
@@ -196,7 +204,7 @@ export default function PriceEstimator({
           <div className="space-y-2 text-xs font-semibold">
             {/* Adults Cost */}
             <div className="flex justify-between items-center text-slate-300">
-              <span>Adults Fare & Transfer ({adultsCount}x)</span>
+              <span>Adults Fare ({adultsCount}x)</span>
               <span className="font-mono text-white">
                 {currencySymbol}{resolvedAdultsCost}
               </span>
@@ -252,13 +260,35 @@ export default function PriceEstimator({
               </div>
             )}
 
-            {/* Included Resort Transport */}
-            {pricing.pickupSurcharge > 0 && (
+            {/* Resort Transport breakdown in real-time */}
+            {pricing.pickupSurcharge > 0 ? (
               <div className="flex justify-between items-center text-slate-300">
-                <span>Included Resort Transport</span>
-                <span className="font-bold text-emerald-400 font-mono">
-                  Included (Free)
+                <span className="flex flex-col">
+                  <span>Resort Transport Surcharge</span>
+                  <span className="text-[10px] text-slate-400 font-medium truncate max-w-[190px]">
+                    {pricing.pickupZoneLabel}
+                  </span>
                 </span>
+                <span className="font-mono text-white">
+                  +{currencySymbol}{pricing.pickupSurcharge}
+                </span>
+              </div>
+            ) : pricing.pickupZoneLabel ? (
+              <div className="flex justify-between items-center text-slate-300">
+                <span className="flex flex-col">
+                  <span>Resort Transport</span>
+                  <span className="text-[10px] text-slate-400 font-medium truncate max-w-[190px]">
+                    {pricing.pickupZoneLabel}
+                  </span>
+                </span>
+                <span className="font-bold text-emerald-400 font-mono">
+                  Free
+                </span>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center text-slate-400">
+                <span>Resort Transport</span>
+                <span className="italic text-[10px]">Select pickup in Step 2</span>
               </div>
             )}
 

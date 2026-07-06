@@ -31,6 +31,7 @@ import TourDetail from './pages/TourDetail';
 import Policies from './pages/Policies';
 import Admin from './pages/Admin';
 import AdminLogin from './pages/AdminLogin';
+import MyAccount from './pages/MyAccount';
 import AuthGuard from './components/AuthGuard';
 import ManageBooking from './pages/ManageBooking';
 import Careers from './pages/Careers';
@@ -116,6 +117,8 @@ export default function App() {
         return <Policies navigate={navigate} />;
       case 'admin/login':
         return <AdminLogin navigate={navigate} />;
+      case 'my-account':
+        return <MyAccount navigate={navigate} />;
       case 'admin':
       case 'dashboard':
       case 'admin/dashboard':

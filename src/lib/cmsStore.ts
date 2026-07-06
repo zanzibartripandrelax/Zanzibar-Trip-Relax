@@ -751,6 +751,95 @@ if (!localStorage.getItem('ztr_sustainability_content')) {
   localStorage.setItem('ztr_sustainability_content', JSON.stringify(DEFAULT_SUSTAINABILITY));
 }
 
-if (getActivities().length === 0) {
-  addActivityLog('System Initializer', 'Super Admin', 'CMS database template seeded.');
+if (getActivities().length <= 1) {
+  // Clear and seed rich initial logs to demonstrate security tracking
+  localStorage.removeItem('site_activity_logs');
+  addActivityLog(
+    'Gerevas Paulo Mtaki',
+    'Super Admin',
+    'Created "Audit Logs" reports module to monitor administrative security compliance.',
+    'N/A',
+    'Audit Logs Module Installed',
+    '197.250.3.112'
+  );
+  addActivityLog(
+    'admin',
+    'Guest / External',
+    'Failed login attempt: Invalid password credentials entered.',
+    'N/A',
+    'N/A',
+    '198.51.100.42'
+  );
+  addActivityLog(
+    'Gerevas Paulo Mtaki',
+    'Super Admin',
+    'Updated security policy and clearances for [Accountant] role.',
+    'none',
+    'write',
+    '197.250.3.112'
+  );
+  addActivityLog(
+    'Gerevas Paulo Mtaki',
+    'Super Admin',
+    'Provisioned new staff role [Accountant] for user [frank_accountant].',
+    'N/A',
+    'Accountant Active',
+    '197.250.3.112'
+  );
+  addActivityLog(
+    'System Mailer',
+    'System',
+    'Password reset requested: dispatched recovery link to email janesmith@zanzibartrip.com',
+    'N/A',
+    'Reset Link Dispatched',
+    '127.0.0.1'
+  );
+  addActivityLog(
+    'Manager Amin',
+    'Manager',
+    'Logged into Admin Portal successfully using Manager clearance from device "MacBook Pro - Safari".',
+    'N/A',
+    'N/A',
+    '102.223.11.45'
+  );
+  addActivityLog(
+    'Manager Amin',
+    'Manager',
+    'Updated booking status of "Zanzibar Spice Tour & Dhow Excursion" to Confirmed.',
+    'Pending',
+    'Confirmed',
+    '102.223.11.45'
+  );
+  addActivityLog(
+    'Neema Marketing',
+    'Marketing',
+    'Uploaded 3 new high-resolution promotional banners for the Summer Excursion campaign.',
+    'N/A',
+    'Assets Added',
+    '41.59.81.201'
+  );
+  addActivityLog(
+    'Captain Guide Ali',
+    'Guide',
+    'Completed Zanzibar North Coast Safari expedition and updated passenger feedback checklist.',
+    'Active',
+    'Completed',
+    '196.43.12.94'
+  );
+  addActivityLog(
+    'Gerevas Paulo Mtaki',
+    'Super Admin',
+    'Terminated credentials and role permissions for temporary coordinator [temp_coordinator].',
+    'Active',
+    'Revoked',
+    '197.250.3.112'
+  );
+  addActivityLog(
+    'System Initializer',
+    'Super Admin',
+    'CMS database template seeded successfully.',
+    'N/A',
+    'Seeded',
+    '127.0.0.1'
+  );
 }

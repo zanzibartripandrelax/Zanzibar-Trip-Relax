@@ -92,18 +92,6 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
                 </button>
               </li>
               <li>
-                <button onClick={() => navigate('faq')} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
-                  <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
-                  <span>FAQs</span>
-                </button>
-              </li>
-              <li>
-                <button onClick={handleCareersClick} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
-                  <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
-                  <span>Careers</span>
-                </button>
-              </li>
-              <li>
                 <button onClick={() => navigate('sustainability')} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
                   <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
                   <span>Sustainability</span>
@@ -112,11 +100,11 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
             </ul>
           </div>
 
-          {/* COLUMN 2: Destinations */}
+          {/* COLUMN 2: Tours */}
           <div className="flex flex-col">
             <h4 className="text-[#D4A017] font-black text-xs uppercase tracking-widest mb-5 pb-2 border-b border-white/5 flex items-center gap-1.5">
               <MapPin size={13} className="text-[#D4A017]" />
-              Destinations
+              Tours
             </h4>
             <ul className="space-y-3 text-xs font-medium">
               <li>
@@ -137,22 +125,6 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
                   <span>Kilimanjaro Treks</span>
                 </button>
               </li>
-            </ul>
-          </div>
-
-          {/* COLUMN 3: Plan Your Trip */}
-          <div className="flex flex-col">
-            <h4 className="text-[#D4A017] font-black text-xs uppercase tracking-widest mb-5 pb-2 border-b border-white/5 flex items-center gap-1.5">
-              <Star size={13} className="text-[#D4A017]" />
-              Plan Your Trip
-            </h4>
-            <ul className="space-y-3 text-xs font-medium">
-              <li>
-                <button onClick={() => navigate('trip-builder')} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
-                  <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
-                  <span>Trip Builder</span>
-                </button>
-              </li>
               <li>
                 <button onClick={() => navigate('packages')} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
                   <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
@@ -168,7 +140,7 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
             </ul>
           </div>
 
-          {/* COLUMN 4: Support */}
+          {/* COLUMN 3: Support */}
           <div className="flex flex-col">
             <h4 className="text-[#D4A017] font-black text-xs uppercase tracking-widest mb-5 pb-2 border-b border-white/5 flex items-center gap-1.5">
               <HelpCircle size={13} className="text-[#D4A017]" />
@@ -178,9 +150,37 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
               <li>
                 <button onClick={() => navigate('contact')} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
                   <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
-                  <span>Contact</span>
+                  <span>Contact Us</span>
                 </button>
               </li>
+              <li>
+                <button onClick={() => navigate('trip-builder')} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
+                  <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
+                  <span>Trip Builder</span>
+                </button>
+              </li>
+              <li>
+                <button onClick={() => navigate('faq')} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
+                  <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
+                  <span>FAQs</span>
+                </button>
+              </li>
+              <li>
+                <button onClick={handleCareersClick} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
+                  <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
+                  <span>Careers</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* COLUMN 4: Legal */}
+          <div className="flex flex-col">
+            <h4 className="text-[#D4A017] font-black text-xs uppercase tracking-widest mb-5 pb-2 border-b border-white/5 flex items-center gap-1.5">
+              <Star size={13} className="text-[#D4A017]" />
+              Legal
+            </h4>
+            <ul className="space-y-3 text-xs font-medium">
               <li>
                 <button onClick={() => navigate('policies')} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
                   <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
@@ -319,7 +319,7 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
                 onClick={() => navigate('admin/login')} 
                 className="text-gray-500 hover:text-[#D4A017] transition-colors font-semibold underline cursor-pointer"
               >
-                Admin Login
+                Staff Login
               </button>
             </p>
             <div className="flex items-center gap-1 text-center font-mono">

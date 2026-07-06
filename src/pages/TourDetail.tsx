@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Page } from '../hooks/useHashRouter';
 import { tours, Tour } from '../data/tours';
-import { Clock, Users, Star, Check, X, Shield, HelpCircle, MapPin, ArrowRight, MessageCircle, Calendar, Compass, List, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { Clock, Users, Star, Check, X, Shield, HelpCircle, MapPin, ArrowRight, ArrowLeft, MessageCircle, Calendar, Compass, List, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { getSiteContent } from '../lib/cmsStore';
 import { ProgressiveImage } from '../components/ProgressiveImage';
 import GuestReviews from '../components/GuestReviews';
@@ -140,6 +140,16 @@ export default function TourDetail({ navigate }: TourDetailProps) {
       
       {/* Banner Hero */}
       <section className="relative h-[60vh] overflow-hidden">
+        {/* Floating Back to Marketplace Button */}
+        <button
+          type="button"
+          onClick={() => navigate('tours')}
+          className="absolute top-6 left-6 md:left-12 z-30 bg-white/90 hover:bg-white text-[#0B3B8C] hover:scale-105 active:scale-95 px-4.5 py-2.5 rounded-full text-xs font-extrabold uppercase tracking-widest flex items-center gap-2.5 transition-all cursor-pointer shadow-lg border border-slate-150"
+        >
+          <ArrowLeft size={14} className="stroke-[3]" />
+          <span>Back to Marketplace</span>
+        </button>
+
         <ProgressiveImage src={tour.image} alt={tour.name} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/45 to-transparent z-10" />
         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 text-white z-20">
@@ -280,6 +290,44 @@ export default function TourDetail({ navigate }: TourDetailProps) {
                       </li>
                     ))}
                   </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Pickup, Cancellation & Terms Policy Summary */}
+            <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm space-y-6">
+              <h2 className="text-2xl font-bold text-[#0B3B8C] flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+                <Shield className="text-[#D4A017]" size={24} /> Pickup Logistics & Booking Policies
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                  <p className="text-xs font-black uppercase text-[#0B3B8C] tracking-wide flex items-center gap-1.5">
+                    <MapPin size={14} className="text-[#D4A017]" />
+                    <span>Pickup & Drop-off</span>
+                  </p>
+                  <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                    Complimentary hotel pickup and drop-off is included for all major resorts in Stone Town, Nungwi, Kendwa, Kiwengwa, Matte, and Paje. Simply specify your hotel during secure checkout.
+                  </p>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                  <p className="text-xs font-black uppercase text-[#0B3B8C] tracking-wide flex items-center gap-1.5">
+                    <Calendar size={14} className="text-[#D4A017]" />
+                    <span>Cancellation Policy</span>
+                  </p>
+                  <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                    Get a 100% refund for cancellations submitted up to 48 hours prior to your scheduled excursion. Late cancellations within 24–48 hours are eligible for free rescheduling.
+                  </p>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                  <p className="text-xs font-black uppercase text-[#0B3B8C] tracking-wide flex items-center gap-1.5">
+                    <Shield size={14} className="text-[#D4A017]" />
+                    <span>Terms & Conditions</span>
+                  </p>
+                  <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                    All tours are fully guided by licensed local naturalists and certified helmsmen. Marine life observations are natural events, managed with strictly eco-friendly protocols.
+                  </p>
                 </div>
               </div>
             </div>

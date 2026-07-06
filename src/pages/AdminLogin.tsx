@@ -75,6 +75,11 @@ export default function AdminLogin({ navigate }: AdminLoginProps) {
       );
 
       if (userMatch) {
+        if (userMatch.isLocked) {
+          setAuthError('This staff account has been temporarily locked by the system owner.');
+          setAuthLoading(false);
+          return;
+        }
         const userInfo = {
           username: userMatch.username,
           name: userMatch.name,
