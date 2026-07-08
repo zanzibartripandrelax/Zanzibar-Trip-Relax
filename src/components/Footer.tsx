@@ -47,7 +47,7 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
             <ProgressiveImage
               src="/src/assets/images/logo.jpg"
               alt="Zanzibar Trip and Relax Logo"
-              className="h-16 w-16 object-contain bg-white/5 rounded-full p-1 border border-white/10 shrink-0 shadow-lg"
+              className="h-16 w-16 object-cover bg-white/5 rounded-full p-1 border border-white/10 shrink-0 shadow-lg"
             />
             <div>
               <div className="font-extrabold text-2xl text-white tracking-wide uppercase" style={{ fontFamily: 'Playfair Display, serif' }}>
@@ -320,6 +320,13 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
                 className="text-gray-500 hover:text-[#D4A017] transition-colors font-semibold underline cursor-pointer"
               >
                 Staff Login
+              </button>
+              <span className="mx-2 text-gray-700">•</span>
+              <button 
+                onClick={() => navigate('owner/login')} 
+                className="text-gray-500 hover:text-[#D4A017] transition-colors font-semibold underline cursor-pointer"
+              >
+                Owner Portal
               </button>
             </p>
             <div className="flex items-center gap-1 text-center font-mono">

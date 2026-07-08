@@ -18,7 +18,7 @@ export interface EmailLog {
   toEmail: string;
   subject: string;
   bodyHtml: string;
-  type: 'verification' | 'welcome' | 'reset' | 'booking_confirm' | 'payment_confirm' | 'booking_cancel' | 'staff_created';
+  type: 'verification' | 'welcome' | 'reset' | 'booking_confirm' | 'payment_confirm' | 'booking_cancel' | 'staff_created' | 'two_factor_auth' | 'password_reset' | 'sms_dispatch_log' | 'security_alert';
   status: 'Delivered' | 'Pending' | 'Failed';
   smtpUsed: string;
 }
@@ -263,6 +263,83 @@ export function generateEmailTemplate(
 
           <p>Please keep this information confidential and do not share your credentials with unauthorized individuals.</p>
           <p style="margin-top: 25px;">Asante sana,<br>System Owner Administration</p>
+        </div>
+      `;
+      break;
+
+    case 'two_factor_auth':
+      subject = `Security Verification: ${data.code} is your 2-Factor Code 🛡️`;
+      contentHtml = `
+        <div style="padding: 30px 25px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #334155;">
+          <p style="font-size: 16px; font-weight: bold; color: ${secondaryColor};">Jambo, ${toName},</p>
+          <p>We received an authentication request to access the Master Owner portal of Zanzibar Trip & Relax.</p>
+          <p>Please use the following 6-character Two-Factor Authentication (2FA) passcode to approve this login session. This code is valid for 10 minutes:</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <div style="background-color: #f1f5f9; border: 1px dashed ${brandColor}; display: inline-block; padding: 15px 40px; border-radius: 12px; font-family: monospace; font-size: 24px; font-weight: bold; letter-spacing: 4px; color: ${secondaryColor};">
+              ${data.code}
+            </div>
+          </div>
+          
+          <p style="font-size: 12px; color: #64748b;">If you did not initiate this login session, please immediately change your security password as your credentials may be compromised.</p>
+          <p style="margin-top: 25px;">Asante,<br>Security Operations Team</p>
+        </div>
+      `;
+      break;
+
+    case 'password_reset':
+      subject = `Security Recovery Code: ${data.code} 🔑`;
+      contentHtml = `
+        <div style="padding: 30px 25px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #334155;">
+          <p style="font-size: 16px; font-weight: bold; color: ${secondaryColor};">Hello, ${toName},</p>
+          <p>You requested to initiate multi-layered security recovery to reset the password of your master Owner account.</p>
+          <p>Enter the following secure code to verify your identity. This code expires in 30 minutes:</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <div style="background-color: #fee2e2; border: 1px solid #ef4444; display: inline-block; padding: 15px 45px; border-radius: 12px; font-family: monospace; font-size: 24px; font-weight: bold; letter-spacing: 3px; color: #b91c1c;">
+              ${data.code}
+            </div>
+          </div>
+          
+          <p style="font-size: 12px; color: #64748b;">This is a primary recovery code. If you did not trigger this account recovery, please report this incident immediately to security staff.</p>
+          <p style="margin-top: 25px;">Warm regards,<br>Access Recovery Division</p>
+        </div>
+      `;
+      break;
+
+    case 'sms_dispatch_log':
+      subject = `SMS Transmission Log Alert [Simulated Gateway] 📱`;
+      contentHtml = `
+        <div style="padding: 30px 25px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #334155;">
+          <p style="font-size: 16px; font-weight: bold; color: ${secondaryColor};">SMS Transmission Dispatch Report</p>
+          <p>The security manager successfully dispatched a secure SMS alert code to recovery mobile terminal <strong>${data.phone}</strong>:</p>
+          
+          <div style="background-color: #f8fafc; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0; font-family: monospace; font-size: 13px;">
+            ${data.message}
+          </div>
+          
+          <p style="font-size: 11px; color: #64748b;">This log serves to simulate cellular telecommunication channels inside the sandbox preview layout.</p>
+        </div>
+      `;
+      break;
+
+    case 'security_alert':
+      subject = `${data.subject || 'Security Alert: Account Modified'} 🔒`;
+      contentHtml = `
+        <div style="padding: 30px 25px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #334155;">
+          <p style="font-size: 16px; font-weight: bold; color: #b91c1c;">⚠️ Security Notice</p>
+          <p>Hello, ${toName},</p>
+          <p>${data.message}</p>
+          
+          <div style="background-color: #fffbeb; border: 1px solid #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; font-size: 12px; color: #b45309;">
+            <strong>Event Details:</strong><br>
+            Time: ${new Date().toUTCString()}<br>
+            Resource: Owner Account Security Policies<br>
+            Action: Access Password Modification
+          </div>
+          
+          <p>If this was indeed you, no further action is necessary. Your system credentials have been safely committed.</p>
+          <p style="margin-top: 25px;">Asante,<br>Security Operations Division</p>
         </div>
       `;
       break;

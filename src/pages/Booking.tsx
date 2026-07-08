@@ -1,161 +1,145 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Page } from '../hooks/useHashRouter';
 import { motion, AnimatePresence } from 'motion/react';
-import DatePicker from '../components/DatePicker';
 import { showToast } from '../components/ToastNotification';
 import { ExitIntentModal } from '../components/ExitIntentModal';
 import {
   Calendar, User, Phone, Mail, CheckCircle2, MessageCircle, AlertCircle, RefreshCw,
   MapPin, Users, Clock, Compass, Shield, HelpCircle, ArrowRight, Download, Printer,
   Check, Percent, CreditCard, ShieldCheck, Heart, Luggage, Award, Sparkles, Copy, Home,
-  ChevronRight, ArrowLeft, Star, ShoppingBag, Landmark
+  ChevronRight, ArrowLeft, Star, ShoppingBag, Landmark, Lock, HelpCircle as QuestionIcon,
+  Image as ImageIcon, BookOpen, ThumbsUp, Map, Eye, X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { syncBookingToCRM } from '../lib/crm';
 import { useAnalytics } from '../context/AnalyticsContext';
-import { getCoupons, getDateBlockages, Coupon, DateBlockage, addActivityLog, getSeasonalityConfig, getTransportZones, getHotels, TransportZone, HotelOption, getSiteContent, getExtendedSeasonality } from '../lib/cmsStore';
+import {
+  getCoupons, getDateBlockages, Coupon, DateBlockage, addActivityLog,
+  getSeasonalityConfig, getTransportZones, getHotels, TransportZone, HotelOption,
+  getSiteContent, getExtendedSeasonality
+} from '../lib/cmsStore';
 import {
   generateBookingPDF,
-  generateReceiptPDF,
-  generateInvoicePDF,
-  generateItineraryPDF
+  generateInvoicePDF
 } from '../lib/pdfGenerator';
 import { addEmailLog, generateEmailTemplate, getSmtpConfig } from '../lib/emailService';
+
+// Modular Imports
+import { allPackages, holidayPackageDetails, PackageItem } from '../data/bookingData';
+import {
+  HolidayPackageForm,
+  DayTourForm,
+  AirportTransferForm,
+  SafariForm,
+  KilimanjaroForm
+} from '../components/BookingForms';
 
 interface BookingProps {
   navigate: (page: Page, id?: string) => void;
   queryParams?: Record<string, string>;
 }
 
-// -----------------------------------------------------------------------------------------
-// STATIC EXPERIENCE REPOSITORIES
-// -----------------------------------------------------------------------------------------
-const bookingCategories = [
-  { id: 'tour', label: 'Zanzibar Excursion', desc: 'Marine cruises & spice tours', icon: Compass },
-  { id: 'kilimanjaro', label: 'Kilimanjaro Trek', desc: 'Summit climbs & private routes', icon: Award },
-  { id: 'safari', label: 'Tanzania Safari', desc: 'Wildlife game drives', icon: Sparkles },
-  { id: 'transfer', label: 'Airport Transfer', desc: 'Private resort transport', icon: MapPin },
-] as const;
-
-const toursList = [
-  { name: 'Safari Blue Ocean Cruise', basePrice: 45, duration: 'Full Day' },
-  { name: 'Mnemba Island Snorkeling', basePrice: 35, duration: 'Half Day' },
-  { name: 'Stone Town Cultural Walk', basePrice: 20, duration: '3 Hours' },
-  { name: 'Prison Island & Giant Tortoises', basePrice: 25, duration: 'Half Day' },
-  { name: 'Tangy Spice Farm Tour', basePrice: 15, duration: '3 Hours' },
-  { name: 'Sunset Dhow Cruise', basePrice: 25, duration: '3 Hours' },
-  { name: 'Jozani Forest National Park', basePrice: 25, duration: 'Half Day' },
-];
-
-const kilimanjaroList = [
-  { name: 'Machame Route - 7 Days', basePrice: 1650, duration: '7 Days' },
-  { name: 'Lemosho Route - 8 Days', basePrice: 1950, duration: '8 Days' },
-  { name: 'Marangu Route - 6 Days', basePrice: 1400, duration: '6 Days' },
-  { name: 'Rongai Route - 7 Days', basePrice: 1750, duration: '7 Days' },
-  { name: 'Northern Circuit - 9 Days', basePrice: 2200, duration: '9 Days' },
-];
-
-const safarisList = [
-  { name: 'Serengeti Wildlife Safari - 3 Days', basePrice: 850, duration: '3 Days' },
-  { name: 'Ngorongoro Crater Classic - 2 Days', basePrice: 450, duration: '2 Days' },
-  { name: 'Northern Circuit Discovery - 5 Days', basePrice: 1200, duration: '5 Days' },
-  { name: 'Fly-in Luxury Serengeti - 3 Days', basePrice: 1600, duration: '3 Days' },
-];
-
-const transfersList = [
-  { name: 'Airport Transfer - One Way', basePrice: 40, duration: '1 Way' },
-  { name: 'Airport Transfer - Round Trip', basePrice: 70, duration: 'Round Trip' },
-  { name: 'Hotel to Hotel Transfer', basePrice: 50, duration: '1 Way' },
-  { name: 'Private Luxury Van Transfer', basePrice: 90, duration: '1 Way' },
-];
-
 export default function Booking({ navigate, queryParams }: BookingProps) {
   const { trackBookingInitiate, trackWhatsAppClick } = useAnalytics();
 
-  // Unified Checkout Steps: 1 = Experience, 2 = Guest Info, 3 = Confirmation, 4 = Done!
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [initialParamProcessed, setInitialParamProcessed] = useState(false);
+  // Unified Wizard Flow states
+  // Step 1: Specific customized form selection & entries
+  // Step 2: Final Summary review & prepayment details
+  // Step 3: Success Confirmation (with receipt, calendar download, Swahili greetings)
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  // Selector Settings
-  const [selectedCategory, setSelectedCategory] = useState<'tour' | 'kilimanjaro' | 'safari' | 'transfer'>('tour');
-  const [paymentOption, setPaymentOption] = useState<'arrival' | 'full'>('full');
-  const [activeCoupon, setActiveCoupon] = useState<Coupon | null>(null);
-  const [onlinePaymentMethod, setOnlinePaymentMethod] = useState<'card' | 'mobile_money' | 'gateway'>('card');
-  const [mobileProvider, setMobileProvider] = useState<'mpesa' | 'tigo' | 'airtel' | 'halotel'>('mpesa');
-  const [mobilePhone, setMobilePhone] = useState('');
-  const [mobileName, setMobileName] = useState('');
+  // Categories & Selections
+  const [activeCategory, setActiveCategory] = useState<'packages' | 'tour' | 'transfer' | 'safari' | 'kilimanjaro'>('packages');
+  const [selectedPackage, setSelectedPackage] = useState<PackageItem | null>(null);
   
-  // Quantities & Selections
+  // If true, user is filling the customized form. For Holiday Packages, we start in a beautiful detail presentation before locking
+  const [isPackageLocked, setIsPackageLocked] = useState<boolean>(false);
+  const [viewingPackageDetails, setViewingPackageDetails] = useState<boolean>(false);
+
+  // Active package details tab
+  const [activeDetailTab, setActiveDetailTab] = useState<'itinerary' | 'hotels' | 'inclusions' | 'reviews' | 'faq'>('itinerary');
+
+  // Dates
+  const getTomorrowDateString = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 2);
+    return tomorrow.toISOString().split('T')[0];
+  };
+
+  const [arrivalDate, setArrivalDate] = useState<string>(getTomorrowDateString());
   const [adultsCount, setAdultsCount] = useState<number>(2);
   const [childrenCount, setChildrenCount] = useState<number>(0);
-  const [currency, setCurrency] = useState<'USD' | 'EUR' | 'TZS'>('USD');
-  const [couponCode, setCouponCode] = useState<string>('');
-  const [couponApplied, setCouponApplied] = useState<boolean>(false);
-  const [couponError, setCouponError] = useState<string>('');
-  
-  // Location States
+
+  // Location details (Automatic Pickup Zone Detection)
   const [zonesList] = useState<TransportZone[]>(getTransportZones());
   const [hotelsList] = useState<HotelOption[]>(getHotels());
-  const [selectedZoneId, setSelectedZoneId] = useState<string>('');
   const [selectedHotelId, setSelectedHotelId] = useState<string>('');
   const [customHotelName, setCustomHotelName] = useState<string>('');
   const [notListedHotel, setNotListedHotel] = useState<boolean>(false);
 
-  // Guest Form State
-  const [formData, setFormData] = useState({
-    name: '',
+  // Promo / Discounts
+  const [couponCode, setCouponCode] = useState<string>('');
+  const [couponApplied, setCouponApplied] = useState<boolean>(false);
+  const [couponError, setCouponError] = useState<string>('');
+  const [activeCoupon, setActiveCoupon] = useState<Coupon | null>(null);
+  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
+
+  // Contact / Lead Information (First Name, Last Name, Email, Phone, message/requests)
+  const [formData, setFormData] = useState<any>({
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
-    nationality: '',
-    pickupLocation: 'Stone Town Offices',
     message: '',
-    preferredDate: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0], // Defaults to 2 days out
-    selectedExperience: 'Safari Blue Ocean Cruise',
+    roomPreference: 'Double Room',
+    transferDirection: 'arrival',
+    transferTerminal: 'ZNZ Airport',
+    flightNo: '',
+    flightTime: '',
+    bagsCount: '2',
+    safariAccommodation: 'mid-range',
+    pickupLocation: '',
+    accommodationBeforeAfter: 'Moshi Mountain Lodge (Pre-arranged)',
+    airportPickup: 'Yes'
   });
 
-  // Credit Card Sandbox States
+  // Pay Choice: Deposit (30%), Full Amount (100%), or Hold & Pay Later
+  const [paymentOption, setPaymentOption] = useState<'deposit' | 'full' | 'later'>('full');
+  
+  // Payment gateway elements
+  const [onlinePaymentMethod, setOnlinePaymentMethod] = useState<'card' | 'mobile_money'>('card');
+  const [mobileProvider, setMobileProvider] = useState<'mpesa' | 'tigo' | 'airtel'>('mpesa');
+  const [mobilePhone, setMobilePhone] = useState('');
+  const [mobileName, setMobileName] = useState('');
   const [cardNo, setCardNo] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvc, setCardCvc] = useState('');
-  const [isPrepaying, setIsPrepaying] = useState(false);
 
-  // Status Elements
+  // Status & Ref Codes
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [reference, setReference] = useState('ZTR-2026-PENDING');
   const [copiedRef, setCopiedRef] = useState(false);
   const [emailSendingStatus, setEmailSendingStatus] = useState<'idle' | 'preparing' | 'connecting' | 'sent'>('idle');
 
-  // Zanzibar Live Clock & Weather
+  // Zanzibar live states
   const [zanzibarTime, setZanzibarTime] = useState('');
   const [zanzibarDate, setZanzibarDate] = useState('');
-  const [zanzibarWeather, setZanzibarWeather] = useState({ temp: 28, text: 'Tropical Breeze', icon: '☀️' });
 
-  // Load returning user details
+  // Load initial coupons
   useEffect(() => {
-    const savedInfo = localStorage.getItem('ztr_returning_user_info');
-    if (savedInfo) {
-      try {
-        const parsed = JSON.parse(savedInfo);
-        setFormData(prev => ({
-          ...prev,
-          name: parsed.name || '',
-          email: parsed.email || '',
-          phone: parsed.phone || '',
-          nationality: parsed.nationality || '',
-          pickupLocation: parsed.pickupLocation || prev.pickupLocation
-        }));
-      } catch (err) {
-        console.warn('Failed to parse returning user information', err);
-      }
+    try {
+      setAvailableCoupons(getCoupons());
+    } catch (e) {
+      console.warn('Coupon load warning:', e);
     }
   }, []);
 
-  // Sync Live Clock & Weather
+  // Sync Live Zanzibar Clock
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
       const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-      const eat = new Date(utc + (3600000 * 3)); // UTC+3
+      const eat = new Date(utc + (3600000 * 3)); // UTC+3 (East Africa Time)
       
       setZanzibarTime(eat.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
       setZanzibarDate(eat.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }));
@@ -163,1644 +147,1625 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
 
     updateTime();
     const clockTimer = setInterval(updateTime, 1000);
-
-    const fetchWeather = async () => {
-      try {
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=-6.1659&longitude=39.1918&current_weather=true`);
-        if (res.ok) {
-          const data = await res.json();
-          const temp = Math.round(data.current_weather.temperature);
-          setZanzibarWeather({ temp, text: 'Sunny Paradise', icon: '☀️' });
-        }
-      } catch (err) {
-        console.warn('Weather fetch warning:', err);
-      }
-    };
-
-    fetchWeather();
     return () => clearInterval(clockTimer);
   }, []);
 
-  // Process query parameters (Lock in pre-selected packages)
+  // Read returning user details if available
   useEffect(() => {
-    if (queryParams && !initialParamProcessed) {
-      if (queryParams.date || queryParams.arrival) {
-        const d = queryParams.date || queryParams.arrival;
-        setFormData(prev => ({ ...prev, preferredDate: d }));
+    const savedInfo = localStorage.getItem('ztr_returning_user_info');
+    if (savedInfo) {
+      try {
+        const parsed = JSON.parse(savedInfo);
+        const nameParts = (parsed.name || '').split(' ');
+        setFormData((prev: any) => ({
+          ...prev,
+          firstName: nameParts[0] || '',
+          lastName: nameParts.slice(1).join(' ') || '',
+          email: parsed.email || '',
+          phone: parsed.phone || '',
+        }));
+      } catch (err) {
+        console.warn('Failed to parse returning user', err);
       }
-      if (queryParams.adults) {
-        const aCount = Number(queryParams.adults);
-        if (!isNaN(aCount) && aCount > 0) {
-          setAdultsCount(aCount);
-        }
-      }
-      if (queryParams.children) {
-        const cCount = Number(queryParams.children);
-        if (!isNaN(cCount) && cCount >= 0) {
-          setChildrenCount(cCount);
-        }
-      }
+    }
+  }, []);
 
-      const pkgParam = queryParams.package || queryParams.route || '';
-      if (pkgParam) {
-        const normParam = decodeURIComponent(pkgParam).toLowerCase().replace(/-/g, ' ').trim();
+  // Parse routing / pre-selected experiences from query parameters
+  useEffect(() => {
+    if (queryParams && Object.keys(queryParams).length > 0) {
+      const productId = queryParams.package || queryParams.id || queryParams.product;
+      const directCategory = queryParams.category;
 
-        // Find match in our lists
-        let foundCat: 'tour' | 'kilimanjaro' | 'safari' | 'transfer' = 'tour';
-        let foundName = '';
-
-        const tMatch = toursList.find(t => t.name.toLowerCase().includes(normParam));
-        const kMatch = kilimanjaroList.find(k => k.name.toLowerCase().includes(normParam));
-        const sMatch = safarisList.find(s => s.name.toLowerCase().includes(normParam));
-        const trMatch = transfersList.find(tr => tr.name.toLowerCase().includes(normParam));
-
-        if (tMatch) { foundCat = 'tour'; foundName = tMatch.name; }
-        else if (kMatch) { foundCat = 'kilimanjaro'; foundName = kMatch.name; }
-        else if (sMatch) { foundCat = 'safari'; foundName = sMatch.name; }
-        else if (trMatch) { foundCat = 'transfer'; foundName = trMatch.name; }
-        else {
-          // Look up in custom dynamic CMS tours
-          try {
-            const cmsContent = getSiteContent();
-            const cmsMatch = (cmsContent.tours || []).find((t: any) => 
-              t.title.toLowerCase().replace(/\s+/g, '-') === pkgParam.toLowerCase() ||
-              t.title.toLowerCase().includes(normParam)
-            );
-            if (cmsMatch) {
-              foundCat = (cmsMatch.category === 'safari' || cmsMatch.category === 'kilimanjaro' || cmsMatch.category === 'transfer') 
-                ? cmsMatch.category 
-                : 'tour';
-              foundName = cmsMatch.title;
-            }
-          } catch (e) {
-            console.warn("CMS lookup skipped", e);
+      if (productId) {
+        const matched = allPackages.find(p => p.id === productId);
+        if (matched) {
+          setSelectedPackage(matched);
+          setActiveCategory(matched.category);
+          
+          if (matched.category === 'packages') {
+            // For Holiday Packages, start with their dedicated details presentation
+            setViewingPackageDetails(true);
+            setIsPackageLocked(false);
+          } else {
+            // For all other categories, carry over the details and lock immediately
+            setIsPackageLocked(true);
+            setViewingPackageDetails(false);
           }
+          trackBookingInitiate(matched.name, matched.basePrice, matched.category);
         }
-
-        if (foundName) {
-          setSelectedCategory(foundCat);
-          setFormData(prev => ({ ...prev, selectedExperience: foundName }));
-        } else {
-          // Fallback custom text
-          setFormData(prev => ({ ...prev, selectedExperience: decodeURIComponent(pkgParam).replace(/-/g, ' ') }));
+      } else if (directCategory) {
+        const validCategories = ['packages', 'tour', 'transfer', 'safari', 'kilimanjaro'];
+        if (validCategories.includes(directCategory)) {
+          setActiveCategory(directCategory as any);
         }
       }
-      setInitialParamProcessed(true);
     }
-  }, [queryParams, initialParamProcessed]);
+  }, [queryParams]);
 
-  // Track Analytics
-  useEffect(() => {
-    trackBookingInitiate(selectedCategory, formData.selectedExperience);
-  }, [selectedCategory, formData.selectedExperience, trackBookingInitiate]);
-
-  // Adjust defaults when category switches
-  useEffect(() => {
-    if (queryParams && (queryParams.package || queryParams.route) && !initialParamProcessed) {
-      return; 
-    }
-    const list = selectedCategory === 'tour' ? toursList :
-                 selectedCategory === 'kilimanjaro' ? kilimanjaroList :
-                 selectedCategory === 'safari' ? safarisList :
-                 transfersList;
-    setFormData(prev => ({ ...prev, selectedExperience: list[0].name }));
-  }, [selectedCategory, queryParams, initialParamProcessed]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  // Handle Category Tab switching
+  const handleCategorySwitch = (cat: 'packages' | 'tour' | 'transfer' | 'safari' | 'kilimanjaro') => {
+    setActiveCategory(cat);
+    setSelectedPackage(null);
+    setIsPackageLocked(false);
+    setViewingPackageDetails(false);
+    setSelectedHotelId('');
+    setCustomHotelName('');
   };
 
-  // -----------------------------------------------------------------------------------------
-  // CORE PRICING CALCULATION ENGINE (Multi-currency USD / EUR / TZS support)
-  // -----------------------------------------------------------------------------------------
-  const calculatePricing = () => {
-    const list = selectedCategory === 'tour' ? toursList :
-                 selectedCategory === 'kilimanjaro' ? kilimanjaroList :
-                 selectedCategory === 'safari' ? safarisList :
-                 transfersList;
+  // Select a specific product in the list
+  const handleSelectProduct = (pkg: PackageItem) => {
+    setSelectedPackage(pkg);
+    trackBookingInitiate(pkg.name, pkg.basePrice, pkg.category);
 
-    const matched = list.find(x => x.name === formData.selectedExperience);
-    const basePriceUSD = matched ? matched.basePrice : 45;
+    if (pkg.category === 'packages') {
+      setViewingPackageDetails(true);
+      setIsPackageLocked(false);
+    } else {
+      setIsPackageLocked(true);
+      setViewingPackageDetails(false);
+    }
+  };
 
-    // Headcount logic
-    const adultsCostUSD = basePriceUSD * adultsCount;
-    const childrenCostUSD = (basePriceUSD * 0.6) * childrenCount; // Children enjoy a 40% discount
-    let totalSubUSD = adultsCostUSD + childrenCostUSD;
-
-    // Seasonality adjustment
-    let multiplier = 1.0;
-    let seasonLabel = 'Regular Season';
-    const selectedDate = formData.preferredDate;
-    if (selectedDate) {
-      try {
-        const parts = selectedDate.split('-');
-        if (parts.length === 3) {
-          const m = parseInt(parts[1], 10);
-          const d = parseInt(parts[2], 10);
-          const currentVal = m * 100 + d;
-
-          const seasons = getExtendedSeasonality();
-          for (const s of seasons) {
-            const startVal = s.startMonth * 100 + s.startDay;
-            const endVal = s.endMonth * 100 + s.endDay;
-            let matches = false;
-            if (startVal <= endVal) {
-              matches = currentVal >= startVal && currentVal <= endVal;
-            } else {
-              matches = currentVal >= startVal || currentVal <= endVal;
-            }
-            if (matches) {
-              multiplier = s.isDiscount ? (1 - (s.adjustmentPct / 100)) : (1 + (s.adjustmentPct / 100));
-              seasonLabel = s.isDiscount ? `Green Season (-${s.adjustmentPct}%)` : `Peak Season (+${s.adjustmentPct}%)`;
-              break;
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Season calculations fallback", e);
-      }
+  // Apply discount coupon
+  const handleApplyCoupon = () => {
+    setCouponError('');
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a valid coupon code.');
+      return;
     }
 
-    totalSubUSD = totalSubUSD * multiplier;
+    const cleaned = couponCode.trim().toUpperCase();
+    const found = availableCoupons.find(c => c.name === cleaned);
 
-    // Transport pickup zones surcharge
-    let pickupSurchargeUSD = 0;
-    let pickupZoneLabel = '';
+    if (found) {
+      const isNotExpired = new Date(found.expirationDate) >= new Date();
+      if (isNotExpired) {
+        setActiveCoupon(found);
+        setCouponApplied(true);
+        showToast(`Promo applied successfully! Saved ${found.value}% on base fare.`, 'success');
+      } else {
+        setCouponError('This coupon code has expired.');
+      }
+    } else {
+      // Fallback for demo/standard codes
+      if (cleaned === 'WELCOME10' || cleaned === 'SWAHILI10' || cleaned === 'ZANZIBAR10') {
+        const mockCoupon: Coupon = {
+          id: 'MOCK-1',
+          name: cleaned,
+          type: 'percentage',
+          value: 10,
+          expirationDate: '2028-12-31',
+          maxUses: 1000,
+          usedCount: 0,
+          minBookingAmount: 0,
+          applicableCategory: 'all',
+          applicableDepartures: 'all',
+          oneTimeUse: false
+        };
+        setActiveCoupon(mockCoupon);
+        setCouponApplied(true);
+        showToast('Promo code "WELCOME10" applied! 10% off base rate.', 'success');
+      } else {
+        setCouponError('Invalid promo code. Please try again.');
+      }
+    }
+  };
+
+  // Remove active promo code
+  const handleRemoveCoupon = () => {
+    setActiveCoupon(null);
+    setCouponApplied(false);
+    setCouponCode('');
+    setCouponError('');
+  };
+
+  // Pricing breakdown engine (calculates transparent total)
+  const pricingBreakdown = useMemo(() => {
+    if (!selectedPackage) {
+      return {
+        baseTotal: 0,
+        pickupSurcharge: 0,
+        seasonMultiplier: 1,
+        seasonLabel: 'Standard Season',
+        promoDiscount: 0,
+        prepayDiscount: 0,
+        taxAmount: 0,
+        finalTotal: 0,
+        rawDepositUSD: 0,
+        rawRemainingUSD: 0,
+        currencySymbol: '$',
+        basePricePerAdult: 0,
+        pickupZoneLabel: 'None detected'
+      };
+    }
+
+    // 1. Calculate Base Price
+    let basePricePerAdult = selectedPackage.basePrice;
+    
+    // Day tours have customized pricing, safaris have accommodation standards
+    if (selectedPackage.category === 'safari') {
+      const accommodation = formData.safariAccommodation;
+      if (accommodation === 'luxury') basePricePerAdult = selectedPackage.basePrice + 250;
+      else if (accommodation === 'budget') basePricePerAdult = selectedPackage.basePrice - 100;
+    }
+
+    // Adults and children calculations
+    const travelersCount = (selectedPackage.category === 'safari' || selectedPackage.category === 'kilimanjaro') 
+      ? adultsCount // Safaris/Treks count all in adults count
+      : adultsCount;
+
+    const childPrice = selectedPackage.category === 'transfer' ? 0 : basePricePerAdult * 0.60; // 60% of adult fare
+    let baseTotal = (basePricePerAdult * travelersCount) + (childPrice * childrenCount);
+
+    if (selectedPackage.category === 'transfer') {
+      baseTotal = selectedPackage.basePrice; // Transfer base price is flat
+    }
+
+    // 2. Transport Zone Surcharge Calculation
+    let pickupSurcharge = 0;
+    let pickupZoneLabel = 'Stone Town (Complimentary)';
+
     if (!notListedHotel && selectedHotelId) {
-      const matchHotel = hotelsList.find(h => h.id === selectedHotelId);
-      if (matchHotel) {
-        const matchZone = zonesList.find(z => z.id === matchHotel.zoneId);
-        if (matchZone) {
-          pickupSurchargeUSD = matchZone.price;
-          pickupZoneLabel = `${matchHotel.name} (${matchZone.name})`;
+      const matchedHotel = hotelsList.find(h => h.id === selectedHotelId);
+      if (matchedHotel && matchedHotel.zoneId) {
+        const matchedZone = zonesList.find(z => z.id === matchedHotel.zoneId);
+        if (matchedZone) {
+          pickupSurcharge = matchedZone.price;
+          pickupZoneLabel = `${matchedZone.name} Zone`;
         }
       }
     } else if (notListedHotel && customHotelName) {
-      const matchZone = zonesList.find(z => z.id === selectedZoneId);
-      if (matchZone) {
-        pickupSurchargeUSD = matchZone.price;
-        pickupZoneLabel = `${customHotelName} (${matchZone.name})`;
-      }
-    } else if (selectedZoneId) {
-      const matchZone = zonesList.find(z => z.id === selectedZoneId);
-      if (matchZone) {
-        pickupSurchargeUSD = matchZone.price;
-        pickupZoneLabel = `${matchZone.name}`;
-      }
+      // Calculate average distance/zone surcharge for custom hotels
+      pickupSurcharge = 35;
+      pickupZoneLabel = 'Custom Out-of-Zone Transfer';
     }
-    totalSubUSD += pickupSurchargeUSD;
 
-    // Promo code voucher deduction
-    let discountUSD = 0;
-    if (couponApplied && activeCoupon) {
-      if (totalSubUSD >= activeCoupon.minBookingAmount) {
-        if (activeCoupon.type === 'percentage') {
-          discountUSD = totalSubUSD * (activeCoupon.value / 100);
-        } else {
-          discountUSD = activeCoupon.value;
+    // 3. Seasonality Adjustments (Dry peak season multipliers)
+    let seasonMultiplier = 1.0;
+    let seasonLabel = 'Standard Tropical Season';
+
+    if (arrivalDate) {
+      try {
+        const travelMonth = new Date(arrivalDate).getMonth(); // 0-indexed
+        // Dec, Jan, Feb, July, Aug, Sept are peak tourism months
+        if ([11, 0, 1, 6, 7, 8].includes(travelMonth)) {
+          seasonMultiplier = 1.15;
+          seasonLabel = 'Dry Peak Season (+15% high demand)';
+        } else if ([3, 4].includes(travelMonth)) { // April, May are green seasons
+          seasonMultiplier = 0.90;
+          seasonLabel = 'Green Low Season (-10% rainy savings)';
         }
+      } catch (err) {
+        console.warn('Date parsing for seasonality skipped:', err);
       }
     }
 
-    // 18% Zanzibar Tourism & VAT tax
-    const netBeforeTaxUSD = totalSubUSD - discountUSD;
-    const vatAmountUSD = Math.round(netBeforeTaxUSD * 0.18);
-    let finalTotalUSD = Math.round(netBeforeTaxUSD + vatAmountUSD);
+    const seasonedBaseTotal = baseTotal * seasonMultiplier;
 
-    // Pay now online prepay discount (10% extra discount to encourage cashless booking)
-    let onlinePrepayDiscountUSD = 0;
-    if (paymentOption === 'full') {
-      onlinePrepayDiscountUSD = Math.round(finalTotalUSD * 0.10);
-      finalTotalUSD -= onlinePrepayDiscountUSD;
+    // 4. Promo Coupon Deductions
+    let promoDiscount = 0;
+    if (couponApplied && activeCoupon) {
+      promoDiscount = seasonedBaseTotal * (activeCoupon.value / 100);
     }
 
-    // Multi-currency conversion rates
-    // 1 USD = 0.92 EUR
-    // 1 USD = 2600 TZS
-    const rates = {
-      USD: 1,
-      EUR: 0.92,
-      TZS: 2600
-    };
+    // 5. Prepayment incentives
+    let prepayDiscount = 0;
+    if (paymentOption === 'full') {
+      // 10% saving for full prepayment
+      prepayDiscount = (seasonedBaseTotal - promoDiscount) * 0.10;
+    } else if (paymentOption === 'deposit') {
+      // 5% saving for deposit prepayment
+      prepayDiscount = (seasonedBaseTotal - promoDiscount) * 0.05;
+    }
 
-    const rate = rates[currency];
-    const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'TSh ';
+    // 6. Tax / VAT Calculation (Zanzibar Government VAT is 18%)
+    const taxableSubtotal = seasonedBaseTotal + pickupSurcharge - promoDiscount - prepayDiscount;
+    const taxAmount = taxableSubtotal * 0.18;
 
-    const displayTotal = Math.round(finalTotalUSD * rate);
-    const displayDiscount = Math.round(discountUSD * rate);
-    const displayVat = Math.round(vatAmountUSD * rate);
-    const displayPrepayDiscount = Math.round(onlinePrepayDiscountUSD * rate);
-    const displaySurcharge = Math.round(pickupSurchargeUSD * rate);
-    const displayBase = Math.round(basePriceUSD * rate);
+    // 7. Final Total
+    const finalTotal = Math.round(taxableSubtotal + taxAmount);
 
-    // Deposit represents 30% of total for bookings
-    const depositUSD = Math.round(finalTotalUSD * 0.30);
-    const displayDeposit = Math.round(depositUSD * rate);
-    const displayRemaining = displayTotal - (paymentOption === 'full' ? displayTotal : displayDeposit);
+    // 8. Deposit / Remaining Balance calculation
+    let rawDepositUSD = 0;
+    if (paymentOption === 'deposit') {
+      rawDepositUSD = Math.round(finalTotal * 0.30); // 30% deposit
+    } else if (paymentOption === 'full') {
+      rawDepositUSD = finalTotal;
+    }
+
+    const rawRemainingUSD = finalTotal - rawDepositUSD;
 
     return {
-      totalUSD: finalTotalUSD,
-      calculatedDepositUSD: depositUSD,
-      displayTotal,
-      displayDeposit,
-      displayRemaining,
-      currencySymbol: symbol,
-      pricePerAdult: displayBase,
-      discountAmount: displayDiscount,
-      prepayDiscountAmount: displayPrepayDiscount,
-      vatAmount: displayVat,
-      pickupSurcharge: displaySurcharge,
-      pickupZoneLabel,
+      baseTotal: Math.round(baseTotal),
+      pickupSurcharge,
+      seasonMultiplier,
       seasonLabel,
-      multiplier,
-      rawBaseUSD: basePriceUSD,
-      rawTotalUSD: finalTotalUSD
+      promoDiscount: Math.round(promoDiscount),
+      prepayDiscount: Math.round(prepayDiscount),
+      taxAmount: Math.round(taxAmount),
+      finalTotal,
+      rawDepositUSD,
+      rawRemainingUSD,
+      currencySymbol: '$',
+      basePricePerAdult,
+      pickupZoneLabel
     };
-  };
+  }, [selectedPackage, adultsCount, childrenCount, selectedHotelId, notListedHotel, customHotelName, arrivalDate, couponApplied, activeCoupon, paymentOption, formData.safariAccommodation]);
 
-  const pricing = calculatePricing();
+  // Filtered packages depending on category
+  const filteredPackages = useMemo(() => {
+    return allPackages.filter(p => p.category === activeCategory);
+  }, [activeCategory]);
 
-  // Validate coupon promotion codes
-  const checkPromoCode = () => {
-    setCouponError('');
-    if (!couponCode.trim()) {
-      setCouponError('Please enter a voucher code name.');
-      return;
-    }
-
-    const code = couponCode.trim().toUpperCase();
-    const activeList = getCoupons();
-    const found = activeList.find(c => c.name === code);
-
-    if (found) {
-      const expDate = new Date(found.expirationDate);
-      if (new Date() > expDate) {
-        setCouponError('This voucher code has expired.');
-        return;
-      }
-      if (found.usedCount >= found.maxUses) {
-        setCouponError('This coupon capacity limit has been completely reached.');
-        return;
-      }
-      setActiveCoupon(found);
-      setCouponApplied(true);
-      showToast('Promo discount applied successfully!', 'success');
-    } else {
-      // Offline fallback values
-      if (code === 'WELCOME10' || code === 'SAVE50' || code === 'SWAHILI10') {
-        const value = code === 'SAVE50' ? 50 : 10;
-        const type = code === 'SAVE50' ? 'absolute' : 'percentage';
-        setActiveCoupon({
-          id: 'manual-' + code,
-          name: code,
-          type: type as any,
-          value,
-          minBookingAmount: 0,
-          expirationDate: '2028-12-31',
-          maxUses: 99999,
-          usedCount: 0
-        });
-        setCouponApplied(true);
-        showToast('Promo discount applied successfully!', 'success');
-      } else {
-        setCouponError('Invalid voucher code. Try WELCOME10 or SWAHILI10');
-      }
-    }
-  };
-
-  const removeCoupon = () => {
-    setCouponApplied(false);
-    setActiveCoupon(null);
-    setCouponCode('');
-  };
-
-  const handleApplyExitIntentDiscount = (code: string) => {
-    setCouponCode(code);
-    setActiveCoupon({
-      id: 'exit-intent-gift',
-      name: code.toUpperCase(),
-      type: 'percentage',
-      value: 10,
-      minBookingAmount: 0,
-      expirationDate: '2028-12-31',
-      maxUses: 99999,
-      usedCount: 0
-    });
-    setCouponApplied(true);
-    showToast('Promo discount applied successfully!', 'success');
-  };
-
-  // -----------------------------------------------------------------------------------------
-  // BOOKING TRANSITIONS & SUBMISSIONS
-  // -----------------------------------------------------------------------------------------
-  const validateStep1 = () => {
-    if (!formData.selectedExperience) {
+  // Proceed to Summary & Prepayment screen
+  const handleProceedToSummary = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPackage) {
       showToast('Please select an experience to continue.', 'error');
       return;
     }
-    if (!formData.preferredDate) {
-      showToast('Please select your date of travel.', 'error');
+
+    // Validate essential traveler contact info
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim() || !formData.phone.trim()) {
+      showToast('Please complete all contact details fields.', 'error');
       return;
     }
+
+    // Proceed to Step 2
     setStep(2);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const validateStep2 = () => {
-    if (!formData.name.trim()) {
-      showToast('Please enter your full name.', 'error');
-      return;
-    }
-    if (!formData.phone.trim()) {
-      showToast('Please enter your primary phone or WhatsApp number.', 'error');
-      return;
-    }
-    if (!formData.email.trim() || !formData.email.includes('@')) {
-      showToast('Please provide a valid email address.', 'error');
-      return;
-    }
-    
-    // Save to local storage for returning guest convenience
-    localStorage.setItem('ztr_returning_user_info', JSON.stringify({
-      name: formData.name.trim(),
-      email: formData.email.trim(),
-      phone: formData.phone.trim(),
-      nationality: formData.nationality.trim(),
-      pickupLocation: notListedHotel ? customHotelName : (selectedHotelId || formData.pickupLocation)
-    }));
-
-    setStep(3);
+  // Back to Form entry
+  const handleBackToForm = () => {
+    setStep(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Perform Final Secure Booking Commit
+  // Submit and Secure Booking (Saves to database, activity log, sends notifications, triggers emails)
   const handleConfirmBooking = async () => {
-    // Validate Payment details
-    if (onlinePaymentMethod === 'card') {
-      if (!cardNo.trim() || cardNo.replace(/\s/g, '').length < 13) {
-        showToast('Please enter a valid credit card number.', 'error');
-        return;
-      }
-      if (!cardExpiry.trim() || !cardExpiry.includes('/')) {
-        showToast('Please enter a valid expiration date (MM / YY).', 'error');
-        return;
-      }
-      if (!cardCvc.trim() || cardCvc.length < 3) {
-        showToast('Please enter a valid CVV security code.', 'error');
-        return;
-      }
-    } else if (onlinePaymentMethod === 'mobile_money') {
-      if (!mobilePhone.trim() || mobilePhone.length < 8) {
-        showToast('Please enter a valid Mobile Money phone number.', 'error');
-        return;
-      }
-      if (!mobileName.trim()) {
-        showToast('Please enter the name registered to the Mobile Money wallet.', 'error');
-        return;
-      }
-    }
-
     setStatus('loading');
-    setIsPrepaying(true);
 
-    setTimeout(async () => {
-      // Generate a sleek Booking Reference Code
-      const generatedReference = `ZTR-${new Date().toISOString().substring(2,7).replace(/-/g,'').toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`;
-      setReference(generatedReference);
+    // Generate unique booking reference code
+    const randomSuffix = Math.floor(Math.random() * 9000 + 1000);
+    const newRef = `ZTR-2026-${randomSuffix}`;
+    setReference(newRef);
 
-      const categoryLabel = bookingCategories.find(c => c.id === selectedCategory)?.label || 'Swahili Tour';
-      const actualGuests = adultsCount + childrenCount;
-      const pickupHotel = notListedHotel ? customHotelName : (hotelsList.find(h => h.id === selectedHotelId)?.name || formData.pickupLocation);
+    const pickupHotel = notListedHotel 
+      ? customHotelName 
+      : (hotelsList.find(h => h.id === selectedHotelId)?.name || formData.pickupLocation || 'Stone Town Port Office');
 
-      let paymentDetailsLog = '';
-      if (onlinePaymentMethod === 'card') {
-        paymentDetailsLog = `Paid via Credit/Debit Card (ending in ${cardNo.slice(-4)})`;
-      } else if (onlinePaymentMethod === 'mobile_money') {
-        const providerName = mobileProvider === 'mpesa' ? 'M-Pesa' : mobileProvider === 'tigo' ? 'Tigo Pesa' : mobileProvider === 'airtel' ? 'Airtel Money' : 'Halopesa';
-        paymentDetailsLog = `Paid via Mobile Money (${providerName} wallet: ${mobilePhone})`;
-      } else {
-        paymentDetailsLog = `Paid via secure Online Gateway (Direct Pay Online Group)`;
-      }
+    const leadName = `${formData.firstName} ${formData.lastName}`;
 
-      const logMessage = `Redesigned Booking Checkout\nReference: ${generatedReference}\nCurrency: ${currency}\nPayment Plan: Online Prepayment Authorized & Fully Settled\nPayment Channel: ${paymentDetailsLog}\nNotes: ${formData.message.trim()}`;
+    // Prepare complete metadata
+    const bookingPayload = {
+      reference: newRef,
+      created_at: new Date().toISOString(),
+      lead_traveler_name: leadName,
+      lead_traveler_email: formData.email.trim(),
+      lead_traveler_phone: formData.phone.trim(),
+      product_id: selectedPackage?.id,
+      product_name: selectedPackage?.name,
+      product_category: selectedPackage?.category,
+      travel_date: arrivalDate,
+      adults_count: adultsCount,
+      children_count: childrenCount,
+      pickup_hotel: pickupHotel,
+      room_preference: formData.roomPreference,
+      safari_accommodation: formData.safariAccommodation,
+      airport_pickup_jro: formData.airportPickup,
+      flight_no: formData.flightNo,
+      flight_time: formData.flightTime,
+      bags_count: formData.bagsCount,
+      payment_choice: paymentOption,
+      total_price: pricingBreakdown.finalTotal,
+      deposit_amount: pricingBreakdown.rawDepositUSD,
+      balance_remaining: pricingBreakdown.rawRemainingUSD,
+      special_requests: formData.message,
+      status: paymentOption === 'later' ? 'On Hold' : 'Secured'
+    };
 
-      try {
-        // Insert to Supabase DB table
-        const { error } = await supabase.from('bookings').insert([
+    // 1. Save to Supabase Bookings table
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .insert([
           {
-            full_name: formData.name.trim(),
-            email: formData.email.trim() || null,
-            whatsapp_number: formData.phone.trim(),
-            number_of_guests: actualGuests,
-            tour_name: `${categoryLabel}: ${formData.selectedExperience}`,
-            preferred_date: formData.preferredDate,
+            reference_code: newRef,
+            customer_name: leadName,
+            customer_email: formData.email.trim(),
+            customer_phone: formData.phone.trim(),
+            product_name: selectedPackage?.name,
+            product_category: selectedPackage?.category,
+            travel_date: arrivalDate,
+            guest_count: adultsCount + childrenCount,
             pickup_location: pickupHotel,
-            status: 'confirmed',
-            message: logMessage,
+            total_price: pricingBreakdown.finalTotal,
+            payment_status: paymentOption === 'later' ? 'pending' : 'deposit_paid',
+            status: paymentOption === 'later' ? 'pending' : 'confirmed',
+            details: bookingPayload
           }
         ]);
+      if (error) console.warn('Supabase bookings write skipped:', error.message);
+    } catch (err) {
+      console.warn('Supabase save skipped (non-blocking):', err);
+    }
 
-        if (error) console.warn('Supabase backup trigger:', error.message);
+    // 2. Save in Local Storage backups
+    try {
+      const existing = JSON.parse(localStorage.getItem('ztr_local_bookings_backup') || '[]');
+      localStorage.setItem('ztr_local_bookings_backup', JSON.stringify([bookingPayload, ...existing]));
+      localStorage.setItem('ztr_returning_user_info', JSON.stringify({
+        name: leadName,
+        email: formData.email,
+        phone: formData.phone,
+        pickupLocation: pickupHotel
+      }));
+    } catch (err) {
+      console.warn('Local backup error:', err);
+    }
 
-        // Save local backup cache for "My Account" guest portal
-        const localBackup = localStorage.getItem('ztr_local_bookings_backup');
-        const backupList = localBackup ? JSON.parse(localBackup) : [];
-        const newBackupItem = {
-          reference: generatedReference,
-          id: 'TX-' + generatedReference.substring(4),
-          full_name: formData.name.trim(),
-          email: formData.email.trim(),
-          whatsapp_number: formData.phone.trim(),
-          tour_name: `${categoryLabel}: ${formData.selectedExperience}`,
-          preferred_date: formData.preferredDate,
-          pickup_location: pickupHotel,
-          status: 'confirmed',
-          message: `${logMessage}\nTotal Price: ${pricing.currencySymbol}${pricing.displayTotal}`,
-          created_at: new Date().toISOString()
-        };
-        localStorage.setItem('ztr_local_bookings_backup', JSON.stringify([newBackupItem, ...backupList]));
+    // 3. Synchronize with Lead CRM
+    try {
+      syncBookingToCRM({
+        reference: newRef,
+        fullName: leadName,
+        email: formData.email.trim(),
+        whatsappNumber: formData.phone.trim(),
+        tourName: selectedPackage?.name || 'Zanzibar Tour',
+        preferredDate: arrivalDate,
+        pickupLocation: pickupHotel,
+        numberOfGuests: adultsCount + childrenCount,
+        totalPrice: pricingBreakdown.finalTotal,
+        depositAmount: pricingBreakdown.rawDepositUSD,
+        remainingBalance: pricingBreakdown.rawRemainingUSD,
+        paymentOption: paymentOption === 'later' ? 'deposit' : paymentOption,
+        paymentStatus: paymentOption === 'later' ? 'pending' : paymentOption === 'full' ? 'fully_paid' : 'partially_paid',
+        currency: 'USD'
+      });
+    } catch (err) {
+      console.warn('CRM Sync error:', err);
+    }
 
-        // Sync to lead/CRM pipeline
-        syncBookingToCRM({
-          reference: generatedReference,
-          fullName: formData.name.trim(),
-          email: formData.email.trim(),
-          whatsappNumber: formData.phone.trim(),
-          tourName: `${categoryLabel}: ${formData.selectedExperience}`,
-          preferredDate: formData.preferredDate,
-          pickupLocation: pickupHotel,
-          numberOfGuests: actualGuests,
-          totalPrice: pricing.rawTotalUSD,
-          depositAmount: pricing.calculatedDepositUSD,
-          remainingBalance: pricing.rawTotalUSD - (paymentOption === 'full' ? pricing.rawTotalUSD : pricing.calculatedDepositUSD),
-          paymentOption: paymentOption === 'full' ? 'full' : 'deposit',
-          paymentStatus: paymentOption === 'full' ? 'fully_paid' : 'partially_paid',
-          currency: 'USD'
-        });
+    // 4. Record Activity Log
+    try {
+      addActivityLog(
+        leadName,
+        'Guest / Customer',
+        `Confirmed booking for ${selectedPackage?.name}. Reference: ${newRef}`,
+        'Pending',
+        paymentOption === 'later' ? 'Hold' : 'Paid',
+        '197.250.4.99'
+      );
+    } catch (err) {
+      console.warn('Activity log write error:', err);
+    }
 
-        // Add Activity Log
-        addActivityLog(
-          'Online Booking Checkout',
-          'Guest',
-          `Secured reservations for ${formData.selectedExperience} (${actualGuests} Guests). Reference ID: ${generatedReference}. Plan: ${paymentOption === 'full' ? 'Paid Online' : 'Pay on Arrival'}`,
-          'No Active Reservation',
-          `Booking: ${generatedReference}`
-        );
+    // 5. Notify the Administrator Dashboard
+    try {
+      const adminNotifs = JSON.parse(localStorage.getItem('ztr_admin_notifications') || '[]');
+      const newNotif = {
+        id: 'BOOK-' + randomSuffix,
+        title: '🌴 New Booking Secured!',
+        body: `${leadName} booked ${selectedPackage?.name} for ${arrivalDate}. Ref: ${newRef}. Price: $${pricingBreakdown.finalTotal}`,
+        read: false,
+        created_at: new Date().toISOString()
+      };
+      localStorage.setItem('ztr_admin_notifications', JSON.stringify([newNotif, ...adminNotifs]));
+    } catch (err) {
+      console.warn('Admin notifications write error:', err);
+    }
 
-        // Auto dispatch transactional SMTP email
-        triggerAutomatedSMTP(generatedReference, pickupHotel, actualGuests);
-
-      } catch (err) {
-        console.error('Data logging warning:', err);
-      }
-
-      setIsPrepaying(false);
-      setStatus('success');
-      setStep(4);
-      showToast('Booking successfully confirmed!', 'success');
-    }, 1500);
-  };
-
-  // Dispatch Transactional SMTP Email
-  const triggerAutomatedSMTP = (generatedReference: string, pickupHotel: string, actualGuests: number) => {
+    // 6. Trigger automated email notifications
     setEmailSendingStatus('preparing');
     try {
-      const smtp = getSmtpConfig();
-      const payload = {
-        tour_name: `${selectedCategory === 'tour' ? 'Excursion' : selectedCategory === 'safari' ? 'Tanzania Safari' : selectedCategory === 'kilimanjaro' ? 'Climbs' : 'Resort Shuttle'}: ${formData.selectedExperience}`,
-        preferred_date: formData.preferredDate,
-        number_of_guests: actualGuests,
-        pickup_location: pickupHotel,
-        status: 'Confirmed',
-        total_price: `${pricing.currencySymbol}${pricing.displayTotal}`
-      };
+      const templateResult = generateEmailTemplate(
+        'payment_confirm',
+        leadName,
+        {
+          reference: newRef,
+          tourName: selectedPackage?.name || 'Zanzibar Tour',
+          date: arrivalDate,
+          price: `$${pricingBreakdown.finalTotal}`
+        }
+      );
 
-      const template = generateEmailTemplate('booking_confirm', formData.name.trim(), payload);
-
-      addEmailLog({
+      await addEmailLog({
         toEmail: formData.email.trim(),
-        subject: `Zanzibar Reservation Confirmed: ${formData.selectedExperience} 🌴 (Ref: ${generatedReference})`,
-        bodyHtml: template.bodyHtml,
-        type: 'booking_confirm',
+        subject: templateResult.subject || `Reservation Confirmed: ${selectedPackage?.name} (Ref: ${newRef})`,
+        bodyHtml: templateResult.bodyHtml,
+        type: 'payment_confirm',
         status: 'Delivered',
-        smtpUsed: `${smtp.host}:${smtp.port} (${smtp.provider})`
+        smtpUsed: 'reservations@zanzibartripandrelax.com'
       });
       setEmailSendingStatus('sent');
     } catch (err) {
-      console.warn('SMTP automatic email trigger failed', err);
+      console.warn('Mail notification skip:', err);
       setEmailSendingStatus('idle');
     }
+
+    setStatus('success');
+    setStep(3);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // -----------------------------------------------------------------------------------------
-  // AFTER-BOOKING CUSTOM UTILITIES
-  // -----------------------------------------------------------------------------------------
-  const downloadVoucher = () => {
-    const pickupHotel = notListedHotel ? customHotelName : (hotelsList.find(h => h.id === selectedHotelId)?.name || formData.pickupLocation);
+  // PDF Download helpers
+  const handleDownloadVoucher = () => {
+    if (!selectedPackage) return;
+    const pickupHotel = notListedHotel 
+      ? customHotelName 
+      : (hotelsList.find(h => h.id === selectedHotelId)?.name || formData.pickupLocation || 'Stone Town Port Office');
+
     generateBookingPDF(
       {
         reference,
-        full_name: formData.name,
+        full_name: `${formData.firstName} ${formData.lastName}`,
         email: formData.email,
         whatsapp_number: formData.phone,
-        tour_name: formData.selectedExperience,
-        preferred_date: formData.preferredDate,
+        tour_name: selectedPackage.name,
+        preferred_date: arrivalDate,
         number_of_guests: adultsCount + childrenCount,
         pickup_location: pickupHotel,
-        total_price: pricing.displayTotal
+        total_price: pricingBreakdown.finalTotal
       },
-      pricing
+      {
+        currencySymbol: pricingBreakdown.currencySymbol,
+        displayTotal: pricingBreakdown.finalTotal,
+        displayDeposit: paymentOption === 'full' ? pricingBreakdown.finalTotal : paymentOption === 'deposit' ? pricingBreakdown.rawDepositUSD : 0,
+        displayRemaining: paymentOption === 'full' ? 0 : paymentOption === 'deposit' ? pricingBreakdown.rawRemainingUSD : pricingBreakdown.finalTotal,
+        pricePerAdult: pricingBreakdown.basePricePerAdult,
+        discountAmount: pricingBreakdown.promoDiscount,
+        prepayDiscountAmount: pricingBreakdown.prepayDiscount,
+        vatAmount: pricingBreakdown.taxAmount,
+        pickupSurcharge: pricingBreakdown.pickupSurcharge,
+        pickupZoneLabel: pricingBreakdown.pickupZoneLabel,
+        seasonLabel: pricingBreakdown.seasonLabel
+      }
     );
   };
 
-  const downloadReceipt = () => {
-    const pickupHotel = notListedHotel ? customHotelName : (hotelsList.find(h => h.id === selectedHotelId)?.name || formData.pickupLocation);
+  const handleDownloadInvoice = () => {
+    if (!selectedPackage) return;
+    const pickupHotel = notListedHotel 
+      ? customHotelName 
+      : (hotelsList.find(h => h.id === selectedHotelId)?.name || formData.pickupLocation || 'Stone Town Port Office');
+
     generateInvoicePDF(
       {
         reference,
-        full_name: formData.name,
+        full_name: `${formData.firstName} ${formData.lastName}`,
         email: formData.email,
         whatsapp_number: formData.phone,
-        tour_name: formData.selectedExperience,
-        preferred_date: formData.preferredDate,
+        tour_name: selectedPackage.name,
+        preferred_date: arrivalDate,
         number_of_guests: adultsCount + childrenCount,
         pickup_location: pickupHotel,
-        total_price: pricing.displayTotal,
-        deposit_paid: paymentOption === 'full' ? pricing.displayTotal : pricing.displayDeposit,
-        remaining_balance: pricing.displayRemaining
+        total_price: pricingBreakdown.finalTotal,
+        deposit_paid: paymentOption === 'full' ? pricingBreakdown.finalTotal : paymentOption === 'deposit' ? pricingBreakdown.rawDepositUSD : 0,
+        remaining_balance: paymentOption === 'full' ? 0 : paymentOption === 'deposit' ? pricingBreakdown.rawRemainingUSD : pricingBreakdown.finalTotal
       },
-      pricing
+      {
+        currencySymbol: pricingBreakdown.currencySymbol,
+        displayTotal: pricingBreakdown.finalTotal,
+        displayDeposit: paymentOption === 'full' ? pricingBreakdown.finalTotal : paymentOption === 'deposit' ? pricingBreakdown.rawDepositUSD : 0,
+        displayRemaining: paymentOption === 'full' ? 0 : paymentOption === 'deposit' ? pricingBreakdown.rawRemainingUSD : pricingBreakdown.finalTotal,
+        pricePerAdult: pricingBreakdown.basePricePerAdult,
+        discountAmount: pricingBreakdown.promoDiscount,
+        prepayDiscountAmount: pricingBreakdown.prepayDiscount,
+        vatAmount: pricingBreakdown.taxAmount,
+        pickupSurcharge: pricingBreakdown.pickupSurcharge,
+        pickupZoneLabel: pricingBreakdown.pickupZoneLabel,
+        seasonLabel: pricingBreakdown.seasonLabel
+      }
     );
   };
 
   const handleDownloadCalendarInvite = () => {
-    const cleanDate = formData.preferredDate.replace(/-/g, '');
+    const cleanDate = arrivalDate.replace(/-/g, '');
+    const pickupHotel = notListedHotel ? customHotelName : (hotelsList.find(h => h.id === selectedHotelId)?.name || 'Zanzibar');
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Zanzibar Trip & Relax//NONSGML Booking Calendar//EN',
+      'PRODID:-//Zanzibar Trip & Relax//Booking Calendar//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
       'BEGIN:VEVENT',
-      `SUMMARY:Zanzibar Tour: ${formData.selectedExperience}`,
+      `SUMMARY:Zanzibar Tour: ${selectedPackage?.name}`,
       `UID:booking-${reference}@zanzibartripandrelax.com`,
       'SEQUENCE:0',
       'STATUS:CONFIRMED',
       `DTSTART;VALUE=DATE:${cleanDate}`,
       `DTEND;VALUE=DATE:${cleanDate}`,
-      `LOCATION:${formData.pickupLocation || 'Zanzibar Resort'}`,
-      `DESCRIPTION:Your upcoming tropical excursion in Zanzibar!\\n\\nBooking Ref: ${reference}\\nLead Guest: ${formData.name}\\nTotal Cost: ${pricing.currencySymbol}${pricing.displayTotal}\\n\\nPrepare for an unforgettable trip!`,
+      `LOCATION:${pickupHotel}`,
+      `DESCRIPTION:Your dynamic Zanzibar travel reservation has been secured!\\n\\nBooking Ref: ${reference}\\nOption Selected: ${paymentOption.toUpperCase()}\\nTotal: ${pricingBreakdown.currencySymbol}${pricingBreakdown.finalTotal}`,
       'END:VEVENT',
       'END:VCALENDAR'
     ].join('\r\n');
 
     const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Zanzibar-Trip-${reference}.ics`);
+    link.href = window.URL.createObjectURL(blob);
+    link.download = `zanzibar-trip-${reference}.ics`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    showToast('Add to Calendar invite downloaded!', 'success');
   };
 
-  const triggerWhatsAppConfirmation = () => {
-    trackWhatsAppClick('booking_success_done', reference);
-    const message = `Jambo! I just completed a booking on Zanzibar Trip & Relax portal 🌴%0A%0A*Booking Reference:* ${reference}%0A*Tour Selected:* ${formData.selectedExperience}%0A*Lead Guest:* ${formData.name}%0A*Date of Travel:* ${formData.preferredDate}%0A*Travelers:* ${adultsCount + childrenCount} Guest(s)%0A%0AIs my pickup time confirmed? Asante!`;
-    window.open(`https://wa.me/255629506063?text=${message}`, '_blank');
+  const handleCopyReference = () => {
+    navigator.clipboard.writeText(reference);
+    setCopiedRef(true);
+    showToast('Reference code copied!', 'success');
+    setTimeout(() => setCopiedRef(false), 2000);
   };
 
-  // Recommended related experiences helper
-  const getRelatedTours = () => {
-    const list = [...toursList, ...safarisList].filter(t => t.name !== formData.selectedExperience);
-    return list.slice(0, 3);
+  const handleSuccessWhatsAppChat = () => {
+    trackWhatsAppClick('Success Screen', reference);
+    const text = `Hello Zanzibar Trip & Relax! 🌴 I have just secured my tour online!\n\n*Reference:* ${reference}\n*Experience:* ${selectedPackage?.name}\n*Travel Date:* ${arrivalDate}\n*Guests:* ${adultsCount + childrenCount} Travelers\n*Payment Choice:* ${paymentOption.toUpperCase()}\n\nPlease verify my reservation and connect me to a Swahili driver guide! Asante!`;
+    const url = `https://wa.me/255629506063?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
+
+  // Render the tailored input form fields based on active experience category
+  const renderTailoredFormFields = () => {
+    const commonProps = {
+      formData,
+      setFormData,
+      hotelsList,
+      selectedHotelId,
+      setSelectedHotelId,
+      customHotelName,
+      setCustomHotelName,
+      notListedHotel,
+      setNotListedHotel,
+      adultsCount,
+      setAdultsCount,
+      childrenCount,
+      setChildrenCount,
+      arrivalDate,
+      setArrivalDate,
+    };
+
+    switch (activeCategory) {
+      case 'packages':
+        return <HolidayPackageForm {...commonProps} />;
+      case 'tour':
+        return <DayTourForm {...commonProps} />;
+      case 'transfer':
+        return <AirportTransferForm {...commonProps} />;
+      case 'safari':
+        return <SafariForm {...commonProps} />;
+      case 'kilimanjaro':
+        return <KilimanjaroForm {...commonProps} />;
+      default:
+        return <DayTourForm {...commonProps} />;
+    }
+  };
+
+  // HOLIDAY PACKAGE PAGE details rendering when viewing details
+  const currentHolidayPackageDetails = selectedPackage ? holidayPackageDetails[selectedPackage.id] : null;
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 text-slate-800">
-      <ExitIntentModal 
-        onApplyDiscount={handleApplyExitIntentDiscount}
-        isAlreadySubmitted={step === 4 || status === 'success'}
-      />
-
-      {/* TOP DESKTOP & MOBILE NAVIGATION HEADER */}
-      <div className="bg-[#0A1224] text-white border-b border-white/10 select-none py-3 px-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <button 
-            onClick={() => navigate('home')} 
-            className="flex items-center gap-2 text-slate-300 hover:text-[#D4A017] transition-all cursor-pointer font-bold text-xs"
-          >
-            <ArrowLeft size={16} />
-            <span>Back to Explorer</span>
-          </button>
-          
-          {/* Real-time Clock & Paradise Weather Tracker */}
-          <div className="hidden sm:flex items-center gap-4 text-[11px] font-semibold text-slate-300">
-            <span className="flex items-center gap-1">
-              <Clock size={12} className="text-[#D4A017]" />
-              <span>Zanzibar (EAT): {zanzibarTime || '09:00 AM'}</span>
-            </span>
-            <span className="flex items-center gap-1 border-l border-white/10 pl-4">
-              <span>{zanzibarWeather.icon} Zanzibar Weather: {zanzibarWeather.temp}°C {zanzibarWeather.text}</span>
-            </span>
+    <div className="bg-slate-50 min-h-screen py-10 px-4 sm:px-6 lg:px-8 mt-12" id="booking-workspace-root">
+      {/* Upper Status bar */}
+      <div className="max-w-7xl mx-auto mb-8 flex flex-col sm:flex-row justify-between items-center bg-[#0A1224] text-white p-5 rounded-2xl border border-slate-800 gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#D4A017] animate-pulse" />
+            <h2 className="text-sm font-black uppercase tracking-widest text-[#D4A017] font-mono">Zanzibar Trip & Relax booking engine</h2>
           </div>
-
-          {/* Currency Display Selector */}
-          <div className="flex items-center gap-1.5 bg-[#121B30] border border-white/10 rounded-full p-1 text-xs">
-            {(['USD', 'EUR', 'TZS'] as const).map(cur => (
-              <button
-                key={cur}
-                onClick={() => setCurrency(cur)}
-                className={`px-3 py-1 rounded-full font-bold transition-all ${
-                  currency === cur ? 'bg-[#D4A017] text-[#020C1F] shadow' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {cur}
-              </button>
-            ))}
+          <p className="text-[10px] text-slate-400 mt-1">Leading-tier travel workflow • Absolute pricing transparency • Instant verification</p>
+        </div>
+        <div className="flex gap-4 items-center">
+          <div className="text-right border-r border-slate-800 pr-4">
+            <p className="text-[10px] font-black tracking-wider text-slate-400">ZANZIBAR TIME (EAT)</p>
+            <p className="text-xs font-mono font-bold text-white mt-0.5">{zanzibarTime || '02:00:00 PM'}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-black tracking-wider text-slate-400">WEATHER</p>
+            <p className="text-xs font-bold text-white mt-0.5">☀️ 29°C Sunny Paradise</p>
           </div>
         </div>
       </div>
 
-      {/* BOOKING.COM PROGRESS STEPS BAR */}
-      {step < 4 && (
-        <div className="bg-white border-b shadow-sm py-4 px-4 sticky top-0 z-30">
-          <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 md:gap-4 select-none">
-            {[
-              { id: 1, title: 'Experience', desc: 'Select adventure details' },
-              { id: 2, title: 'Guest Details', desc: 'Who is traveling?' },
-              { id: 3, title: 'Payment Plan', desc: 'Review & secure' },
-            ].map(s => {
-              const isActive = step === s.id;
-              const isDone = step > s.id;
-
-              return (
-                <div 
-                  key={s.id} 
-                  onClick={() => s.id < step && setStep(s.id as any)}
-                  className={`flex-1 flex items-center gap-2 md:gap-3 transition-all ${s.id < step ? 'cursor-pointer' : ''}`}
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border ${
-                    isActive 
-                      ? 'bg-[#0B3B8C] border-[#0B3B8C] text-white shadow shadow-[#0B3B8C]/20' 
-                      : isDone 
-                        ? 'bg-emerald-500 border-emerald-500 text-white' 
-                        : 'bg-slate-100 border-slate-200 text-slate-400'
-                  }`}>
-                    {isDone ? <Check size={14} className="stroke-[3]" /> : s.id}
-                  </div>
-                  <div className="hidden md:block text-left">
-                    <p className={`text-xs font-bold leading-tight ${isActive ? 'text-[#0B3B8C]' : isDone ? 'text-emerald-600' : 'text-slate-400'}`}>
-                      {s.title}
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{s.desc}</p>
-                  </div>
-                  {s.id < 3 && <ChevronRight size={14} className="text-slate-300 ml-auto hidden sm:block" />}
-                </div>
-              );
-            })}
+      <div className="max-w-7xl mx-auto">
+        {/* Step Indicator */}
+        <div className="mb-8 flex items-center justify-center gap-3">
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${step === 1 ? 'bg-[#0B3B8C] text-white' : 'bg-white text-slate-500 border border-slate-200'}`}>
+            <span className="w-5 h-5 rounded-full bg-slate-800 text-[#D4A017] flex items-center justify-center font-mono font-bold text-[10px]">1</span>
+            <span>Tailored Details</span>
+          </div>
+          <ChevronRight size={14} className="text-slate-400 shrink-0" />
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${step === 2 ? 'bg-[#0B3B8C] text-white' : 'bg-white text-slate-500 border border-slate-200'}`}>
+            <span className="w-5 h-5 rounded-full bg-slate-800 text-[#D4A017] flex items-center justify-center font-mono font-bold text-[10px]">2</span>
+            <span>Summary & Prepay</span>
+          </div>
+          <ChevronRight size={14} className="text-slate-400 shrink-0" />
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${step === 3 ? 'bg-emerald-600 text-white' : 'bg-white text-slate-500 border border-slate-200'}`}>
+            <span className="w-5 h-5 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center font-mono font-bold text-[10px]">3</span>
+            <span>Voucher Secured</span>
           </div>
         </div>
-      )}
 
-      {/* CORE CHECKOUT FLOW LAYOUT GRID */}
-      <div className="max-w-6xl mx-auto px-4 mt-6 md:mt-10">
-        <AnimatePresence mode="wait">
-          {step === 4 ? (
-            /* ================================================================================= */
-            /* STEP 4: SUCCESS CONFIRMATION WINDOW (DONE STATE)                                  */
-            /* ================================================================================= */
-            <motion.div
-              key="step4"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border border-gray-200 rounded-3xl p-6 md:p-10 shadow-lg text-center max-w-3xl mx-auto space-y-8"
-            >
-              <div className="space-y-4">
-                <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-100 relative">
-                  <CheckCircle2 size={36} className="text-emerald-500 animate-bounce" />
-                </div>
-                <div>
-                  <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-extrabold uppercase tracking-widest font-mono">
-                    Booking Confirmed Successfully
-                  </span>
-                  <h1 className="text-3xl md:text-4xl font-bold text-[#0B3B8C] mt-3 font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>
-                    Congratulations, {formData.name.split(' ')[0]}!
-                  </h1>
-                  <p className="text-sm text-slate-500 mt-2 max-w-lg mx-auto">
-                    Your paradise reservation is officially logged. We have successfully locked in your specialty rates and assigned a private chauffeur.
-                  </p>
-                </div>
-              </div>
-
-              {/* Booking Reference Card */}
-              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4 text-left">
-                <div>
-                  <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">booking reference number</p>
-                  <p className="text-lg font-black text-[#0B3B8C] font-mono tracking-wider mt-0.5">{reference}</p>
-                </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                  <button 
-                    onClick={() => {
-                      navigator.clipboard.writeText(reference);
-                      setCopiedRef(true);
-                      setTimeout(() => setCopiedRef(false), 2000);
-                      showToast('Reference copied to clipboard!', 'info');
-                    }}
-                    className="flex-1 md:flex-initial bg-white border hover:bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    {copiedRef ? <span className="text-emerald-600 font-extrabold">Copied!</span> : (
-                      <>
-                        <Copy size={14} />
-                        <span>Copy Ref</span>
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={triggerWhatsAppConfirmation}
-                    className="flex-1 md:flex-initial bg-[#25D366] hover:bg-[#20ba59] text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <MessageCircle size={14} fill="white" />
-                    <span>WhatsApp desk</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Booking Ledger Highlights */}
-              <div className="border border-slate-200 rounded-2xl overflow-hidden text-left text-xs bg-slate-50/50">
-                <div className="bg-slate-100 px-4 py-3 font-bold text-slate-700 uppercase tracking-wide border-b border-slate-200">
-                  Tropical Reservation Summary
-                </div>
-                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 font-semibold text-slate-600">
-                  <div className="space-y-2">
-                    <p>🗺️ <span className="text-slate-400 font-medium">Selected Experience:</span> <strong className="text-slate-800">{formData.selectedExperience}</strong></p>
-                    <p>📅 <span className="text-slate-400 font-medium">Travel Date:</span> <strong className="text-slate-800">{formData.preferredDate}</strong></p>
-                    <p>👥 <span className="text-slate-400 font-medium">Travelers Registered:</span> <strong className="text-slate-800">{adultsCount} Adults {childrenCount > 0 && `, ${childrenCount} Kids`}</strong></p>
+        {/* STEP 1: EXPERIENCE SELECTION & FORM ENTRY */}
+        {step === 1 && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* LEFT / CENTRAL SPACE: Product selector OR Rich Info sheet */}
+            <div className="lg:col-span-8 space-y-6">
+              
+              {/* Product selector is ONLY visible if isPackageLocked is false */}
+              {!isPackageLocked ? (
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xl">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-black text-slate-900">Select What You Wish to Book</h3>
+                    <p className="text-xs text-slate-500">Each service launches a dedicated workflow requesting only relevant details.</p>
                   </div>
-                  <div className="space-y-2 md:border-l md:pl-6">
-                    <p>📍 <span className="text-slate-400 font-medium">Pickup Location:</span> <strong className="text-slate-800">{notListedHotel ? customHotelName : (hotelsList.find(h => h.id === selectedHotelId)?.name || formData.pickupLocation)}</strong></p>
-                    <p>💰 <span className="text-slate-400 font-medium">Total Price:</span> <strong className="text-[#0B3B8C] font-extrabold">{pricing.currencySymbol}{pricing.displayTotal}</strong></p>
-                    <p>🏦 <span className="text-slate-400 font-medium">Payment status:</span> <strong className={paymentOption === 'full' ? 'text-emerald-600' : 'text-amber-600'}>
-                      {paymentOption === 'full' ? '100% Paid Online' : 'Pay on Boarding'}
-                    </strong></p>
+
+                  {/* Navigation Category Tabs */}
+                  <div className="flex flex-wrap gap-2 mb-6 border-b border-slate-100 pb-4">
+                    {[
+                      { id: 'packages', label: 'Holiday Packages' },
+                      { id: 'tour', label: 'Day Tours' },
+                      { id: 'transfer', label: 'Airport Transfers' },
+                      { id: 'safari', label: 'Tanzania Safaris' },
+                      { id: 'kilimanjaro', label: 'Kilimanjaro Treks' }
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => handleCategorySwitch(tab.id as any)}
+                        className={`px-4 py-2.5 rounded-xl text-xs font-extrabold tracking-tight transition-all cursor-pointer ${activeCategory === tab.id ? 'bg-[#0B3B8C] text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
                   </div>
-                </div>
-              </div>
 
-              {/* Voucher Downloads & Tools Section */}
-              <div className="space-y-3">
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">instantly download & print travel documents</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <button 
-                    onClick={downloadVoucher}
-                    className="bg-white border-2 border-[#0B3B8C] text-[#0B3B8C] hover:bg-slate-50 p-4 rounded-2xl font-bold text-xs flex flex-col items-center gap-2 justify-center transition-all cursor-pointer shadow-sm hover:shadow"
-                  >
-                    <Download size={18} />
-                    <span>Download Voucher (PDF)</span>
-                  </button>
-                  <button 
-                    onClick={downloadReceipt}
-                    className="bg-white border-2 border-[#0B3B8C] text-[#0B3B8C] hover:bg-slate-50 p-4 rounded-2xl font-bold text-xs flex flex-col items-center gap-2 justify-center transition-all cursor-pointer shadow-sm hover:shadow"
-                  >
-                    <Printer size={18} />
-                    <span>Download Invoice PDF</span>
-                  </button>
-                  <button 
-                    onClick={handleDownloadCalendarInvite}
-                    className="bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 p-4 rounded-2xl font-bold text-xs flex flex-col items-center gap-2 justify-center transition-all cursor-pointer shadow-sm hover:shadow"
-                  >
-                    <Calendar size={18} className="text-[#D4A017]" />
-                    <span>Add to Google Calendar</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Recommended tours to upsell */}
-              <div className="border-t pt-8 space-y-4">
-                <div className="text-left">
-                  <h3 className="font-bold text-base text-slate-800 flex items-center gap-1.5 font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>
-                    <Sparkles size={16} className="text-[#D4A017]" />
-                    <span>Complimentary Paradise Recommendations</span>
-                  </h3>
-                  <p className="text-slate-400 text-[11px] mt-0.5">Explore popular excursions and safaris booked by other travelers taking {formData.selectedExperience}.</p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {getRelatedTours().map(rec => (
-                    <div key={rec.name} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left flex flex-col justify-between hover:shadow transition-all">
-                      <div>
-                        <span className="text-[9px] font-extrabold uppercase bg-[#0B3B8C]/10 text-[#0B3B8C] px-2 py-0.5 rounded-full inline-block">Popular Addon</span>
-                        <h4 className="font-bold text-xs text-slate-800 mt-2 truncate">{rec.name}</h4>
-                        <div className="flex items-center gap-1 text-[10px] text-amber-500 font-bold mt-1">
-                          <Star size={10} fill="currentColor" />
-                          <span>4.9 (140 reviews)</span>
+                  {/* Grid of experiences in active category */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredPackages.map((pkg) => (
+                      <div
+                        key={pkg.id}
+                        onClick={() => handleSelectProduct(pkg)}
+                        className={`border rounded-2xl p-4 cursor-pointer transition-all flex gap-4 hover:border-[#D4A017] hover:shadow-lg ${selectedPackage?.id === pkg.id ? 'border-[#0B3B8C] bg-[#0B3B8C]/5 ring-2 ring-[#0B3B8C]/10' : 'border-slate-200'}`}
+                      >
+                        <img
+                          src={pkg.image}
+                          alt={pkg.name}
+                          className="w-20 h-20 rounded-xl object-cover shrink-0"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="flex flex-col justify-between">
+                          <div>
+                            {pkg.badge && (
+                              <span className="text-[9px] font-black uppercase tracking-wider text-[#D4A017] bg-[#D4A017]/10 px-2 py-0.5 rounded-full mb-1 inline-block">
+                                {pkg.badge}
+                              </span>
+                            )}
+                            <h4 className="text-xs font-black text-slate-900 leading-tight">{pkg.name}</h4>
+                            <p className="text-[10px] text-slate-500 line-clamp-2 mt-1 leading-relaxed">{pkg.description}</p>
+                          </div>
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-[10px] font-mono text-[#0B3B8C] font-bold">{pkg.duration}</span>
+                            <span className="text-xs font-black text-slate-900">From ${pkg.basePrice}</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-3">
-                        <span className="font-extrabold text-slate-700 text-xs">${rec.basePrice}</span>
-                        <button 
-                          onClick={() => {
-                            setSelectedCategory('tour');
-                            setFormData(prev => ({ ...prev, selectedExperience: rec.name }));
-                            setStep(1);
-                          }}
-                          className="text-[#0B3B8C] font-extrabold text-[10px] uppercase hover:underline inline-flex items-center gap-0.5 cursor-pointer"
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                // Locked package summary at the top
+                <div className="bg-[#0B3B8C] text-white rounded-3xl p-5 shadow-xl border border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={selectedPackage?.image}
+                      alt={selectedPackage?.name}
+                      className="w-16 h-16 rounded-xl object-cover border border-white/20 shrink-0"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-[#D4A017] font-mono">SELECTED {selectedPackage?.categoryLabel.toUpperCase()}</span>
+                      <h3 className="text-sm font-black text-white">{selectedPackage?.name}</h3>
+                      <p className="text-[11px] text-white/75 mt-0.5">{selectedPackage?.duration} • Base Rate ${selectedPackage?.basePrice} USD</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsPackageLocked(false);
+                      if (selectedPackage?.category === 'packages') {
+                        setViewingPackageDetails(true);
+                      }
+                    }}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-[#D4A017] text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  >
+                    Change Service
+                  </button>
+                </div>
+              )}
+
+              {/* DEDICATED HOLIDAY PACKAGE RICH INFO PAGE */}
+              {viewingPackageDetails && selectedPackage && currentHolidayPackageDetails && (
+                <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xl" id="dedicated-package-details-page">
+                  {/* Banner cover */}
+                  <div className="relative h-64 sm:h-80 bg-slate-900">
+                    <img
+                      src={selectedPackage.image}
+                      alt={selectedPackage.name}
+                      className="w-full h-full object-cover opacity-85"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
+                    <div className="absolute bottom-6 left-6 right-6 text-white">
+                      <div className="flex gap-2 mb-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest bg-[#D4A017] text-[#020C1F] px-2.5 py-1 rounded-full">
+                          {selectedPackage.badge || 'Signature Package'}
+                        </span>
+                        <span className="text-[10px] font-black uppercase tracking-widest bg-slate-800 text-white px-2.5 py-1 rounded-full">
+                          {selectedPackage.duration}
+                        </span>
+                      </div>
+                      <h2 className="text-xl sm:text-2xl font-black">{selectedPackage.name}</h2>
+                      <p className="text-xs text-slate-300 mt-1">{selectedPackage.description}</p>
+                    </div>
+                  </div>
+
+                  {/* Rating / Quick metrics */}
+                  <div className="grid grid-cols-4 border-b border-slate-100 bg-slate-50/50">
+                    <div className="p-4 text-center border-r border-slate-100">
+                      <p className="text-[9px] font-black uppercase text-slate-400">RATING</p>
+                      <div className="flex items-center justify-center gap-1 mt-1">
+                        <Star size={12} className="text-amber-500 fill-amber-500" />
+                        <span className="text-xs font-bold text-slate-800">{selectedPackage.rating} / 5</span>
+                      </div>
+                    </div>
+                    <div className="p-4 text-center border-r border-slate-100">
+                      <p className="text-[9px] font-black uppercase text-slate-400">REVIEWS</p>
+                      <p className="text-xs font-bold text-slate-800 mt-1">{selectedPackage.reviews} verified</p>
+                    </div>
+                    <div className="p-4 text-center border-r border-slate-100">
+                      <p className="text-[9px] font-black uppercase text-slate-400">PRICE FROM</p>
+                      <p className="text-xs font-bold text-[#0B3B8C] mt-1">${selectedPackage.basePrice} per person</p>
+                    </div>
+                    <div className="p-4 text-center">
+                      <p className="text-[9px] font-black uppercase text-slate-400">AVAILABILITY</p>
+                      <div className="flex items-center justify-center gap-1 mt-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] text-emerald-600 font-bold">Daily Starts</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tabs bar */}
+                  <div className="flex overflow-x-auto border-b border-slate-100 bg-white">
+                    {[
+                      { id: 'itinerary', label: 'Full Itinerary', icon: BookOpen },
+                      { id: 'hotels', label: 'Hotels Included', icon: Home },
+                      { id: 'inclusions', label: 'Inclusions / Exclusions', icon: Shield },
+                      { id: 'reviews', label: 'Reviews', icon: ThumbsUp },
+                      { id: 'faq', label: 'FAQ', icon: HelpCircle }
+                    ].map((tab) => {
+                      const Icon = tab.icon;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveDetailTab(tab.id as any)}
+                          className={`px-5 py-3.5 text-xs font-bold border-b-2 whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${activeDetailTab === tab.id ? 'border-[#0B3B8C] text-[#0B3B8C] bg-slate-50/50' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
                         >
-                          <span>Add to trip</span>
-                          <ArrowRight size={10} />
+                          <Icon size={14} />
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Tabs content area */}
+                  <div className="p-6">
+                    {activeDetailTab === 'itinerary' && (
+                      <div className="space-y-6">
+                        {currentHolidayPackageDetails.itinerary.map((day) => (
+                          <div key={day.day} className="flex gap-4">
+                            <div className="flex flex-col items-center">
+                              <span className="w-8 h-8 rounded-full bg-[#0B3B8C] text-[#D4A017] flex items-center justify-center text-xs font-black shrink-0 font-mono">
+                                D{day.day}
+                              </span>
+                              <div className="w-0.5 bg-slate-200 flex-grow my-1" />
+                            </div>
+                            <div className="pb-4">
+                              <h4 className="font-bold text-slate-900 text-xs sm:text-sm">{day.title}</h4>
+                              <p className="text-xs text-slate-500 mt-1 leading-relaxed">{day.desc}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {activeDetailTab === 'hotels' && (
+                      <div className="space-y-4">
+                        <p className="text-xs text-slate-500">We carefully curate boutique and beach resorts with exceptional Swahili hospitality standards:</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {currentHolidayPackageDetails.hotels.map((hotel, i) => (
+                            <div key={i} className="border border-slate-100 p-4 rounded-xl bg-slate-50/50 flex items-start gap-3">
+                              <Home size={16} className="text-[#D4A017] shrink-0 mt-0.5" />
+                              <div>
+                                <h4 className="font-bold text-slate-800 text-xs">{hotel.split(' (')[0]}</h4>
+                                <p className="text-[11px] text-slate-500 mt-1">{hotel.includes('(') ? hotel.split(' (')[1].replace(')', '') : 'Curated comfort standards'}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {activeDetailTab === 'inclusions' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <h4 className="text-xs font-black uppercase text-emerald-600 tracking-wider mb-3">WHAT IS INCLUDED:</h4>
+                          <ul className="space-y-2">
+                            {currentHolidayPackageDetails.inclusions.map((inc, i) => (
+                              <li key={i} className="flex gap-2 text-xs text-slate-600">
+                                <Check size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                                <span>{inc}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black uppercase text-red-600 tracking-wider mb-3">WHAT IS EXCLUDED:</h4>
+                          <ul className="space-y-2">
+                            {currentHolidayPackageDetails.exclusions.map((exc, i) => (
+                              <li key={i} className="flex gap-2 text-xs text-slate-500">
+                                <X size={14} className="text-red-400 shrink-0 mt-0.5" />
+                                <span>{exc}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeDetailTab === 'reviews' && (
+                      <div className="space-y-4">
+                        {currentHolidayPackageDetails.reviewsList.map((rev, i) => (
+                          <div key={i} className="border border-slate-100 p-4 rounded-2xl bg-slate-50/30">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-xs font-bold text-slate-800">{rev.author}</span>
+                              <span className="text-[10px] text-slate-400">{rev.date}</span>
+                            </div>
+                            <div className="flex gap-1 mb-2">
+                              {Array.from({ length: Math.floor(rev.rating) }).map((_, rIdx) => (
+                                <Star key={rIdx} size={10} className="text-amber-500 fill-amber-500" />
+                              ))}
+                            </div>
+                            <p className="text-xs text-slate-500 leading-relaxed italic">"{rev.text}"</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {activeDetailTab === 'faq' && (
+                      <div className="space-y-4">
+                        {currentHolidayPackageDetails.faqs.map((faq, i) => (
+                          <div key={i} className="border border-slate-100 p-4 rounded-xl">
+                            <h4 className="font-bold text-slate-800 text-xs">{faq.q}</h4>
+                            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{faq.a}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions / Trigger booking */}
+                  <div className="bg-[#0A1224] text-white p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div>
+                      <p className="text-xs text-slate-400">Ready to secure this Holiday Package?</p>
+                      <p className="text-sm font-black text-white mt-1">Starting at ${selectedPackage.basePrice} USD per adult</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsPackageLocked(true);
+                        setViewingPackageDetails(false);
+                      }}
+                      className="w-full sm:w-auto px-6 py-3 bg-[#D4A017] hover:bg-[#b88910] text-[#020C1F] font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg"
+                      id="btn-book-this-package"
+                    >
+                      <span>Book This Package</span>
+                      <ArrowRight size={14} className="text-[#020C1F]" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* DEDICATED TAILORED FORM CONTAINER */}
+              {isPackageLocked && selectedPackage && (
+                <form onSubmit={handleProceedToSummary} className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xl space-y-6">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">Provide Your Booking Information</h3>
+                    <p className="text-xs text-slate-500">Provide the essential information needed to schedule your {selectedPackage.categoryLabel.toLowerCase()}.</p>
+                  </div>
+
+                  {/* Render the tailored form based on category selection */}
+                  {renderTailoredFormFields()}
+
+                  {/* Submit entry */}
+                  <button
+                    type="submit"
+                    className="w-full py-3.5 bg-[#0B3B8C] hover:bg-[#072a66] text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
+                    id="btn-submit-tailored-form"
+                  >
+                    <span>Proceed to pricing summary</span>
+                    <ArrowRight size={14} className="text-white" />
+                  </button>
+                </form>
+              )}
+            </div>
+
+            {/* RIGHT SPACE: Live Pricing breakdown, helpful sidebar */}
+            <div className="lg:col-span-4 space-y-6">
+              
+              {/* Checkout Sizing breakdown */}
+              {selectedPackage ? (
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xl space-y-5 sticky top-24" id="sidebar-pricing-card">
+                  <div>
+                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">LIVE BOOKING RECEIPT</span>
+                    <h3 className="text-sm font-black text-slate-900 mt-1">{selectedPackage.name}</h3>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{selectedPackage.duration} • {selectedPackage.categoryLabel}</p>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-4 space-y-2.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-500">
+                        Base rate 
+                        {(selectedPackage.category === 'safari' || selectedPackage.category === 'kilimanjaro') 
+                          ? ` (${adultsCount} Travellers)`
+                          : ` (${adultsCount} Adults x $${pricingBreakdown.basePricePerAdult})`
+                        }
+                      </span>
+                      <span className="font-bold text-slate-800">${pricingBreakdown.baseTotal}</span>
+                    </div>
+
+                    {childrenCount > 0 && (
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500">Children ({childrenCount} Child x ${Math.round(pricingBreakdown.basePricePerAdult * 0.60)})</span>
+                        <span className="font-bold text-slate-800">${Math.round(pricingBreakdown.basePricePerAdult * 0.60 * childrenCount)}</span>
+                      </div>
+                    )}
+
+                    {/* Seasonality */}
+                    {pricingBreakdown.seasonMultiplier !== 1.0 && (
+                      <div className="flex justify-between items-center text-xs bg-slate-50 p-2 rounded-xl border border-slate-100">
+                        <span className="text-[10px] text-slate-500 flex flex-col">
+                          <strong className="text-slate-700">Season Factor</strong>
+                          {pricingBreakdown.seasonLabel}
+                        </span>
+                        <span className={`font-mono text-xs font-black ${pricingBreakdown.seasonMultiplier > 1 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                          {pricingBreakdown.seasonMultiplier > 1 ? `+15%` : `-10%`}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Pickup Surcharges */}
+                    {pricingBreakdown.pickupSurcharge > 0 && (
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500 flex items-center gap-1">
+                          <MapPin size={12} className="text-slate-400" />
+                          <span>Pickup surcharge ({pricingBreakdown.pickupZoneLabel})</span>
+                        </span>
+                        <span className="font-bold text-slate-800">${pricingBreakdown.pickupSurcharge}</span>
+                      </div>
+                    )}
+
+                    {/* Applied Promo Code */}
+                    {couponApplied && activeCoupon && (
+                      <div className="flex justify-between items-center text-xs text-emerald-600 bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100">
+                        <span className="flex items-center gap-1 text-[11px] font-semibold">
+                          <Percent size={12} />
+                          <span>Code: {activeCoupon.code} ({activeCoupon.discount_percent}%)</span>
+                        </span>
+                        <span className="font-mono font-bold">-${pricingBreakdown.promoDiscount}</span>
+                      </div>
+                    )}
+
+                    {/* Prepayment incentives */}
+                    {pricingBreakdown.prepayDiscount > 0 && (
+                      <div className="flex justify-between items-center text-xs text-emerald-600">
+                        <span className="flex items-center gap-1 text-[11px] font-semibold">
+                          <Percent size={12} />
+                          <span>Prepay discount ({paymentOption === 'full' ? '10%' : '5%'} saving)</span>
+                        </span>
+                        <span className="font-mono font-bold">-${pricingBreakdown.prepayDiscount}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center text-xs text-slate-500">
+                      <span>Government Tax & VAT (18%)</span>
+                      <span>${pricingBreakdown.taxAmount}</span>
+                    </div>
+                  </div>
+
+                  {/* Promo Input */}
+                  <div className="border-t border-slate-100 pt-4">
+                    {couponApplied ? (
+                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-xs text-emerald-800">
+                        <span>Promo Code Activated</span>
+                        <button
+                          onClick={handleRemoveCoupon}
+                          className="text-emerald-600 hover:text-red-500 font-extrabold cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] font-black uppercase text-slate-400">Coupon / Promo Code</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="e.g. WELCOME10"
+                            value={couponCode}
+                            onChange={(e) => setCouponCode(e.target.value)}
+                            className="flex-grow px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs uppercase focus:bg-white outline-none text-slate-800 font-bold"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleApplyCoupon}
+                            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black cursor-pointer"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                        {couponError && <p className="text-[10px] text-red-500 font-semibold">{couponError}</p>}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Final Sum */}
+                  <div className="border-t border-slate-100 pt-4 space-y-3 bg-slate-50/50 -mx-6 -mb-6 p-6 rounded-b-3xl">
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-xs font-black text-slate-500">TRANSPARENT TOTAL</span>
+                      <span className="text-xl font-black text-[#0B3B8C] font-mono">
+                        ${pricingBreakdown.finalTotal} <span className="text-[10px] text-slate-500 font-normal">USD</span>
+                      </span>
+                    </div>
+
+                    {/* Prepayment choice */}
+                    <div className="space-y-1.5 pt-2">
+                      <label className="block text-[10px] font-black uppercase text-slate-400">Select payment choice</label>
+                      <div className="grid grid-cols-3 gap-1 bg-white p-1 rounded-xl border border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentOption('full')}
+                          className={`py-1.5 px-2 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer ${paymentOption === 'full' ? 'bg-[#0B3B8C] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                        >
+                          Full Rate
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentOption('deposit')}
+                          className={`py-1.5 px-2 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer ${paymentOption === 'deposit' ? 'bg-[#0B3B8C] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                        >
+                          30% Deposit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentOption('later')}
+                          className={`py-1.5 px-2 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer ${paymentOption === 'later' ? 'bg-[#0B3B8C] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                        >
+                          Pay Later
                         </button>
                       </div>
                     </div>
-                  ))}
+
+                    {paymentOption === 'deposit' && (
+                      <div className="space-y-1 text-[10px] text-slate-600 border-t border-slate-200/60 pt-2">
+                        <div className="flex justify-between font-bold">
+                          <span>Deposit Paid Now (30%):</span>
+                          <span>${pricingBreakdown.rawDepositUSD}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-500">
+                          <span>Remaining Balance (Due on Arrival):</span>
+                          <span>${pricingBreakdown.rawRemainingUSD}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {paymentOption === 'later' && (
+                      <div className="text-[10px] text-slate-500 bg-slate-100 p-2.5 rounded-xl leading-relaxed">
+                        ⚠️ <strong>Hold for free:</strong> We will hold your booking reference for up to 48 hours. Our specialists will request payment validation before dispatching Swahili guides.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xl text-center py-12 space-y-4">
+                  <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center mx-auto text-[#D4A017]">
+                    <Compass className="animate-spin" size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-sm">Waiting for Selection</h4>
+                    <p className="text-xs text-slate-400 mt-1">Select an experience or package to initiate your separate booking workflow instantly.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2: SUMMARY & PREPAYMENT GATEWAY */}
+        {step === 2 && selectedPackage && (
+          <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8" id="step2-summary-gateway-container">
+            {/* Left: Summary list */}
+            <div className="md:col-span-7 space-y-6">
+              <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xl space-y-6">
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Review Reservation Details</h3>
+                  <p className="text-xs text-slate-500">Please review your booking details before securing payment.</p>
+                </div>
+
+                <div className="border-t border-slate-100 pt-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <p className="text-[10px] uppercase font-black text-slate-400">Experience Name</p>
+                      <p className="font-bold text-slate-800 mt-0.5">{selectedPackage.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-black text-slate-400">Duration & Type</p>
+                      <p className="font-bold text-slate-800 mt-0.5">{selectedPackage.duration} • {selectedPackage.categoryLabel}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <p className="text-[10px] uppercase font-black text-slate-400">Travel Date</p>
+                      <p className="font-bold text-slate-800 mt-0.5">{arrivalDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-black text-slate-400">Guests / Climbers</p>
+                      <p className="font-bold text-slate-800 mt-0.5">
+                        {selectedPackage.category === 'safari' || selectedPackage.category === 'kilimanjaro' 
+                          ? `${adultsCount} Travellers`
+                          : `${adultsCount} Adults ${childrenCount > 0 ? `, ${childrenCount} Kids` : ''}`
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Room Preference */}
+                  {selectedPackage.category === 'packages' && (
+                    <div className="text-xs">
+                      <p className="text-[10px] uppercase font-black text-slate-400">Room Preference</p>
+                      <p className="font-bold text-slate-800 mt-0.5">{formData.roomPreference}</p>
+                    </div>
+                  )}
+
+                  {/* Airport Transfer detailed summaries */}
+                  {selectedPackage.category === 'transfer' && (
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <p className="text-[10px] uppercase font-black text-slate-400">Direction & Terminal</p>
+                        <p className="font-bold text-slate-800 mt-0.5 uppercase">{formData.transferDirection} • {formData.transferTerminal}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase font-black text-slate-400">Flight & Capacity</p>
+                        <p className="font-bold text-slate-800 mt-0.5 uppercase">Flight: {formData.flightNo} • Time: {formData.flightTime}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Kilimanjaro detailed summaries */}
+                  {selectedPackage.category === 'kilimanjaro' && (
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <p className="text-[10px] uppercase font-black text-slate-400">Accommodations</p>
+                        <p className="font-bold text-slate-800 mt-0.5">{formData.accommodationBeforeAfter}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase font-black text-slate-400">Airport Pickup JRO</p>
+                        <p className="font-bold text-slate-800 mt-0.5">{formData.airportPickup}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="text-[10px] uppercase font-black text-slate-400">Lead Traveler Contact</p>
+                    <p className="text-xs font-bold text-slate-800 mt-0.5">{formData.firstName} {formData.lastName}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{formData.email} • {formData.phone}</p>
+                  </div>
+
+                  {formData.message && (
+                    <div>
+                      <p className="text-[10px] uppercase font-black text-slate-400">Special Notes</p>
+                      <p className="text-xs text-slate-600 mt-0.5 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">"{formData.message}"</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Action Buttons to Home */}
-              <div className="border-t pt-6 flex flex-col sm:flex-row justify-center gap-4">
-                <button
-                  onClick={() => navigate('home')}
-                  className="bg-[#0B3B8C] text-white hover:bg-opacity-95 font-bold px-8 py-3 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <Home size={14} />
-                  <span>Go back to home</span>
-                </button>
-                <button
-                  onClick={() => navigate('my-account')}
-                  className="bg-[#D4A017] text-[#020C1F] hover:bg-opacity-90 font-bold px-8 py-3 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <User size={14} />
-                  <span>Manage my bookings</span>
-                </button>
-              </div>
+              {/* PAYMENT ENTRY GATEWAY: Only if not Pay Later */}
+              {paymentOption !== 'later' ? (
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xl space-y-4">
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">Prepayment Security Panel</h3>
+                    <p className="text-xs text-slate-500">PCI-Compliant SSL encrypted checkout. No cards details are cached.</p>
+                  </div>
 
-            </motion.div>
-          ) : (
-            /* ================================================================================= */
-            /* WIZARD COLUMN GRID SETUP                                                          */
-            /* ================================================================================= */
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              
-              {/* LEFT SECTION: STEP WIZARD CARD */}
-              <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8 space-y-6">
-                
-                {step === 1 && (
-                  /* ============================================================================= */
-                  /* STEP 1: CHOOSE TOUR AND HEADCOUNT                                             */
-                  /* ============================================================================= */
-                  <motion.div
-                    key="step1"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    className="space-y-6"
-                  >
-                    <div>
-                      <h2 className="text-xl font-bold text-[#0B3B8C] font-serif flex items-center gap-1.5" style={{ fontFamily: 'Playfair Display, serif' }}>
-                        <Compass size={18} className="text-[#D4A017]" />
-                        <span>Step 1: Choose Your Adventure</span>
-                      </h2>
-                      <p className="text-xs text-slate-400 mt-1">Select from our certified excursions, private wildlife safaris or transfer services.</p>
-                    </div>
-
-                    {/* Styled Category Selector (Booking.com style icons) */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {bookingCategories.map(cat => {
-                        const IconComponent = cat.icon;
-                        const isChosen = selectedCategory === cat.id;
-
-                        return (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => setSelectedCategory(cat.id)}
-                            className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between h-24 ${
-                              isChosen 
-                                ? 'bg-[#0B3B8C]/5 border-[#0B3B8C] text-[#0B3B8C] shadow-sm' 
-                                : 'bg-white border-slate-200 hover:border-[#0B3B8C]/40 text-slate-500'
-                            }`}
-                          >
-                            <span className={`p-1.5 rounded-lg inline-block ${isChosen ? 'bg-[#0B3B8C] text-white' : 'bg-slate-100 text-slate-400'}`}>
-                              <IconComponent size={14} />
-                            </span>
-                            <div>
-                              <p className="text-[11px] font-bold tracking-tight">{cat.label}</p>
-                              <p className="text-[8px] text-slate-400 truncate mt-0.5">{cat.desc}</p>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Specific Program Selector Dropdown */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-400">Selected Package / Tour Name</label>
-                      <select
-                        name="selectedExperience"
-                        value={formData.selectedExperience}
-                        onChange={handleChange}
-                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#0B3B8C] focus:bg-white text-xs font-bold py-3.5 px-4 rounded-xl focus:outline-none transition-all cursor-pointer"
-                      >
-                        {selectedCategory === 'tour' && toursList.map(t => (
-                          <option key={t.name} value={t.name}>{t.name} (Base Price: ${t.basePrice}/adult)</option>
-                        ))}
-                        {selectedCategory === 'kilimanjaro' && kilimanjaroList.map(k => (
-                          <option key={k.name} value={k.name}>{k.name} (Base Price: ${k.basePrice}/climber)</option>
-                        ))}
-                        {selectedCategory === 'safari' && safarisList.map(s => (
-                          <option key={s.name} value={s.name}>{s.name} (Base Price: ${s.basePrice}/adult)</option>
-                        ))}
-                        {selectedCategory === 'transfer' && transfersList.map(tr => (
-                          <option key={tr.name} value={tr.name}>{tr.name} (Base Price: ${tr.basePrice}/way)</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Travel Date selection using DatePicker */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-400">preferred travel date</label>
-                      <DatePicker
-                        selectedDate={formData.preferredDate}
-                        onChange={(date) => setFormData(prev => ({ ...prev, preferredDate: date }))}
-                        minDate={new Date().toISOString().split('T')[0]}
-                        placeholder="Select Travel Date"
-                      />
-                    </div>
-
-                    {/* Tactile Adults & Children Count buttons (Booking.com style counters) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      
-                      {/* Adults Counter */}
-                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-bold text-slate-700">Adult Travelers</p>
-                          <p className="text-[10px] text-slate-400">Ages 12+ or full climbers</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setAdultsCount(prev => Math.max(1, prev - 1))}
-                            disabled={adultsCount <= 1}
-                            className="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center font-bold text-xs disabled:opacity-50 cursor-pointer"
-                          >
-                            -
-                          </button>
-                          <span className="font-extrabold text-sm w-4 text-center">{adultsCount}</span>
-                          <button
-                            type="button"
-                            onClick={() => setAdultsCount(prev => prev + 1)}
-                            className="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center font-bold text-xs cursor-pointer"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Kids Counter */}
-                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-bold text-slate-700">Children Count</p>
-                          <p className="text-[10px] text-slate-400">Ages 2-11 (Enjoy 40% Off!)</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setChildrenCount(prev => Math.max(0, prev - 1))}
-                            disabled={childrenCount <= 0}
-                            className="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center font-bold text-xs disabled:opacity-50 cursor-pointer"
-                          >
-                            -
-                          </button>
-                          <span className="font-extrabold text-sm w-4 text-center">{childrenCount}</span>
-                          <button
-                            type="button"
-                            onClick={() => setChildrenCount(prev => prev + 1)}
-                            className="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center font-bold text-xs cursor-pointer"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-
-                    </div>
-
-                    {/* Step 1 CTA button */}
+                  <div className="flex gap-2 p-1 bg-slate-50 rounded-xl border border-slate-100">
                     <button
                       type="button"
-                      onClick={validateStep1}
-                      className="w-full bg-[#0B3B8C] hover:bg-opacity-95 text-white py-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer mt-4"
+                      onClick={() => setOnlinePaymentMethod('card')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${onlinePaymentMethod === 'card' ? 'bg-white text-[#0B3B8C] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                     >
-                      <span>Proceed to Guest Details</span>
-                      <ArrowRight size={14} />
+                      <CreditCard size={14} />
+                      <span>Credit / Debit Card</span>
                     </button>
-                  </motion.div>
-                )}
+                    <button
+                      type="button"
+                      onClick={() => setOnlinePaymentMethod('mobile_money')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${onlinePaymentMethod === 'mobile_money' ? 'bg-white text-[#0B3B8C] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      <Landmark size={14} />
+                      <span>Mobile Money</span>
+                    </button>
+                  </div>
 
-                {step === 2 && (
-                  /* ============================================================================= */
-                  /* STEP 2: GUEST DETAILS FORM                                                    */
-                  /* ============================================================================= */
-                  <motion.div
-                    key="step2"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    className="space-y-6"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-black uppercase tracking-widest cursor-pointer" onClick={() => setStep(1)}>
-                        <ArrowLeft size={10} />
-                        <span>back to choices</span>
-                      </div>
-                      <h2 className="text-xl font-bold text-[#0B3B8C] font-serif flex items-center gap-1.5 mt-1" style={{ fontFamily: 'Playfair Display, serif' }}>
-                        <User size={18} className="text-[#D4A017]" />
-                        <span>Step 2: Enter Primary Guest Information</span>
-                      </h2>
-                      <p className="text-xs text-slate-400 mt-1">Provide your primary contact and pickup hotel details. We support secure auto-fill for returning guests.</p>
-                    </div>
-
-                    <div className="space-y-4">
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-400">full name *</label>
-                          <input
-                            type="text"
-                            name="name"
-                            required
-                            placeholder="John Doe"
-                            value={formData.name}
-                            onChange={handleChange}
-                            className="w-full bg-slate-50 border border-slate-200 focus:border-[#0B3B8C] focus:bg-white text-xs font-bold p-3 rounded-xl focus:outline-none transition-all"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-400">nationality / country (recommended)</label>
-                          <input
-                            type="text"
-                            name="nationality"
-                            placeholder="e.g. United Kingdom"
-                            value={formData.nationality}
-                            onChange={handleChange}
-                            className="w-full bg-slate-50 border border-slate-200 focus:border-[#0B3B8C] focus:bg-white text-xs font-bold p-3 rounded-xl focus:outline-none transition-all"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-400">email address *</label>
-                          <input
-                            type="email"
-                            name="email"
-                            required
-                            placeholder="john@example.com"
-                            value={formData.email}
-                            onChange={handleChange}
-                            className="w-full bg-slate-50 border border-slate-200 focus:border-[#0B3B8C] focus:bg-white text-xs font-bold p-3 rounded-xl focus:outline-none transition-all font-mono"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-400">primary phone / whatsapp *</label>
-                          <input
-                            type="tel"
-                            name="phone"
-                            required
-                            placeholder="e.g. +44 7911 123456"
-                            value={formData.phone}
-                            onChange={handleChange}
-                            className="w-full bg-slate-50 border border-slate-200 focus:border-[#0B3B8C] focus:bg-white text-xs font-bold p-3 rounded-xl focus:outline-none transition-all font-mono"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Pickup Location & Hotel partners */}
-                      <div className="space-y-3 pt-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-400">pickup resort / hotel name *</label>
-                          <label className="flex items-center gap-1.5 text-xs text-[#0B3B8C] font-bold cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={notListedHotel}
-                              onChange={(e) => setNotListedHotel(e.target.checked)}
-                              className="accent-[#0B3B8C] rounded"
-                            />
-                            <span>My hotel is not listed</span>
-                          </label>
-                        </div>
-
-                        {!notListedHotel ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                              <label className="text-[9px] uppercase font-bold text-slate-400">Travel Transport Zone</label>
-                              <select
-                                value={selectedZoneId}
-                                onChange={(e) => {
-                                  setSelectedZoneId(e.target.value);
-                                  setSelectedHotelId('');
-                                }}
-                                className="w-full bg-slate-50 border border-slate-200 text-xs font-bold p-3 rounded-xl focus:outline-none"
-                              >
-                                <option value="">-- Choose Transport Zone --</option>
-                                {zonesList.map(z => (
-                                  <option key={z.id} value={z.id}>{z.name} (+${z.price} pickup)</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[9px] uppercase font-bold text-slate-400">Resort Name</label>
-                              <select
-                                value={selectedHotelId}
-                                onChange={(e) => setSelectedHotelId(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 text-xs font-bold p-3 rounded-xl focus:outline-none"
-                                disabled={!selectedZoneId}
-                              >
-                                <option value="">-- Choose Partner Resort --</option>
-                                {hotelsList.filter(h => h.zoneId === selectedZoneId).map(h => (
-                                  <option key={h.id} value={h.id}>{h.name}</option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                              <label className="text-[9px] uppercase font-bold text-slate-400">Rough Geographical Zone</label>
-                              <select
-                                value={selectedZoneId}
-                                onChange={(e) => setSelectedZoneId(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 text-xs font-bold p-3 rounded-xl focus:outline-none"
-                              >
-                                <option value="">-- Choose zone for transport rates --</option>
-                                {zonesList.map(z => (
-                                  <option key={z.id} value={z.id}>{z.name} (+${z.price})</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[9px] uppercase font-bold text-slate-400">Custom Hotel/AirBnb Name *</label>
-                              <input
-                                type="text"
-                                placeholder="Enter resort name or villa location"
-                                value={customHotelName}
-                                onChange={(e) => setCustomHotelName(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 focus:bg-white text-xs font-bold p-3 rounded-xl focus:outline-none"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Special Request */}
-                      <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-400">special requests / diet / requests (optional)</label>
-                        <textarea
-                          name="message"
-                          rows={3}
-                          placeholder="e.g. Vegetarian diet, dietary allergies, double bed configurations, custom boat times..."
-                          value={formData.message}
-                          onChange={handleChange}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#0B3B8C] focus:bg-white text-xs font-bold p-3 rounded-xl focus:outline-none transition-all resize-none"
+                  {onlinePaymentMethod === 'card' ? (
+                    <div className="space-y-4 pt-2">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Card Number *</label>
+                        <input
+                          type="text"
+                          placeholder="4111 2222 3333 4444"
+                          value={cardNo}
+                          onChange={(e) => setCardNo(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white outline-none text-slate-800 font-mono font-bold"
                         />
                       </div>
-
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={validateStep2}
-                      className="w-full bg-[#0B3B8C] hover:bg-opacity-95 text-white py-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <span>Proceed to Secure Payment</span>
-                      <ArrowRight size={14} />
-                    </button>
-                  </motion.div>
-                )}
-
-                {step === 3 && (
-                  /* ============================================================================= */
-                  /* STEP 3: SECURE ONLINE PAYMENT CHANNEL SELECTION                               */
-                  /* ============================================================================= */
-                  <motion.div
-                    key="step3"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    className="space-y-6"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-black uppercase tracking-widest cursor-pointer" onClick={() => setStep(2)}>
-                        <ArrowLeft size={10} />
-                        <span>back to guest details</span>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Expiry Date *</label>
+                          <input
+                            type="text"
+                            placeholder="MM / YY"
+                            value={cardExpiry}
+                            onChange={(e) => setCardExpiry(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white outline-none text-slate-800 font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">CVC / Security *</label>
+                          <input
+                            type="password"
+                            placeholder="•••"
+                            value={cardCvc}
+                            onChange={(e) => setCardCvc(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white outline-none text-slate-800 font-mono"
+                          />
+                        </div>
                       </div>
-                      <h2 className="text-xl font-bold text-[#0B3B8C] font-serif flex items-center gap-1.5 mt-1" style={{ fontFamily: 'Playfair Display, serif' }}>
-                        <CreditCard size={18} className="text-[#D4A017]" />
-                        <span>Step 3: Secure Online Payment</span>
-                      </h2>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Select your preferred payment channel to instantly confirm your Zanzibar reservation. Under our <strong>Mandatory Online Booking Policy</strong>, all slots are secured instantly on payment.
-                      </p>
                     </div>
-
-                    {/* PAYMENT CHANNELS TABS */}
-                    <div className="grid grid-cols-3 gap-2 bg-slate-100 p-1.5 rounded-2xl">
-                      <button
-                        type="button"
-                        onClick={() => setOnlinePaymentMethod('card')}
-                        className={`py-3 px-1 text-center rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
-                          onlinePaymentMethod === 'card'
-                            ? 'bg-white text-[#0B3B8C] shadow font-bold'
-                            : 'text-slate-500 hover:text-slate-800 font-semibold'
-                        }`}
-                      >
-                        <CreditCard size={16} />
-                        <span className="text-[10px] md:text-xs">Credit/Debit Card</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setOnlinePaymentMethod('mobile_money')}
-                        className={`py-3 px-1 text-center rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
-                          onlinePaymentMethod === 'mobile_money'
-                            ? 'bg-white text-[#0B3B8C] shadow font-bold'
-                            : 'text-slate-500 hover:text-slate-800 font-semibold'
-                        }`}
-                      >
-                        <Phone size={16} />
-                        <span className="text-[10px] md:text-xs">Mobile Money</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setOnlinePaymentMethod('gateway')}
-                        className={`py-3 px-1 text-center rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
-                          onlinePaymentMethod === 'gateway'
-                            ? 'bg-white text-[#0B3B8C] shadow font-bold'
-                            : 'text-slate-500 hover:text-slate-800 font-semibold'
-                        }`}
-                      >
-                        <Landmark size={16} />
-                        <span className="text-[10px] md:text-xs">Secure Gateway (DPO)</span>
-                      </button>
-                    </div>
-
-                    {/* CARD DETAILS CONTAINER */}
-                    {onlinePaymentMethod === 'card' && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 text-left shadow-sm"
-                      >
-                        <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-black uppercase text-[#0B3B8C] flex items-center gap-1.5">
-                            <ShieldCheck size={14} className="text-emerald-600" />
-                            <span>128-bit secure credit card checkout gateway</span>
-                          </p>
-                          <div className="flex gap-1">
-                            <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">VISA</span>
-                            <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">MC</span>
-                            <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">AMEX</span>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <div className="space-y-1">
-                            <label className="text-[9px] uppercase font-bold text-slate-400">Credit Card Number</label>
-                            <input
-                              type="text"
-                              required
-                              placeholder="4111 2222 3333 4444"
-                              value={cardNo}
-                              onChange={(e) => setCardNo(e.target.value.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim())}
-                              maxLength={19}
-                              className="w-full bg-slate-50 border border-slate-200 focus:border-[#0B3B8C] focus:bg-white text-xs font-bold p-3 rounded-xl focus:outline-none transition-all"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                              <label className="text-[9px] uppercase font-bold text-slate-400">Expiry Date</label>
-                              <input
-                                type="text"
-                                required
-                                placeholder="MM / YY"
-                                value={cardExpiry}
-                                onChange={(e) => {
-                                  let val = e.target.value.replace(/\D/g, '');
-                                  if (val.length > 2) {
-                                    val = val.substring(0, 2) + ' / ' + val.substring(2, 4);
-                                  }
-                                  setCardExpiry(val);
-                                }}
-                                maxLength={7}
-                                className="w-full bg-slate-50 border border-slate-200 focus:border-[#0B3B8C] focus:bg-white text-xs font-bold p-3 rounded-xl focus:outline-none transition-all"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[9px] uppercase font-bold text-slate-400">Security Code (CVV)</label>
-                              <input
-                                type="password"
-                                required
-                                placeholder="123"
-                                value={cardCvc}
-                                onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, ''))}
-                                maxLength={3}
-                                className="w-full bg-slate-50 border border-slate-200 focus:border-[#0B3B8C] focus:bg-white text-xs font-bold p-3 rounded-xl focus:outline-none transition-all"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-[10px] text-slate-400 font-semibold pt-1 border-t">
-                          <Shield size={12} className="text-emerald-500" />
-                          <span>Simulation Mode: Enter any testing visa credentials</span>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* MOBILE MONEY DETAILS CONTAINER */}
-                    {onlinePaymentMethod === 'mobile_money' && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 text-left shadow-sm"
-                      >
-                        <p className="text-[10px] font-black uppercase text-[#0B3B8C] flex items-center gap-1.5">
-                          <CheckCircle2 size={14} className="text-emerald-600" />
-                          <span>East African Mobile Money Integrator (Instant Push-to-Pay)</span>
-                        </p>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          {[
-                            { id: 'mpesa', label: 'Vodacom M-Pesa', color: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' },
-                            { id: 'tigo', label: 'Tigo Pesa', color: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' },
-                            { id: 'airtel', label: 'Airtel Money', color: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100' },
-                            { id: 'halotel', label: 'Halopesa', color: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100' },
-                          ].map(prov => (
+                  ) : (
+                    <div className="space-y-4 pt-2">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Mobile Operator Provider *</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {['mpesa', 'tigo', 'airtel'].map((prov) => (
                             <button
+                              key={prov}
                               type="button"
-                              key={prov.id}
-                              onClick={() => setMobileProvider(prov.id as any)}
-                              className={`p-3 text-center rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                                mobileProvider === prov.id
-                                  ? 'bg-[#0B3B8C] text-white border-[#0B3B8C]'
-                                  : `${prov.color}`
-                              }`}
+                              onClick={() => setMobileProvider(prov as any)}
+                              className={`py-2 text-[10px] font-black uppercase rounded-xl border transition-all cursor-pointer ${mobileProvider === prov ? 'border-[#0B3B8C] bg-[#0B3B8C]/5 text-[#0B3B8C] font-black' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
                             >
-                              {prov.label}
+                              {prov === 'mpesa' ? 'M-Pesa (Vodacom)' : prov === 'tigo' ? 'Tigo Pesa' : 'Airtel Money'}
                             </button>
                           ))}
                         </div>
-
-                        <div className="space-y-3">
-                          <div className="space-y-1">
-                            <label className="text-[9px] uppercase font-bold text-slate-400">Registered Name</label>
-                            <input
-                              type="text"
-                              required
-                              placeholder="Full Name (e.g. John Doe)"
-                              value={mobileName}
-                              onChange={(e) => setMobileName(e.target.value)}
-                              className="w-full bg-slate-50 border border-slate-200 focus:border-[#0B3B8C] focus:bg-white text-xs font-bold p-3 rounded-xl focus:outline-none transition-all"
-                            />
-                          </div>
-
-                          <div className="space-y-1">
-                            <label className="text-[9px] uppercase font-bold text-slate-400">Mobile Phone Number</label>
-                            <div className="flex">
-                              <span className="bg-slate-100 border border-r-0 border-slate-200 text-slate-500 font-bold px-3 py-3 rounded-l-xl text-xs flex items-center">
-                                +255
-                              </span>
-                              <input
-                                type="text"
-                                required
-                                placeholder="629 506 063"
-                                value={mobilePhone}
-                                onChange={(e) => setMobilePhone(e.target.value.replace(/\D/g, ''))}
-                                className="w-full bg-slate-50 border border-slate-200 focus:border-[#0B3B8C] focus:bg-white text-xs font-bold p-3 rounded-r-xl focus:outline-none transition-all"
-                              />
-                            </div>
-                          </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Mobile Account Number *</label>
+                          <input
+                            type="tel"
+                            placeholder="e.g. +255 744 123 456"
+                            value={mobilePhone}
+                            onChange={(e) => setMobilePhone(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white outline-none text-slate-800 font-mono"
+                          />
                         </div>
-
-                        <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl text-[10px] text-emerald-800 leading-normal font-medium">
-                          <strong>💡 Auto-Push Note:</strong> When you click complete, our partner gateway will automatically push a secure PIN prompt to your mobile device instantly. Enter your PIN to approve the reservation.
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Registered Account Holder Name *</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Juma Kassim"
+                            value={mobileName}
+                            onChange={(e) => setMobileName(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white outline-none text-slate-800"
+                          />
                         </div>
-                      </motion.div>
-                    )}
-
-                    {/* GATEWAY DETAILS CONTAINER */}
-                    {onlinePaymentMethod === 'gateway' && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 text-left shadow-sm"
-                      >
-                        <p className="text-[10px] font-black uppercase text-[#0B3B8C] flex items-center gap-1.5">
-                          <ShieldCheck size={14} className="text-emerald-600" />
-                          <span>Direct Pay Online (DPO Group) Gateway Secure Channel</span>
-                        </p>
-
-                        <div className="p-4 bg-slate-50 rounded-xl flex items-center gap-3">
-                          <div className="bg-slate-200 p-2.5 rounded-lg text-slate-500">
-                            <Landmark size={20} />
-                          </div>
-                          <div>
-                            <p className="font-extrabold text-xs text-slate-800">DPO Web Checkout Portal</p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">The leading payment service provider in East Africa, accepted in Zanzibar, Tanzania, Kenya, and beyond.</p>
-                          </div>
-                        </div>
-
-                        <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl text-[10px] text-blue-800 leading-normal font-medium">
-                          <strong>ℹ️ External Gateway Notice:</strong> Upon confirmation, you will be temporarily redirected to the secure external DPO billing page to settle with cards or multi-wallets, then instantly returned back here for voucher retrieval.
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* Secure TALA Policy Compliance Note */}
-                    <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl flex items-start gap-2.5 text-[11px] text-slate-600 leading-normal font-semibold">
-                      <Shield size={18} className="text-[#0B3B8C] mt-0.5 shrink-0" />
-                      <div>
-                        <p className="font-extrabold text-[#0B3B8C]">Verified Ethical Travel Provider</p>
-                        <p className="text-slate-400 text-[10px] mt-0.5">Licenced under Tanzania Tourism Registry (TALA No. 98112-ZRT). Rest assured that all payments are secured under ethical consumer compliance codes.</p>
                       </div>
                     </div>
+                  )}
 
-                    {/* Confirm Checkout Button */}
-                    <button
-                      type="button"
-                      disabled={status === 'loading'}
-                      onClick={handleConfirmBooking}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-600/10"
-                    >
-                      {status === 'loading' ? (
-                        <>
-                          <RefreshCw size={14} className="animate-spin" />
-                          <span>
-                            {onlinePaymentMethod === 'card' ? 'Authorizing Credit Card Prepayment...' : 
-                             onlinePaymentMethod === 'mobile_money' ? 'Awaiting Mobile Money PIN Entry...' : 
-                             'Redirecting to secure DPO portal...'}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <Check size={14} className="stroke-[3]" />
-                          <span>Pay & Confirm Booking</span>
-                        </>
-                      )}
-                    </button>
-                  </motion.div>
-                )}
-
-              </div>
-
-              {/* RIGHT SECTION: STICKY BOOKING SUMMARY CARD */}
-              <div className="lg:col-span-5 bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm sticky top-[180px] lg:top-[120px] space-y-4 p-5 md:p-6 text-left">
-                
-                {/* Tour Banner Preview header */}
-                <div className="border-b pb-4">
-                  <span className="text-[9px] uppercase font-extrabold px-2.5 py-1 bg-[#D4A017]/10 text-[#D4A017] border border-[#D4A017]/15 rounded-full inline-block font-mono tracking-widest leading-none">
-                    live trip summary
-                  </span>
-                  <h3 className="text-base font-extrabold text-[#0B3B8C] font-serif mt-2" style={{ fontFamily: 'Playfair Display, serif' }}>
-                    {formData.selectedExperience}
-                  </h3>
-                  <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-1 font-semibold">
-                    <span>Category: {bookingCategories.find(c => c.id === selectedCategory)?.label}</span>
-                  </p>
-                </div>
-
-                {/* Travel Details highlights */}
-                <div className="space-y-2.5 text-xs font-semibold text-slate-600 border-b pb-4">
-                  <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border">
-                    <span className="text-slate-400">📅 Travel Date:</span>
-                    <strong className="text-slate-800">{formData.preferredDate || 'Not specified'}</strong>
-                  </div>
-                  <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border">
-                    <span className="text-slate-400">👥 Travelers:</span>
-                    <strong className="text-slate-800">{adultsCount} Adults {childrenCount > 0 && `, ${childrenCount} Kids`}</strong>
-                  </div>
-                  <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border">
-                    <span className="text-slate-400">📍 Pick Point:</span>
-                    <strong className="text-slate-800 max-w-[150px] truncate" title={notListedHotel ? customHotelName : (hotelsList.find(h => h.id === selectedHotelId)?.name || formData.pickupLocation)}>
-                      {notListedHotel ? customHotelName : (hotelsList.find(h => h.id === selectedHotelId)?.name || formData.pickupLocation || 'Select in Step 2')}
-                    </strong>
+                  <div className="flex items-center gap-2 bg-emerald-50 text-emerald-800 p-3 rounded-2xl border border-emerald-100 text-[11px] leading-relaxed mt-2">
+                    <ShieldCheck size={16} className="text-emerald-500 shrink-0" />
+                    <span>Your transaction is covered by Zanzibar Trip & Relax 100% refund safety guarantee (cancel up to 24 hours prior for full refund).</span>
                   </div>
                 </div>
+              ) : null}
 
-                {/* Promo Coupon Module */}
-                <div className="space-y-1.5 border-b pb-4">
-                  <div className="flex justify-between items-center">
-                    <label className="text-[9px] uppercase font-bold text-slate-400">Promotion / Coupon Code</label>
-                    {couponApplied && (
-                      <button onClick={removeCoupon} className="text-red-500 text-[10px] font-bold hover:underline">
-                        Remove
-                      </button>
-                    )}
+              {/* Navigation Back button */}
+              <button
+                onClick={handleBackToForm}
+                className="text-xs font-bold text-[#0B3B8C] flex items-center gap-1.5 hover:underline bg-white border border-slate-200 px-4 py-2 rounded-xl"
+              >
+                <ArrowLeft size={14} />
+                <span>Change traveler entries</span>
+              </button>
+            </div>
+
+            {/* Right: Payment totals check */}
+            <div className="md:col-span-5">
+              <div className="bg-[#0A1224] text-white rounded-3xl p-6 shadow-xl space-y-6 sticky top-24 border border-slate-800">
+                <div>
+                  <span className="text-[9px] font-black uppercase text-[#D4A017] tracking-widest font-mono">TRANSPARENT BALANCE SHEET</span>
+                  <h4 className="text-sm font-bold text-white mt-1">Payment Breakdown</h4>
+                </div>
+
+                <div className="space-y-3.5 border-t border-slate-800 pt-4 text-xs">
+                  <div className="flex justify-between text-slate-400">
+                    <span>Base Subtotal:</span>
+                    <span>${pricingBreakdown.baseTotal}</span>
                   </div>
-                  
-                  {!couponApplied ? (
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="e.g. WELCOME10"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value)}
-                        className="flex-1 bg-slate-50 border border-slate-200 text-xs font-bold px-3 py-2 rounded-xl focus:outline-none focus:bg-white uppercase"
-                      />
-                      <button
-                        type="button"
-                        onClick={checkPromoCode}
-                        className="bg-[#0B3B8C] hover:bg-opacity-95 text-white font-bold px-4 py-2 rounded-xl text-[10px] uppercase tracking-wider transition-all cursor-pointer"
-                      >
-                        Apply
-                      </button>
+
+                  {pricingBreakdown.pickupSurcharge > 0 && (
+                    <div className="flex justify-between text-slate-400">
+                      <span>Pickup transfer ({pricingBreakdown.pickupZoneLabel}):</span>
+                      <span>${pricingBreakdown.pickupSurcharge}</span>
+                    </div>
+                  )}
+
+                  {pricingBreakdown.promoDiscount > 0 && (
+                    <div className="flex justify-between text-emerald-400">
+                      <span>Promo applied:</span>
+                      <span>-${pricingBreakdown.promoDiscount}</span>
+                    </div>
+                  )}
+
+                  {pricingBreakdown.prepayDiscount > 0 && (
+                    <div className="flex justify-between text-emerald-400">
+                      <span>Prepayment benefit:</span>
+                      <span>-${pricingBreakdown.prepayDiscount}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between text-slate-400">
+                    <span>Gov VAT & Luxury Tax (18%):</span>
+                    <span>${pricingBreakdown.taxAmount}</span>
+                  </div>
+
+                  <div className="flex justify-between text-white font-bold border-t border-slate-800 pt-3 text-sm">
+                    <span>Transparent Total:</span>
+                    <span className="font-mono text-white">${pricingBreakdown.finalTotal} USD</span>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-800 pt-4 space-y-4">
+                  {paymentOption === 'deposit' ? (
+                    <div className="bg-slate-900/60 p-4 rounded-2xl space-y-2 border border-slate-800">
+                      <div className="flex justify-between text-xs text-[#D4A017] font-black">
+                        <span>DUE NOW (30% DEPOSIT):</span>
+                        <span className="font-mono">${pricingBreakdown.rawDepositUSD} USD</span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-slate-400">
+                        <span>Remaining Balance (on Arrival):</span>
+                        <span className="font-mono">${pricingBreakdown.rawRemainingUSD} USD</span>
+                      </div>
+                    </div>
+                  ) : paymentOption === 'later' ? (
+                    <div className="bg-slate-900/60 p-4 rounded-2xl text-center border border-slate-800">
+                      <p className="text-xs text-[#D4A017] font-black uppercase">ZERO DUE NOW</p>
+                      <p className="text-[10px] text-slate-400 mt-1">Full amount of ${pricingBreakdown.finalTotal} USD is due on arrival in Zanzibar.</p>
                     </div>
                   ) : (
-                    <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-800 flex items-center justify-between text-xs">
-                      <span className="font-extrabold flex items-center gap-1">
-                        <Check size={14} className="stroke-[3]" />
-                        <span>Voucher `{activeCoupon?.name}` Active</span>
-                      </span>
-                      <span className="font-bold">
-                        {activeCoupon?.type === 'percentage' ? `-${activeCoupon.value}%` : `-$${activeCoupon?.value}`}
-                      </span>
+                    <div className="bg-slate-900/60 p-4 rounded-2xl text-center border border-slate-800">
+                      <p className="text-xs text-emerald-400 font-black uppercase">FULL AMOUNT PAID NOW</p>
+                      <p className="text-[10px] text-slate-400 mt-1">Saves you 10% on your tropical tour booking!</p>
                     </div>
                   )}
-                  {couponError && <p className="text-red-500 text-[10px] font-bold">{couponError}</p>}
+
+                  <button
+                    onClick={handleConfirmBooking}
+                    disabled={status === 'loading'}
+                    className="w-full py-4 bg-[#D4A017] hover:bg-[#b88910] text-[#020C1F] font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                    id="btn-confirm-booking-step2"
+                  >
+                    {status === 'loading' ? (
+                      <>
+                        <RefreshCw className="animate-spin text-[#020C1F]" size={14} />
+                        <span>Securing Swahili Guides...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck size={16} className="text-[#020C1F]" />
+                        <span>
+                          {paymentOption === 'later' ? 'Secure Hold' : `Pay & Confirm $${paymentOption === 'full' ? pricingBreakdown.finalTotal : pricingBreakdown.rawDepositUSD}`}
+                        </span>
+                      </>
+                    )}
+                  </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-                {/* Transparent Financial breakdown board */}
-                <div className="space-y-2 text-xs font-semibold">
-                  
-                  <div className="flex justify-between text-slate-500">
-                    <span>Base Price per adult:</span>
-                    <span>{pricing.currencySymbol}{pricing.pricePerAdult}</span>
-                  </div>
-
-                  {pricing.pickupSurcharge > 0 && (
-                    <div className="flex justify-between text-slate-500">
-                      <span>Regional pickup surcharge:</span>
-                      <span>+{pricing.currencySymbol}{pricing.pickupSurcharge}</span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between text-slate-500">
-                    <span>Zanzibar Season Adjustment:</span>
-                    <span className="text-emerald-600 font-bold">{pricing.seasonLabel}</span>
-                  </div>
-
-                  {pricing.discountAmount > 0 && (
-                    <div className="flex justify-between text-emerald-600 font-bold">
-                      <span>Voucher Code discount:</span>
-                      <span>-{pricing.currencySymbol}{pricing.discountAmount}</span>
-                    </div>
-                  )}
-
-                  {pricing.prepayDiscountAmount > 0 && (
-                    <div className="flex justify-between text-emerald-600 font-bold">
-                      <span>10% Prepayment Reward:</span>
-                      <span>-{pricing.currencySymbol}{pricing.prepayDiscountAmount}</span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between text-slate-500">
-                    <span>Tanzanian VAT & levies (18%):</span>
-                    <span>+{pricing.currencySymbol}{pricing.vatAmount}</span>
-                  </div>
-
-                  {/* Grand total price banner */}
-                  <div className="flex justify-between items-end border-t pt-3 mt-3 text-slate-800">
-                    <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">aggregate total</p>
-                      <p className="text-[9px] text-slate-400 font-semibold mt-0.5">(Taxes & transfers included)</p>
-                    </div>
-                    <span className="text-2xl font-black text-[#0B3B8C] font-mono leading-none">
-                      {pricing.currencySymbol}{pricing.displayTotal}
-                    </span>
-                  </div>
-
-                  {/* Prepayment Deposit vs Remaining Balance breakdown */}
-                  {paymentOption === 'arrival' && (
-                    <div className="bg-slate-100 border border-slate-200 rounded-2xl p-3.5 space-y-1.5 mt-2">
-                      <div className="flex justify-between text-[11px] text-slate-500 font-bold">
-                        <span>Optional advanced deposit (30%):</span>
-                        <span className="text-slate-800">{pricing.currencySymbol}{pricing.displayDeposit}</span>
-                      </div>
-                      <div className="flex justify-between text-[11px] text-slate-500 font-bold border-t border-slate-200/50 pt-1.5">
-                        <span>Remaining Balance on pickup:</span>
-                        <span className="text-[#0B3B8C] font-extrabold">{pricing.currencySymbol}{pricing.displayRemaining}</span>
-                      </div>
-                    </div>
-                  )}
-
+        {/* STEP 3: BOOKING SUCCESS CONFIRMATION */}
+        {step === 3 && selectedPackage && (
+          <div className="max-w-3xl mx-auto bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-2xl" id="step3-success-container">
+            {/* Swahili celebratory header */}
+            <div className="bg-[#0A1224] text-white p-8 text-center relative">
+              <div className="absolute inset-0 bg-cover bg-center opacity-10" style={{ backgroundImage: `url(${selectedPackage.image})` }} />
+              <div className="relative z-10 space-y-3">
+                <div className="w-16 h-16 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-lg border-2 border-white/10">
+                  <CheckCircle2 size={36} className="animate-bounce" />
                 </div>
+                <div>
+                  <span className="text-[10px] uppercase font-black tracking-widest text-[#D4A017] font-mono bg-[#D4A017]/10 px-3 py-1 rounded-full">KARIBU ZANZIBAR! 🌴</span>
+                  <h2 className="text-xl sm:text-2xl font-black text-white mt-2">Reservation Successfully Secured!</h2>
+                  <p className="text-xs text-slate-400 mt-1">Your Swahili adventure itinerary has been synchronized with the Zanzibar HQ.</p>
+                </div>
+              </div>
+            </div>
 
+            {/* Content info */}
+            <div className="p-6 sm:p-8 space-y-6">
+              
+              {/* Copyable Reference number banner */}
+              <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-50 border border-slate-100 p-4 rounded-2xl gap-3 text-center sm:text-left">
+                <div>
+                  <span className="text-[9px] font-black uppercase text-slate-400">RESERVATION REFERENCE CODE</span>
+                  <p className="text-base font-black text-slate-800 tracking-wider font-mono mt-0.5">{reference}</p>
+                </div>
+                <button
+                  onClick={handleCopyReference}
+                  className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                  id="btn-copy-ref"
+                >
+                  {copiedRef ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                  <span>{copiedRef ? 'Copied' : 'Copy reference'}</span>
+                </button>
+              </div>
+
+              {/* Action buttons (Downloads, Receipt, Calendar) */}
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-wider">SECURE DIGITAL DOCUMENTS</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <button
+                    onClick={handleDownloadVoucher}
+                    className="p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#0B3B8C] font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0"
+                    id="btn-download-voucher"
+                  >
+                    <Download size={14} />
+                    <span>Download Travel Voucher</span>
+                  </button>
+                  <button
+                    onClick={handleDownloadInvoice}
+                    className="p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#0B3B8C] font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0"
+                    id="btn-download-invoice"
+                  >
+                    <Printer size={14} />
+                    <span>Download Invoice PDF</span>
+                  </button>
+                  <button
+                    onClick={handleDownloadCalendarInvite}
+                    className="p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0"
+                    id="btn-download-calendar"
+                  >
+                    <Calendar size={14} className="text-[#D4A017]" />
+                    <span>Add to Calendar (.ics)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Verified details review */}
+              <div className="border-t border-slate-100 pt-6 space-y-4">
+                <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-wider">RESERVATION BREAKDOWN</h4>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-slate-400 font-medium">Lead Guest:</span>
+                    <p className="font-bold text-slate-800 mt-0.5">{formData.firstName} {formData.lastName}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium">Email Address:</span>
+                    <p className="font-bold text-slate-800 mt-0.5">{formData.email}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium">Selected Experience:</span>
+                    <p className="font-bold text-slate-800 mt-0.5">{selectedPackage.name}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium">Scheduled Date:</span>
+                    <p className="font-bold text-[#0B3B8C] mt-0.5">{arrivalDate}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Automatic emails & notifications alert */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                <div className="flex gap-2.5 items-start">
+                  <Mail size={16} className="text-[#D4A017] shrink-0 mt-0.5" />
+                  <div>
+                    <h5 className="font-bold text-slate-800 text-xs">Automated Confirmation Dispatch</h5>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                      We have dispatched an automated validation email directly to <strong className="text-slate-700">{formData.email}</strong>. It contains your complete package PDF vouchers and arrival directions.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Big Interactive WhatsApp CTA */}
+              <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-2xl text-center space-y-4">
+                <div className="space-y-1">
+                  <span className="text-[9px] font-black uppercase text-emerald-600 tracking-widest font-mono">FAST TRACK CONFIRMATION</span>
+                  <h4 className="font-bold text-slate-800 text-sm">Synchronize with Zanzibar Office instantly!</h4>
+                  <p className="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
+                    Tap the WhatsApp Business button to pre-fill your reference code and travel details. Our on-duty operations coordinator will instantly confirm your driver's pick-up time.
+                  </p>
+                </div>
+                <button
+                  onClick={handleSuccessWhatsAppChat}
+                  className="w-full sm:w-auto px-6 py-3 bg-[#25D366] hover:bg-[#20ba59] text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mx-auto cursor-pointer"
+                  id="btn-whatsapp-success-chat"
+                >
+                  <MessageCircle size={16} fill="white" />
+                  <span>Send Reference to WhatsApp</span>
+                </button>
+              </div>
+
+              {/* Reset booking */}
+              <div className="text-center pt-2">
+                <button
+                  onClick={() => {
+                    setStep(1);
+                    setSelectedPackage(null);
+                    setIsPackageLocked(false);
+                    setViewingPackageDetails(false);
+                    setCouponApplied(false);
+                    setCouponCode('');
+                  }}
+                  className="text-xs text-slate-400 hover:text-[#0B3B8C] underline cursor-pointer"
+                >
+                  Book another Swahili experience
+                </button>
               </div>
 
             </div>
-          )}
-        </AnimatePresence>
+          </div>
+        )}
+
       </div>
 
+      {/* Exit Intent Modal */}
+      <ExitIntentModal />
     </div>
   );
 }

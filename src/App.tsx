@@ -31,6 +31,7 @@ import TourDetail from './pages/TourDetail';
 import Policies from './pages/Policies';
 import Admin from './pages/Admin';
 import AdminLogin from './pages/AdminLogin';
+import OwnerLogin from './pages/OwnerLogin';
 import MyAccount from './pages/MyAccount';
 import AuthGuard from './components/AuthGuard';
 import ManageBooking from './pages/ManageBooking';
@@ -60,6 +61,9 @@ export default function App() {
     const path = window.location.pathname.toLowerCase();
     if (path === '/admin/login') {
       window.location.hash = 'admin/login';
+      window.history.replaceState(null, '', '/');
+    } else if (path === '/owner' || path === '/owner/login') {
+      window.location.hash = 'owner/login';
       window.history.replaceState(null, '', '/');
     } else if (path === '/admin' || path === '/dashboard') {
       window.location.hash = 'admin';
@@ -117,6 +121,9 @@ export default function App() {
         return <Policies navigate={navigate} />;
       case 'admin/login':
         return <AdminLogin navigate={navigate} />;
+      case 'owner':
+      case 'owner/login':
+        return <OwnerLogin navigate={navigate} />;
       case 'my-account':
         return <MyAccount navigate={navigate} />;
       case 'admin':
@@ -138,7 +145,7 @@ export default function App() {
     }
   };
 
-  const isAdminPage = currentPage === 'admin' || currentPage === 'admin/login' || currentPage === 'dashboard' || currentPage === 'admin/dashboard';
+  const isAdminPage = currentPage === 'admin' || currentPage === 'admin/login' || currentPage === 'owner' || currentPage === 'owner/login' || currentPage === 'dashboard' || currentPage === 'admin/dashboard';
 
   return (
     <div className="flex flex-col min-h-screen text-gray-900 selection:bg-[#D4A017] selection:text-white">

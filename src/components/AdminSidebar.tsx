@@ -3,7 +3,7 @@ import { Page } from '../hooks/useHashRouter';
 import { 
   Layout, Calendar, Users, MapPin, TrendingUp, Activity, 
   User, Sparkles, Clock, FileText, Shield, Layers, Image, 
-  BookOpen, Briefcase, Leaf, Settings, LogOut
+  BookOpen, Briefcase, Leaf, Settings, LogOut, Compass
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -123,21 +123,46 @@ export default function AdminSidebar({
         isActive: activeTab === 'customers'
       },
       { 
-        id: 'tours', 
-        label: 'Tours', 
-        icon: MapPin,
-        action: () => {
-          setActiveTab('cms');
-          setCmsEditSection('tours');
-        },
-        isActive: activeTab === 'cms' && cmsEditSection === 'tours'
+        id: 'holidayPackages', 
+        label: 'Holiday Packages', 
+        icon: Layers,
+        action: () => setActiveTab('holidayPackages'),
+        isActive: activeTab === 'holidayPackages'
       },
       { 
-        id: 'transfers', 
-        label: 'Transfers', 
+        id: 'zanzibarTours', 
+        label: 'Zanzibar Tours', 
+        icon: MapPin,
+        action: () => setActiveTab('zanzibarTours'),
+        isActive: activeTab === 'zanzibarTours'
+      },
+      { 
+        id: 'tanzaniaSafaris', 
+        label: 'Tanzania Safaris', 
+        icon: Compass,
+        action: () => setActiveTab('tanzaniaSafaris'),
+        isActive: activeTab === 'tanzaniaSafaris'
+      },
+      { 
+        id: 'kilimanjaro', 
+        label: 'Kilimanjaro', 
+        icon: Leaf,
+        action: () => setActiveTab('kilimanjaro'),
+        isActive: activeTab === 'kilimanjaro'
+      },
+      { 
+        id: 'airportTransfers', 
+        label: 'Airport Transfers', 
         icon: Activity,
-        action: () => setActiveTab('transportZones'),
-        isActive: activeTab === 'transportZones'
+        action: () => setActiveTab('airportTransfers'),
+        isActive: activeTab === 'airportTransfers'
+      },
+      { 
+        id: 'calendar', 
+        label: 'Reservation Calendar', 
+        icon: Calendar,
+        action: () => setActiveTab('calendar'),
+        isActive: activeTab === 'calendar'
       },
       { 
         id: 'payments', 
@@ -155,33 +180,18 @@ export default function AdminSidebar({
       },
       { 
         id: 'staff', 
-        label: 'Staff', 
+        label: 'Staff Management', 
         icon: Shield,
         badge: usersCount > 0 ? usersCount : undefined,
         action: () => setActiveTab('users'),
         isActive: activeTab === 'users'
       },
       { 
-        id: 'vehicles', 
-        label: 'Vehicles', 
-        icon: Activity,
-        badge: vehiclesCount > 0 ? vehiclesCount : undefined,
-        action: () => setActiveTab('vehicles'),
-        isActive: activeTab === 'vehicles'
-      },
-      { 
-        id: 'drivers', 
-        label: 'Drivers', 
-        icon: User,
-        action: () => setActiveTab('driverPortal'),
-        isActive: activeTab === 'driverPortal'
-      },
-      { 
-        id: 'guides', 
-        label: 'Guides', 
-        icon: Sparkles,
-        action: () => setActiveTab('guidePortal'),
-        isActive: activeTab === 'guidePortal'
+        id: 'rolesPermissions', 
+        label: 'Roles & Permissions', 
+        icon: Settings,
+        action: () => setActiveTab('rolesPermissions'),
+        isActive: activeTab === 'rolesPermissions'
       },
       { 
         id: 'content-management', 
@@ -197,14 +207,14 @@ export default function AdminSidebar({
       },
       { 
         id: 'gallery', 
-        label: 'Gallery', 
+        label: 'Gallery Management', 
         icon: Image,
         action: () => setActiveTab('media'),
         isActive: activeTab === 'media'
       },
       { 
         id: 'blog', 
-        label: 'Blog', 
+        label: 'Blog Management', 
         icon: BookOpen,
         action: () => {
           setActiveTab('cms');
@@ -213,12 +223,11 @@ export default function AdminSidebar({
         isActive: activeTab === 'cms' && cmsEditSection === 'blog'
       },
       { 
-        id: 'careers', 
-        label: 'Careers', 
-        icon: Briefcase,
-        badge: jobsCount > 0 ? jobsCount : undefined,
-        action: () => setActiveTab('careers'),
-        isActive: activeTab === 'careers'
+        id: 'reviews', 
+        label: 'Reviews', 
+        icon: Sparkles,
+        action: () => setActiveTab('reviews'),
+        isActive: activeTab === 'reviews'
       },
       { 
         id: 'sustainability', 
@@ -228,11 +237,46 @@ export default function AdminSidebar({
         isActive: activeTab === 'sustainability'
       },
       { 
+        id: 'emailCentre', 
+        label: 'Email Centre', 
+        icon: FileText,
+        action: () => setActiveTab('emailCentre'),
+        isActive: activeTab === 'emailCentre'
+      },
+      { 
+        id: 'whatsappCentre', 
+        label: 'WhatsApp Centre', 
+        icon: Sparkles,
+        action: () => setActiveTab('whatsappCentre'),
+        isActive: activeTab === 'whatsappCentre'
+      },
+      { 
         id: 'settings', 
-        label: 'Settings', 
+        label: 'Website Settings', 
         icon: Settings,
         action: () => setActiveTab('settings'),
         isActive: activeTab === 'settings'
+      },
+      { 
+        id: 'security', 
+        label: 'Security Panel', 
+        icon: Shield,
+        action: () => setActiveTab('security'),
+        isActive: activeTab === 'security'
+      },
+      { 
+        id: 'systemBackup', 
+        label: 'System Backup', 
+        icon: Layers,
+        action: () => setActiveTab('systemBackup'),
+        isActive: activeTab === 'systemBackup'
+      },
+      { 
+        id: 'auditLogs', 
+        label: 'Audit Logs', 
+        icon: Clock,
+        action: () => setActiveTab('auditLogs'),
+        isActive: activeTab === 'auditLogs'
       },
       { 
         id: 'logout', 
@@ -246,13 +290,30 @@ export default function AdminSidebar({
 
     // Allowed module IDs mapped per authorized role
     const permissions: Record<string, string[]> = {
-      'owner': ['dashboard', 'bookings', 'customers', 'tours', 'transfers', 'payments', 'reports', 'staff', 'vehicles', 'drivers', 'guides', 'content-management', 'gallery', 'blog', 'careers', 'sustainability', 'settings', 'logout'],
-      'super admin': ['dashboard', 'bookings', 'customers', 'tours', 'transfers', 'payments', 'reports', 'staff', 'vehicles', 'drivers', 'guides', 'content-management', 'gallery', 'blog', 'careers', 'sustainability', 'settings', 'logout'],
-      'manager': ['dashboard', 'bookings', 'customers', 'tours', 'transfers', 'reports', 'vehicles', 'drivers', 'guides', 'content-management', 'gallery', 'blog', 'careers', 'sustainability', 'settings', 'logout'],
-      'reservation officer': ['dashboard', 'bookings', 'customers', 'guides', 'logout'],
-      'sales': ['dashboard', 'bookings', 'customers', 'guides', 'logout'],
+      'owner': [
+        'dashboard', 'bookings', 'customers', 'holidayPackages', 'zanzibarTours', 
+        'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'calendar', 'payments', 
+        'reports', 'staff', 'rolesPermissions', 'content-management', 'gallery', 
+        'blog', 'reviews', 'sustainability', 'emailCentre', 'whatsappCentre', 
+        'settings', 'security', 'systemBackup', 'auditLogs', 'logout'
+      ],
+      'super admin': [
+        'dashboard', 'bookings', 'customers', 'holidayPackages', 'zanzibarTours', 
+        'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'calendar', 'payments', 
+        'reports', 'staff', 'rolesPermissions', 'content-management', 'gallery', 
+        'blog', 'reviews', 'sustainability', 'emailCentre', 'whatsappCentre', 
+        'settings', 'security', 'systemBackup', 'auditLogs', 'logout'
+      ],
+      'manager': [
+        'dashboard', 'bookings', 'customers', 'holidayPackages', 'zanzibarTours', 
+        'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'calendar', 'payments', 
+        'reports', 'content-management', 'gallery', 'blog', 'reviews', 'sustainability', 
+        'settings', 'logout'
+      ],
+      'reservation officer': ['dashboard', 'bookings', 'customers', 'calendar', 'logout'],
+      'sales': ['dashboard', 'bookings', 'customers', 'logout'],
       'accountant': ['dashboard', 'payments', 'reports', 'settings', 'logout'],
-      'marketing': ['dashboard', 'customers', 'gallery', 'blog', 'sustainability', 'logout'],
+      'marketing': ['dashboard', 'customers', 'gallery', 'blog', 'reviews', 'sustainability', 'logout'],
       'customer support': ['dashboard', 'customers', 'logout']
     };
 

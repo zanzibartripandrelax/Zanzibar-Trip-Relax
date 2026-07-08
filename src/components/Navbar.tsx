@@ -201,7 +201,7 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
           <ProgressiveImage
             src="/src/assets/images/logo.jpg"
             alt="Zanzibar Trip and Relax Logo"
-            className="h-13 w-13 sm:h-16 sm:w-16 md:h-18 md:w-18 object-contain rounded-full bg-white/10 p-1 border border-white/10 shadow-md group-hover:scale-105 transition-all duration-300"
+            className="h-13 w-13 sm:h-16 sm:w-16 md:h-18 md:w-18 object-cover rounded-full bg-white/10 p-1 border border-white/10 shadow-md group-hover:scale-105 transition-all duration-300"
           />
           <div className="flex flex-col leading-tight select-none">
             <span className="text-white font-black text-xs sm:text-sm md:text-base tracking-[0.18em] uppercase group-hover:text-[#D4A017] transition-colors font-sans">

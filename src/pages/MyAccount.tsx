@@ -1085,58 +1085,6 @@ export default function MyAccount({ navigate }: MyAccountProps) {
                 </div>
               </div>
             </div>
-
-            {/* Sandbox Testing Guide */}
-            <div className="bg-white/5 border border-white/10 p-4 rounded-2xl space-y-2">
-              <span className="text-[9px] font-bold uppercase tracking-widest text-[#D4A017] flex items-center gap-1 font-mono">
-                💡 Sandbox Quick Testing Console
-              </span>
-              <p className="text-[10px] text-slate-350 leading-relaxed">
-                Registered profiles are stored securely in localStorage. If you register or trigger verification, you can see all dispatched simulated emails in the bottom console on this page in real-time!
-              </p>
-              
-              {/* Force Verification Helper */}
-              {viewMode === 'login' && (
-                <div className="pt-2 border-t border-white/5 flex flex-col gap-1.5">
-                  <span className="text-[8px] text-slate-400">Need a verified customer demo account quickly?</span>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      // Seed an active customer account directly
-                      const users = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
-                      const customerEmail = 'customer@zanzibar.com';
-                      const match = users.find((u: any) => u.email?.toLowerCase() === customerEmail);
-                      
-                      if (!match) {
-                        users.push({
-                          username: 'customer',
-                          passwordHash: '4f880fdf8b10ef1f70a1f2fc5080c98f98ff1f6f1c4df821cfdfc6a3ff6e788e', // customerpassword123
-                          name: 'Customer John Doe',
-                          email: customerEmail,
-                          phone: '+255 777 000 111',
-                          country: 'United Kingdom',
-                          role: 'Customer',
-                          status: 'Active',
-                          verified: true,
-                          created_at: new Date().toISOString()
-                        });
-                        localStorage.setItem('ztr_admin_users', JSON.stringify(users));
-                      } else {
-                        match.verified = true;
-                        localStorage.setItem('ztr_admin_users', JSON.stringify(users));
-                      }
-                      
-                      setLoginEmail('customer@zanzibar.com');
-                      setLoginPassword('customerpassword123');
-                      setLoginSuccess('Loaded active verified customer credentials. Hit Login!');
-                    }}
-                    className="w-full bg-[#D4A017] hover:bg-[#c39010] text-[#020C1F] text-[9px] py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors"
-                  >
-                    Load Verified Customer Demo
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       )}

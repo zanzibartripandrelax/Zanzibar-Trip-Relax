@@ -504,7 +504,7 @@ export default function ManageBooking({ navigate }: ManageBookingProps) {
                       <div className="text-center py-6 space-y-2.5">
                         <RefreshCw className="animate-spin text-[#0B3B8C] mx-auto" size={24} />
                         <p className="text-xs font-bold text-gray-700">Authorizing secure SSL connection...</p>
-                        <p className="text-[10px] text-gray-400">Merchant gateway links: routing sandbox authorization</p>
+                        <p className="text-[10px] text-gray-400">Merchant gateway links: routing secure authorization</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -521,7 +521,7 @@ export default function ManageBooking({ navigate }: ManageBookingProps) {
                             onClick={() => setPayMethod('paypal')}
                             className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${payMethod === 'paypal' ? 'border-[#0B3B8C] bg-blue-50/20 text-[#0B3B8C]' : 'border-gray-200 text-gray-400 bg-white'}`}
                           >
-                            🅿️ PayPal Sandbox
+                            🅿️ PayPal
                           </button>
                         </div>
 
@@ -569,13 +569,13 @@ export default function ManageBooking({ navigate }: ManageBookingProps) {
                           </div>
                         ) : (
                           <div className="text-center py-4 space-y-3 bg-gray-50/40 rounded-2xl border border-gray-150">
-                            <p className="text-[11px] text-gray-500 font-semibold leading-normal">Authenticate secure paypal sandbox transaction to auto-pay balance.</p>
+                            <p className="text-[11px] text-gray-500 font-semibold leading-normal">Authenticate secure PayPal transaction to settle your balance.</p>
                             <button
                               type="button"
                               onClick={handlePayRemaining}
                               className="bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold px-6 py-2.5 rounded-full text-xs transition-all cursor-pointer inline-flex items-center gap-1.5 shadow"
                             >
-                              💛 Settle with PayPal Sandbox
+                              💛 Settle with PayPal
                             </button>
                           </div>
                         )}

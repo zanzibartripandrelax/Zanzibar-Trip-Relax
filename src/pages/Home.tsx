@@ -192,7 +192,7 @@ export default function Home({ navigate }: HomeProps) {
   return (
     <div className="min-h-screen font-sans antialiased text-slate-800 bg-white">
       {/* Hero */}
-      <section id="hero" className="relative min-h-screen flex items-center justify-center overflow-hidden" aria-label="Zanzibar Trip and Relax Welcome Hero">
+      <section id="hero" className="relative h-[620px] sm:h-[680px] lg:h-[720px] min-h-[580px] flex items-center justify-center overflow-hidden" aria-label="Zanzibar Trip and Relax Welcome Hero">
         {heroSlides.map((s, i) => (
           <div 
             key={i} 
@@ -213,38 +213,38 @@ export default function Home({ navigate }: HomeProps) {
           </div>
         ))}
         {/* Dark Elegant Scrim with optimal overlay to guarantee 4.5:1 contrast on white text */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#020C1F]/90 via-[#020C1F]/60 to-[#020C1F]/95 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#020C1F]/90 via-[#020C1F]/50 to-[#020C1F]/95 pointer-events-none" />
         
-        <div className="relative z-10 text-center px-4 pt-24 pb-12 w-full max-w-5xl mx-auto" style={{ transform: `translateY(-${scrollY * 0.08}px)` }}>
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/25 px-4 py-2 rounded-full mb-6 select-none animate-shimmer shadow-lg">
-            <Palmtree className="text-[#D4A017] shrink-0" size={16} />
-            <span className="text-white text-xs md:text-sm font-semibold tracking-widest uppercase font-mono">Zanzibar Trip & Relax</span>
+        <div className="relative z-10 text-center px-4 pt-16 pb-8 w-full max-w-5xl mx-auto" style={{ transform: `translateY(-${scrollY * 0.05}px)` }}>
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/25 px-3 py-1.5 rounded-full mb-4 select-none animate-shimmer shadow-lg">
+            <Palmtree className="text-[#D4A017] shrink-0" size={14} />
+            <span className="text-white text-[10px] sm:text-xs font-semibold tracking-widest uppercase font-mono">Zanzibar Trip & Relax</span>
           </div>
           
-          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold text-white mb-6 leading-[1.08] tracking-tight drop-shadow-lg" style={{ fontFamily: '"Playfair Display", Georgia, serif' }}>
+          <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-4 leading-[1.15] tracking-tight drop-shadow-lg" style={{ fontFamily: '"Playfair Display", Georgia, serif' }}>
             {tDefault('hero.headingPart1', content.hero?.headingPart1 || 'Discover Zanzibar.')}<br />
             <span className="text-[#D4A017]">{tDefault('hero.headingPart2', content.hero?.headingPart2 || 'Explore Tanzania.')}</span><br />
             <span className="text-white/95">{tDefault('hero.headingPart3', content.hero?.headingPart3 || 'Relax in Paradise.')}</span>
           </h1>
           
-          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/90 max-w-2xl mx-auto mb-12 font-medium leading-relaxed drop-shadow-md">
+          <p className="text-xs sm:text-sm md:text-base lg:text-lg text-white/90 max-w-xl mx-auto mb-6 sm:mb-8 font-medium leading-relaxed drop-shadow-md">
             {tDefault('hero.subtitle', content.hero?.subtitle || 'Authentic Experiences. Personalized Holidays. Unforgettable Memories.')}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-10 max-w-md sm:max-w-2xl mx-auto">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center mb-6 max-w-md sm:max-w-xl mx-auto">
             <button 
               type="button" 
               onClick={() => navigate((content.hero?.primaryButtonAction as any) || 'tours')} 
-              className="w-full sm:w-auto px-8 py-4.5 bg-[#D4A017] hover:bg-[#c49010] text-[#0A1224] font-black rounded-full transition-all flex items-center justify-center gap-2.5 shadow-lg hover:shadow-xl hover:scale-[1.03] active:scale-[0.98] duration-200 cursor-pointer text-sm uppercase tracking-wider"
+              className="w-full sm:w-auto px-6 py-3.5 bg-[#D4A017] hover:bg-[#c49010] text-[#0A1224] font-black rounded-full transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] duration-200 cursor-pointer text-xs uppercase tracking-wider"
               aria-label="Book your Zanzibar or Tanzania tour experience"
             >
-              <Compass size={18} />
+              <Compass size={16} />
               {tDefault('btn.bookTour', content.hero?.primaryButtonText || 'Book a Tour')}
             </button>
             <button 
               type="button" 
               onClick={() => navigate((content.hero?.secondaryButtonAction as any) || 'trip-builder')} 
-              className="w-full sm:w-auto px-8 py-4.5 border-2 border-white/60 text-white font-extrabold rounded-full hover:bg-white/10 hover:border-white transition-all flex items-center justify-center gap-2 shadow-md hover:scale-[1.03] active:scale-[0.98] duration-200 cursor-pointer text-sm uppercase tracking-wider bg-black/10 backdrop-blur-sm"
+              className="w-full sm:w-auto px-6 py-3.5 border-2 border-white/60 text-white font-extrabold rounded-full hover:bg-white/10 hover:border-white transition-all flex items-center justify-center gap-2 shadow-md hover:scale-[1.02] active:scale-[0.98] duration-200 cursor-pointer text-xs uppercase tracking-wider bg-black/10 backdrop-blur-sm"
               aria-label="Use Trip Builder to custom design your journey"
             >
               {tDefault('btn.planTrip', content.hero?.secondaryButtonText || 'Plan My Trip')}
@@ -254,16 +254,16 @@ export default function Home({ navigate }: HomeProps) {
               target="_blank" 
               rel="noopener noreferrer" 
               onClick={() => trackWhatsAppClick('Home Hero Section', 'General Chat')}
-              className="w-full sm:w-auto px-8 py-4.5 bg-[#25D366] hover:bg-[#1ebd5a] text-white font-black rounded-full transition-all flex items-center justify-center gap-2.5 shadow-lg hover:shadow-xl hover:scale-[1.03] active:scale-[0.98] duration-200 text-sm uppercase tracking-wider"
+              className="w-full sm:w-auto px-6 py-3.5 bg-[#25D366] hover:bg-[#1ebd5a] text-white font-black rounded-full transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] duration-200 text-xs uppercase tracking-wider"
               aria-label="Contact our customer care desk on WhatsApp"
             >
-              <MessageCircle size={18} fill="white" />
+              <MessageCircle size={16} fill="white" />
               {t('btn.whatsappChat')}
             </a>
           </div>
 
           {/* Slide indicators with labels for screenreaders */}
-          <div className="flex justify-center gap-2.5 mt-8" role="tablist" aria-label="Hero background sliders">
+          <div className="flex justify-center gap-2 mt-4" role="tablist" aria-label="Hero background sliders">
             {heroSlides.map((_, i) => (
               <button 
                 type="button" 
@@ -272,7 +272,7 @@ export default function Home({ navigate }: HomeProps) {
                 role="tab"
                 aria-selected={i === slide}
                 aria-label={`Show slide background number ${i + 1}`}
-                className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${i === slide ? 'bg-[#D4A017] w-10' : 'bg-white/45 hover:bg-white/70'}`} 
+                className={`w-2 h-2 rounded-full transition-all cursor-pointer ${i === slide ? 'bg-[#D4A017] w-8' : 'bg-white/45 hover:bg-white/70'}`} 
               />
             ))}
           </div>
