@@ -30,6 +30,8 @@ export default function OwnerLogin({ navigate }: OwnerLoginProps) {
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [input2FACode, setInput2FACode] = useState('');
   const [ownerFor2FA, setOwnerFor2FA] = useState<any>(null);
+  const [resendCountdown, setResendCountdown] = useState(0);
+  const [otpTarget, setOtpTarget] = useState('');
 
   // Account Recovery options
   const [recoveryEmailInput, setRecoveryEmailInput] = useState('');
@@ -134,6 +136,15 @@ export default function OwnerLogin({ navigate }: OwnerLoginProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (resendCountdown > 0) {
+      const timer = setTimeout(() => {
+        setResendCountdown(resendCountdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCountdown]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
@@ -181,20 +192,40 @@ export default function OwnerLogin({ navigate }: OwnerLoginProps) {
         localStorage.removeItem('ztr_lockout_until_owner');
 
         // Check if 2FA is active
-        if (ownerAccount.twoFactorEnabled) {
-          const code2FA = '2FA-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-          setTwoFactorCode(code2FA);
+        // DEV BYPASS: Skip 2FA if VITE_AUTH_BYPASS_VERIFICATION is enabled in dev.
+        // To re-enable verification: Set VITE_AUTH_BYPASS_VERIFICATION=false in .env.
+        const isBypassActive = import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS_VERIFICATION === 'true';
+
+        if (!isBypassActive && ownerAccount.twoFactorEnabled) {
           setOwnerFor2FA(ownerAccount);
+          setOtpTarget(ownerAccount.email);
+          setAuthLoading(true);
 
-          // Dispatch code
-          dispatchAutomatedEmail('two_factor_auth', ownerAccount.email, ownerAccount.name, {
-            code: code2FA,
-            email: ownerAccount.email
-          });
-
-          addActivityLog(ownerAccount.name, 'twoFactorChallenged', 'Owner login initiated. Dispatched 2FA authentication challenge code.');
-          setAuthSuccess('Credentials matched! Dispatched 2FA code to your business email.');
-          setCurrentStage('two_factor');
+          try {
+            const res = await fetch('/api/otp/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                target: ownerAccount.email,
+                type: 'email',
+                name: ownerAccount.name,
+                context: '2fa'
+              })
+            });
+            const data = await res.json();
+            if (data.success) {
+              setResendCountdown(data.resendInSeconds || 45);
+              addActivityLog(ownerAccount.name, 'twoFactorChallenged', 'Owner login initiated. Dispatched 2FA authentication challenge code.');
+              setAuthSuccess('Credentials matched! Dispatched 2FA security code to your business email.');
+              setCurrentStage('two_factor');
+            } else {
+              setAuthError(data.error || 'Failed to dispatch 2FA security verification code.');
+            }
+          } catch (err: any) {
+            setAuthError('Connection error: ' + err.message);
+          } finally {
+            setAuthLoading(false);
+          }
         } else {
           // Normal Login
           establishOwnerSession(ownerAccount);
@@ -219,17 +250,32 @@ export default function OwnerLogin({ navigate }: OwnerLoginProps) {
     }
   };
 
-  const handle2FAVerify = (e: React.FormEvent) => {
+  const handle2FAVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
+    setAuthLoading(true);
 
-    if (input2FACode.trim() !== twoFactorCode) {
-      setAuthError('Invalid 2FA security code. Please check the simulated inbox below.');
-      return;
+    try {
+      const res = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target: otpTarget,
+          code: input2FACode.trim()
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        addActivityLog(ownerFor2FA.name, 'twoFactorApproved', 'Owner 2FA security verification approved.');
+        establishOwnerSession(ownerFor2FA);
+      } else {
+        setAuthError(data.error || 'Invalid or expired 2FA security code.');
+      }
+    } catch (err: any) {
+      setAuthError('Verification error: ' + err.message);
+    } finally {
+      setAuthLoading(false);
     }
-
-    addActivityLog(ownerFor2FA.name, 'twoFactorApproved', 'Owner 2FA security verification approved.');
-    establishOwnerSession(ownerFor2FA);
   };
 
   const establishOwnerSession = (owner: any) => {
@@ -346,7 +392,11 @@ export default function OwnerLogin({ navigate }: OwnerLoginProps) {
     e.preventDefault();
     setSetupError('');
     
-    if (inputToken.trim() !== verificationToken) {
+    // DEV BYPASS: Skip token verification if VITE_AUTH_BYPASS_VERIFICATION is enabled in dev.
+    // To re-enable verification: Set VITE_AUTH_BYPASS_VERIFICATION=false in .env.
+    const isBypassActive = import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS_VERIFICATION === 'true';
+
+    if (!isBypassActive && inputToken.trim() !== verificationToken) {
       setSetupError('Invalid verification code. Please check your simulated email inbox below.');
       return;
     }
@@ -419,54 +469,85 @@ export default function OwnerLogin({ navigate }: OwnerLoginProps) {
     setRecoveryStep('verify');
     setRecoveryMethod('email'); // Default to email reset link
 
+    // DEV BYPASS: Skip verification challenge and go directly to reset password if enabled in dev.
+    // To re-enable verification: Set VITE_AUTH_BYPASS_VERIFICATION=false in .env.
+    if (import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS_VERIFICATION === 'true') {
+      setAuthSuccess('Development Mode Bypass: Verification challenge skipped.');
+      setCurrentStage('reset_password');
+      return;
+    }
+
     // Generate code
     generateAndSendRecoveryCode('email', ownerAccount);
   };
 
   const generateAndSendRecoveryCode = (method: 'email' | 'phone', owner: any) => {
-    const code = 'RST-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-    setGeneratedRecoveryCode(code);
-    setRecoveryCodeExpiry(Date.now() + 30 * 60 * 1000); // 30 minutes
+    setAuthError('');
+    setAuthSuccess('');
+    setAuthLoading(true);
     setInputRecoveryCode('');
 
-    if (method === 'email') {
-      const targetEmail = owner.recoveryEmail || owner.email;
-      dispatchAutomatedEmail('password_reset', targetEmail, owner.name, {
-        code,
-        email: targetEmail
-      });
-      setAuthSuccess(`Sent password reset code to verified email [${targetEmail}]. Check the email logs console below.`);
-      addActivityLog(owner.name, 'recoveryInitiated', 'Dispatched password reset token to owner verification email.');
-    } else {
-      const targetPhone = owner.recoveryPhone || owner.phone;
-      // Simulate SMS Dispatch
-      try {
-        dispatchAutomatedEmail('sms_dispatch_log', owner.email, owner.name, {
-          message: `[SMS GATEWAY] Zanzibar Trip & Relax secure access recovery code: ${code}. Valid for 30 minutes.`,
-          phone: targetPhone
-        });
-      } catch (e) {}
-      setAuthSuccess(`Dispatched verification code via secure SMS code to recovery mobile [${targetPhone}].`);
-      addActivityLog(owner.name, 'recoveryInitiatedPhone', `Dispatched SMS verification recovery token to [${targetPhone}].`);
-    }
+    const target = method === 'email' ? (owner.recoveryEmail || owner.email) : (owner.recoveryPhone || owner.phone);
+    setOtpTarget(target);
+
+    fetch('/api/otp/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        target,
+        type: method,
+        name: owner.name,
+        context: 'recovery'
+      })
+    })
+    .then(async (res) => {
+      const data = await res.json();
+      setAuthLoading(false);
+      if (data.success) {
+        setResendCountdown(data.resendInSeconds || 45);
+        if (method === 'email') {
+          setAuthSuccess(`Sent password reset code to verified email address [${target}].`);
+          addActivityLog(owner.name, 'recoveryInitiated', 'Dispatched password reset token to owner verification email.');
+        } else {
+          setAuthSuccess(`Sent SMS verification code to mobile [${target}].`);
+          addActivityLog(owner.name, 'recoveryInitiatedPhone', `Dispatched SMS verification recovery token to [${target}].`);
+        }
+      } else {
+        setAuthError(data.error || 'Failed to dispatch security code.');
+      }
+    })
+    .catch((err) => {
+      setAuthLoading(false);
+      setAuthError('Connection failure: ' + err.message);
+    });
   };
 
-  const handleVerifyRecoveryCode = (e: React.FormEvent) => {
+  const handleVerifyRecoveryCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
+    setAuthLoading(true);
 
-    if (Date.now() > recoveryCodeExpiry) {
-      setAuthError('The recovery code has expired. Please initiate resend.');
-      return;
+    try {
+      const res = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target: otpTarget,
+          code: inputRecoveryCode.trim()
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAuthSuccess('Recovery credentials verified successfully! Establish a new master password.');
+        setCurrentStage('reset_password');
+      } else {
+        setAuthError(data.error || 'Invalid or expired recovery code.');
+      }
+    } catch (err: any) {
+      setAuthError('Verification error: ' + err.message);
+    } finally {
+      setAuthLoading(false);
     }
-
-    if (inputRecoveryCode.trim() !== generatedRecoveryCode) {
-      setAuthError('Invalid recovery code. Please check the logs panel below.');
-      return;
-    }
-
-    setAuthSuccess('Recovery credentials verified successfully! Establish a new master password.');
-    setCurrentStage('reset_password');
   };
 
   const handleVerifySecurityQuestions = (e: React.FormEvent) => {
@@ -961,18 +1042,37 @@ export default function OwnerLogin({ navigate }: OwnerLoginProps) {
                   <div className="flex justify-between text-xs font-semibold">
                     <button
                       type="button"
+                      disabled={resendCountdown > 0 || authLoading}
                       onClick={() => {
-                        const code = '2FA-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-                        setTwoFactorCode(code);
-                        dispatchAutomatedEmail('two_factor_auth', ownerFor2FA.email, ownerFor2FA.name, {
-                          code,
-                          email: ownerFor2FA.email
+                        setAuthLoading(true);
+                        fetch('/api/otp/send', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            target: ownerFor2FA.email,
+                            type: 'email',
+                            name: ownerFor2FA.name,
+                            context: '2fa'
+                          })
+                        })
+                        .then(async (res) => {
+                          const data = await res.json();
+                          setAuthLoading(false);
+                          if (data.success) {
+                            setResendCountdown(data.resendInSeconds || 45);
+                            setAuthSuccess('New 2FA security code successfully dispatched to your email!');
+                          } else {
+                            setAuthError(data.error || 'Failed to dispatch 2FA code.');
+                          }
+                        })
+                        .catch((err) => {
+                          setAuthLoading(false);
+                          setAuthError('Connection error: ' + err.message);
                         });
-                        setAuthSuccess('New 2FA security code dispatched!');
                       }}
-                      className="text-slate-400 hover:text-white underline"
+                      className="text-slate-400 hover:text-white underline disabled:opacity-50 disabled:no-underline cursor-pointer disabled:cursor-not-allowed"
                     >
-                      Resend 2FA Code
+                      {resendCountdown > 0 ? `Resend 2FA Code (${resendCountdown}s)` : 'Resend 2FA Code'}
                     </button>
 
                     <button
@@ -1103,10 +1203,11 @@ export default function OwnerLogin({ navigate }: OwnerLoginProps) {
 
                           <button
                             type="button"
-                            onClick={() => generateAndSendRecoveryCode(recoveryMethod, activeOwnerObj)}
-                            className="w-full text-center text-xs text-[#D4A017] hover:underline block font-semibold"
+                            disabled={resendCountdown > 0 || authLoading}
+                            onClick={() => generateAndSendRecoveryCode(recoveryMethod!, activeOwnerObj)}
+                            className="w-full text-center text-xs text-[#D4A017] hover:underline block font-semibold disabled:opacity-50 disabled:no-underline cursor-pointer disabled:cursor-not-allowed"
                           >
-                            Resend Code
+                            {resendCountdown > 0 ? `Resend Code (${resendCountdown}s)` : 'Resend Code'}
                           </button>
                         </form>
                       ) : (

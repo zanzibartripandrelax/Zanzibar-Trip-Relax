@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Page } from '../hooks/useHashRouter';
 import { Compass, Calendar, Check, ArrowRight, MessageCircle, Star, Clock, List, HelpCircle, X, Shield, ChevronDown, ChevronUp, Sparkles, Image as ImageIcon, MapPin } from 'lucide-react';
 import { ProgressiveImage } from '../components/ProgressiveImage';
-import InteractiveMap from '../components/InteractiveMap';
 import GuestReviews from '../components/GuestReviews';
 import { useScrollY } from '../hooks/useScrollY';
 import { useAnalytics } from '../context/AnalyticsContext';
+import Breadcrumbs from '../components/Breadcrumbs';
+import InteractiveMap from '../components/InteractiveMap';
 
 interface SafarisProps {
   navigate: (page: Page, id?: string) => void;
@@ -228,6 +229,8 @@ export default function Safaris({ navigate }: SafarisProps) {
         </div>
       </section>
 
+      <Breadcrumbs items={[{ label: 'Tanzania Safaris' }]} navigate={navigate} />
+
       {/* Intro Editorial section */}
       <section className="py-16 bg-white border-b border-zinc-100">
         <div className="max-w-4xl mx-auto px-4 text-center space-y-4">
@@ -237,25 +240,6 @@ export default function Safaris({ navigate }: SafarisProps) {
           <p className="text-zinc-500 text-sm md:text-base leading-relaxed font-medium">
             We handle every component of your mainland adventure. All listed packages include return flights, airport meet-and-greets, park entry permits, conservation guides, 4x4 safari cruisers with pop-up photography roofs, unlimited mineral water, hot buffet meals, and prestigious wilderness lodges or luxury glamping camps.
           </p>
-        </div>
-      </section>
-
-      {/* Interactive Safari Flight Path Map */}
-      <section className="py-16 px-4 md:px-8 bg-zinc-50">
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-6">
-            <div className="inline-flex items-center gap-1.5 bg-[#D4A017]/10 text-[#D4A017] px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-2 font-mono border border-[#D4A017]/25">
-              <MapPin size={10} className="animate-bounce" />
-              <span>Aviation route planner</span>
-            </div>
-            <h2 className="text-2xl md:text-3xl font-black text-zinc-950 tracking-tight uppercase" style={{ fontFamily: 'Playfair Display, serif' }}>
-              Zanzibar to Mainland Safari Map
-            </h2>
-            <p className="text-zinc-500 text-xs md:text-sm mt-1 max-w-2xl font-medium">
-              View the flight paths from Zanzibar International Airport (ZNZ) directly to bush airstrips in Selous, Serengeti, and Ngorongoro Crater.
-            </p>
-          </div>
-          <InteractiveMap mode="safaris" />
         </div>
       </section>
 
@@ -366,6 +350,43 @@ export default function Safaris({ navigate }: SafarisProps) {
                             </p>
                           </div>
                         ))}
+                      </div>
+                    </div>
+
+                    {/* Interactive Safari Location Map */}
+                    <div className="bg-white rounded-3xl p-6 md:p-8 border border-zinc-150 space-y-4 shadow-sm">
+                      <h4 className="text-lg font-bold text-[#0B3B8C] flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+                        <MapPin className="text-[#D4A017]" size={20} /> Interactive Safari Routes Map
+                      </h4>
+                      <div className="rounded-2xl overflow-hidden border border-gray-100">
+                        <InteractiveMap mode="safaris" height="400px" />
+                      </div>
+                    </div>
+
+                    {/* Eco-Safari Sustainability Commitment */}
+                    <div className="bg-[#115E59]/5 border border-[#115E59]/10 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+                      <h4 className="text-lg font-bold text-[#115E59] flex items-center gap-2.5" style={{ fontFamily: 'Playfair Display, serif' }}>
+                        <Shield className="text-[#D4A017]" size={20} /> Wild Habitat & Wilderness Conservation Commitment
+                      </h4>
+                      <p className="text-gray-700 text-xs md:text-sm leading-relaxed font-semibold">
+                        At Zanzibar Trip & Relax, we respect the wild ecosystems of Serengeti, Ngorongoro, and Selous. We adhere strictly to ethical safari guidelines to safeguard animal habitats.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="bg-white p-4 rounded-2xl border border-teal-50">
+                          <span className="text-xl">🐆</span>
+                          <h5 className="font-extrabold text-[#115E59] text-[10px] uppercase tracking-wider mt-1 mb-1">Strict Off-Road Ban</h5>
+                          <p className="text-[10px] text-gray-500 leading-relaxed font-medium">We enforce standard ranger-approved trails to prevent delicate soil erosion and predator den disturbance.</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-2xl border border-teal-50">
+                          <span className="text-xl">🌳</span>
+                          <h5 className="font-extrabold text-[#115E59] text-[10px] uppercase tracking-wider mt-1 mb-1">Carbon-Neutral Stays</h5>
+                          <p className="text-[10px] text-gray-500 leading-relaxed font-medium">We partner exclusively with low-impact solar and biogas-powered eco-glamping camps.</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-2xl border border-teal-50">
+                          <span className="text-xl">🦁</span>
+                          <h5 className="font-extrabold text-[#115E59] text-[10px] uppercase tracking-wider mt-1 mb-1">Wildlife Anti-Poaching</h5>
+                          <p className="text-[10px] text-gray-500 leading-relaxed font-medium">10% of park concessions go directly to supporting local anti-poaching ranger units and veterinary care.</p>
+                        </div>
                       </div>
                     </div>
 

@@ -6,6 +6,8 @@ import { Calendar, Users, MapPin, Check, ChevronRight, ChevronLeft, Star, Plus, 
 import WeatherWidget from '../components/WeatherWidget';
 import { supabase } from '../lib/supabase';
 import { useAnalytics } from '../context/AnalyticsContext';
+import { dispatchAutomatedEmail } from '../lib/emailService';
+import { addActivityLog } from '../lib/cmsStore';
 
 interface TripBuilderProps {
   navigate: (page: Page) => void;
@@ -163,6 +165,54 @@ export default function TripBuilder({ navigate }: TripBuilderProps) {
       children
     });
 
+    // Send automated itinerary email confirmation
+    try {
+      const budgetLabel = budgetRanges.find(b => b.id === budget)?.label || 'Standard / Mid-Range';
+      dispatchAutomatedEmail('custom_inquiry', email.trim(), fullName.trim(), {
+        reference: ref,
+        destination: selectedDestination || 'Zanzibar Excursion Archipelago',
+        experience: selectedExperience || 'Not Specified',
+        arrival: arrivalDate || 'Flexible',
+        departure: departureDate || 'Flexible',
+        nights: nights || 'Flexible',
+        adults,
+        children,
+        budget: budgetLabel,
+        hotelCategory,
+        specialRequests,
+        estimatedTotal: calculateTotal().toLocaleString(),
+        whatsapp: whatsapp.trim()
+      });
+    } catch (e) {
+      console.error('Failed to dispatch automated inquiry confirmation email', e);
+    }
+
+    // Persist simulated WhatsApp log for customer
+    try {
+      const waLogs = JSON.parse(localStorage.getItem('ztr_whatsapp_logs') || '[]');
+      waLogs.unshift({
+        id: `wa-inquiry-${Date.now()}`,
+        phone: whatsapp.trim(),
+        message: `Jambo ${fullName.trim()}! We received your custom Zanzibar itinerary request (Ref: ${ref}). A travel specialist will contact you shortly to refine your plan. Karibu!`,
+        status: 'delivered',
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16)
+      });
+      localStorage.setItem('ztr_whatsapp_logs', JSON.stringify(waLogs.slice(0, 200)));
+    } catch (e) {
+      console.error('Failed to log simulated WhatsApp inquiry dispatch', e);
+    }
+
+    // Add activity log to CMS
+    try {
+      addActivityLog(
+        fullName.trim(),
+        'Guest',
+        `Submitted custom itinerary builder inquiry (Ref: ${ref}, Destination: ${selectedDestination || 'Zanzibar'})`
+      );
+    } catch (e) {
+      console.error('Failed to register CMS activity log for custom trip inquiry', e);
+    }
+
     setSubmitting(false);
     setSubmitted(true);
   };
@@ -225,7 +275,7 @@ export default function TripBuilder({ navigate }: TripBuilderProps) {
       </section>
 
       {/* Progress Bar */}
-      <div className="bg-[#0B1E3D] py-5 px-4 sticky top-20 z-40 border-b border-white/10 shadow-lg select-none">
+      <div className="bg-[#0B1E3D] py-5 px-4 sticky top-[68px] lg:top-[80px] z-40 border-b border-white/10 shadow-lg select-none">
         <div className="max-w-4xl mx-auto">
           {/* Progress Indicator Track */}
           <div className="relative flex items-center justify-between overflow-x-auto pb-2 scrollbar-none">

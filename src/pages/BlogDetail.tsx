@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Calendar, User, Clock, ArrowLeft, Share2, Facebook, Twitter, Linkedin, MessageCircle } from 'lucide-react';
 import { Page } from '../hooks/useHashRouter';
 import { ProgressiveImage } from '../components/ProgressiveImage';
+import Breadcrumbs from '../components/Breadcrumbs';
 
 interface BlogDetailProps {
   navigate: (page: Page, id?: string) => void;
@@ -481,6 +482,8 @@ export default function BlogDetail({ navigate, blogId }: BlogDetailProps) {
           </div>
         </div>
       </section>
+
+      <Breadcrumbs items={[{ label: 'Travel Blog', page: 'blog' }, { label: post.title }]} navigate={navigate} />
 
       {/* Content */}
       <section className="py-12 px-4">

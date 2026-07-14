@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Page } from '../hooks/useHashRouter';
 import { tours, Tour } from '../data/tours';
-import { Clock, Users, Star, Check, X, Shield, HelpCircle, MapPin, ArrowRight, ArrowLeft, MessageCircle, Calendar, Compass, List, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { Clock, Users, Star, Check, X, Shield, HelpCircle, MapPin, ArrowRight, ArrowLeft, MessageCircle, Calendar, Compass, List, Image as ImageIcon, Sparkles, MessageSquare, Quote } from 'lucide-react';
 import { getSiteContent } from '../lib/cmsStore';
 import { ProgressiveImage } from '../components/ProgressiveImage';
 import GuestReviews from '../components/GuestReviews';
 import { useAnalytics } from '../context/AnalyticsContext';
+import Breadcrumbs from '../components/Breadcrumbs';
+import InteractiveMap from '../components/InteractiveMap';
+import { useTourReviews } from '../hooks/useTourReviews';
+import TourReviewWidget from '../components/TourReviewWidget';
 
 interface TourDetailProps {
   navigate: (page: Page, id?: string) => void;
@@ -46,6 +50,9 @@ export default function TourDetail({ navigate }: TourDetailProps) {
     itinerary: (dynamicTour?.itinerary && dynamicTour.itinerary.length > 0) ? dynamicTour.itinerary : staticTour.itinerary,
     longDescription: dynamicTour?.longDescription || dynamicTour?.desc || staticTour.longDescription,
   };
+
+  const { reviews, getAverageRating, totalReviews } = useTourReviews(tour.id);
+  const [showReviewWidget, setShowReviewWidget] = useState(false);
   
   // Convert custom itinerary lines into formatted timeline stages
   const parsedItinerary = tour.itinerary.map((step: any, index: number) => {
@@ -164,7 +171,10 @@ export default function TourDetail({ navigate }: TourDetailProps) {
               <div className="flex flex-wrap items-center gap-6 text-white/90 text-xs font-semibold uppercase tracking-wider">
                 <span className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-xl backdrop-blur-sm"><Clock size={14} className="text-[#D4A017]" /> {tour.duration}</span>
                 <span className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-xl backdrop-blur-sm"><Users size={14} className="text-[#D4A017]" /> {tour.groupSize}</span>
-                <span className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-xl backdrop-blur-sm"><Star size={14} className="text-[#D4A017] fill-[#D4A017]" /> 5.0 / 5 Rating</span>
+                <span className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-xl backdrop-blur-sm">
+                  <Star size={14} className="text-[#D4A017] fill-[#D4A017]" /> 
+                  {totalReviews > 0 ? getAverageRating() : '5.0'} / 5 ({totalReviews > 0 ? totalReviews : '100+'} Reviews)
+                </span>
               </div>
             </div>
             <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-md border border-white/25 shadow-lg shrink-0 text-center md:text-right">
@@ -174,6 +184,8 @@ export default function TourDetail({ navigate }: TourDetailProps) {
           </div>
         </div>
       </section>
+
+      <Breadcrumbs items={[{ label: 'Zanzibar Excursions', page: 'tours' }, { label: tour.name }]} navigate={navigate} />
 
       {/* Main Structural Area */}
       <section className="py-16 px-4 md:px-8">
@@ -255,6 +267,43 @@ export default function TourDetail({ navigate }: TourDetailProps) {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Interactive Location Map */}
+            <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm space-y-6">
+              <h2 className="text-2xl font-bold text-[#0B3B8C] flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+                <MapPin className="text-[#D4A017]" size={24} /> Interactive Excursion Map & Route
+              </h2>
+              <div className="rounded-2xl overflow-hidden border border-gray-100">
+                <InteractiveMap mode="tours" height="400px" />
+              </div>
+            </div>
+
+            {/* Sustainability Section */}
+            <div className="bg-[#115E59]/5 border border-[#115E59]/10 rounded-3xl p-8 shadow-sm space-y-6">
+              <h2 className="text-2xl font-bold text-[#115E59] flex items-center gap-2.5" style={{ fontFamily: 'Playfair Display, serif' }}>
+                <Shield className="text-[#D4A017]" size={24} /> Eco-Tourism & Island Preservation Commitment
+              </h2>
+              <p className="text-gray-700 text-sm leading-relaxed font-semibold">
+                At Zanzibar Trip & Relax, we believe in protecting the pristine beauty and rich cultural heritage of our archipelago for future generations. Our excursions adhere strictly to sustainable tourism practices.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white p-4 rounded-2xl border border-teal-50">
+                  <span className="text-xl">🐠</span>
+                  <h4 className="font-extrabold text-[#115E59] text-xs uppercase tracking-wider mt-2 mb-1">Marine Protection</h4>
+                  <p className="text-[11px] text-gray-500 leading-relaxed font-medium">We practice strictly zero-contact reef guidelines and encourage bio-safe sunscreen during dolphin swims.</p>
+                </div>
+                <div className="bg-white p-4 rounded-2xl border border-teal-50">
+                  <span className="text-xl">🎒</span>
+                  <h4 className="font-extrabold text-[#115E59] text-xs uppercase tracking-wider mt-2 mb-1">Community Funding</h4>
+                  <p className="text-[11px] text-gray-500 leading-relaxed font-medium">10% of booking proceeds directly sponsor local Swahili primary school upgrades and clean water initiatives.</p>
+                </div>
+                <div className="bg-white p-4 rounded-2xl border border-teal-50">
+                  <span className="text-xl">♻️</span>
+                  <h4 className="font-extrabold text-[#115E59] text-xs uppercase tracking-wider mt-2 mb-1">Zero Plastic Policy</h4>
+                  <p className="text-[11px] text-gray-500 leading-relaxed font-medium">We supply all guests with reusable organic cotton tote bags and chilled water in sanitized thermal flasks.</p>
+                </div>
               </div>
             </div>
 
@@ -509,6 +558,103 @@ export default function TourDetail({ navigate }: TourDetailProps) {
             </div>
           </div>
 
+        </div>
+      </section>
+
+      {/* Dynamic Guest Experience Reviews */}
+      <section className="py-16 px-4 bg-white border-t border-gray-100">
+        <div className="max-w-7xl mx-auto space-y-12">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="space-y-2">
+              <span className="text-[#0B3B8C] uppercase tracking-widest font-extrabold text-[10px] bg-[#0B3B8C]/5 px-4 py-2 rounded-full border border-[#0B3B8C]/10 inline-block">
+                💬 Digital Guest Ledger
+              </span>
+              <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>
+                Direct Experience Reviews
+              </h2>
+              <p className="text-slate-500 text-sm max-w-lg font-medium">
+                Genuine feedback and ratings from travelers who recently explored Zanzibar with our professional team.
+              </p>
+            </div>
+            
+            {!showReviewWidget && (
+              <button
+                onClick={() => setShowReviewWidget(true)}
+                className="bg-[#0B3B8C] text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-[#082d6b] transition-all shadow-lg shadow-blue-900/10 active:scale-95"
+              >
+                Submit Your Review
+              </button>
+            )}
+          </div>
+
+          {showReviewWidget && (
+            <div className="max-w-3xl mx-auto">
+              <TourReviewWidget 
+                tourId={tour.id} 
+                tourName={tour.name} 
+                onSuccess={() => {
+                  setTimeout(() => setShowReviewWidget(false), 3000);
+                }}
+              />
+              <button 
+                onClick={() => setShowReviewWidget(false)}
+                className="mt-4 text-xs font-bold text-slate-400 hover:text-slate-600 block mx-auto underline uppercase tracking-widest"
+              >
+                Cancel and return to reviews
+              </button>
+            </div>
+          )}
+
+          {reviews.length === 0 ? (
+            <div className="bg-slate-50 border border-dashed border-slate-200 rounded-3xl p-12 text-center space-y-4">
+              <MessageSquare size={48} className="mx-auto text-slate-200" />
+              <div className="space-y-1">
+                <p className="text-slate-900 font-bold">Be the first to review!</p>
+                <p className="text-slate-500 text-sm">You haven't added any public reviews for this excursion yet.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {reviews.map((rev) => (
+                <div key={rev.id} className="bg-white border border-slate-150 p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star 
+                            key={s} 
+                            size={14} 
+                            className={s <= rev.rating ? 'fill-[#D4A017] text-[#D4A017]' : 'text-slate-100'} 
+                          />
+                        ))}
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 font-mono">{rev.date}</span>
+                    </div>
+                    
+                    <div className="relative">
+                      <Quote className="absolute -top-2 -left-2 text-slate-100 w-8 h-8 -z-10" />
+                      <p className="text-slate-700 text-sm italic leading-relaxed font-medium">"{rev.comment}"</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-[#0B3B8C]/10 flex items-center justify-center text-[#0B3B8C] font-black text-[10px]">
+                        {rev.userName.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-xs font-bold text-slate-800">{rev.userName}</span>
+                    </div>
+                    {rev.isVerified && (
+                      <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Check size={8} className="stroke-[4]" />
+                        Verified
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

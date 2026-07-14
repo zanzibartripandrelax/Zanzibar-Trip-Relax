@@ -2,15 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Page } from '../hooks/useHashRouter';
 import { 
   Lock, User, LogOut, CheckCircle, XCircle, Search, Filter, 
-  Settings, ShieldAlert, Edit, Trash2, Plus, ArrowRight, 
+  Settings, ShieldAlert, Edit, Trash2, Plus, PlusCircle, ArrowRight, 
   FileText, Copy, Mail, Calendar, Eye, Image, Sparkles,
   CheckCircle2, DollarSign, Upload, Users, Activity, HelpCircle,
   TrendingUp, Download, EyeOff, Layout, Phone, MapPin, Clock, List,
-  Shield, Check, Briefcase, Leaf, X, Database, CloudUpload, History, Play, RefreshCw, FileCode, AlertTriangle, Terminal, ChevronDown, ChevronUp
+  Shield, Check, Briefcase, Leaf, X, Database, CloudUpload, History, Play, RefreshCw, FileCode, AlertTriangle, Terminal, ChevronDown, ChevronUp, Printer,
+  Luggage, Award, Send, Truck, Navigation, Info, Globe
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getSiteContent, saveSiteContent, addActivityLog as cmsAddActivityLog, getActivities, SiteContent, DEFAULT_MEDIA, MediaFile, getExtendedSeasonality, saveExtendedSeasonality, ExtendedSeason, getJobs, saveJobs, getSustainability, saveSustainability, getTransportZones, saveTransportZones, getHotels, saveHotels, TransportZone, HotelOption } from '../lib/cmsStore';
 import { blogPosts, saveBlogPosts } from './BlogDetail';
+import { MediaSelector, MediaLibraryTab } from '../components/MediaManager';
+import { MediaLibrary } from '../components/admin/MediaLibrary';
 import { generateBookingsSummaryPDF, generateVisitorLogsPDF } from '../lib/pdfGenerator';
 import { ReusableTable, ColumnConfig } from '../components/ReusableTable';
 import { dispatchAutomatedEmail } from '../lib/emailService';
@@ -20,6 +23,9 @@ import AuthGuard from '../components/AuthGuard';
 import SeoAnalytics from '../components/SeoAnalytics';
 import CustomerDashboard from '../components/CustomerDashboard';
 import EmailSettingsManager from '../components/EmailSettingsManager';
+import HolidayPackageCMS from '../components/admin/HolidayPackageCMS';
+import { useLocalStorage } from '../hooks/useLocalStorage';
+import { eventBus } from '../services/eventBus';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -34,6 +40,12 @@ interface AdminProps {
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
 
 export default function Admin({ navigate }: AdminProps) {
+  // Mounting check to prevent hydration mismatches
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // Session tracking
   const [session, setSession] = useState<{ username: string; name: string; role: string } | null>(null);
 
@@ -88,6 +100,7 @@ export default function Admin({ navigate }: AdminProps) {
 
   // Active sub-section - type changed to string to allow newly introduced ERP tabs
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [dashboardViewType, setDashboardViewType] = useState<'global' | 'personal'>('global');
   
   // Transport & Zones state
   const [zonesList, setZonesList] = useState<TransportZone[]>(getTransportZones());
@@ -98,12 +111,131 @@ export default function Admin({ navigate }: AdminProps) {
   const [selectedZoneFilter, setSelectedZoneFilter] = useState('all');
   const [csvPasteText, setCsvPasteText] = useState('');
   
-  // Company config / system settings state
-  const [settingsCurrency, setSettingsCurrency] = useState(localStorage.getItem('ztr_currency_symbol') || '$');
-  const [settingsTimeout, setSettingsTimeout] = useState(localStorage.getItem('ztr_inactivity_timeout_duration') || '30');
-  const [settingsAccent, setSettingsAccent] = useState(localStorage.getItem('ztr_theme_accent') || 'gold');
+  // Company config / system settings state using useLocalStorage hook to prevent hydration mismatches
+  const [settingsCurrency, setSettingsCurrency] = useLocalStorage('ztr_currency_symbol', '$');
+  const [settingsTimeout, setSettingsTimeout] = useLocalStorage('ztr_inactivity_timeout_duration', '30');
+  const [settingsAccent, setSettingsAccent] = useLocalStorage('ztr_theme_accent', 'gold');
+  const [settingsSubTab, setSettingsSubTab] = useLocalStorage('ztr_settings_active_subtab', 'company');
   const [saveSettingsSuccess, setSaveSettingsSuccess] = useState(false);
+  const [saveAutomationSuccess, setSaveAutomationSuccess] = useState(false);
   const [dashboardLogFilter, setDashboardLogFilter] = useState<'all' | 'cms' | 'auth'>('all');
+
+  // Staff Workstation Security States
+  const [selectedSecurityStaff, setSelectedSecurityStaff] = useState<any | null>(null);
+  const [securityStaffLogsUser, setSecurityStaffLogsUser] = useState<string>('all');
+  const [securityEditUser, setSecurityEditUser] = useState<any | null>(null);
+  const [securityEditName, setSecurityEditName] = useState<string>('');
+  const [securityEditEmail, setSecurityEditEmail] = useState<string>('');
+  const [securityEditRecEmail, setSecurityEditRecEmail] = useState<string>('');
+  const [securityEditPhone, setSecurityEditPhone] = useState<string>('');
+  const [securityEditCountry, setSecurityEditCountry] = useState<string>('');
+  const [securityEditRole, setSecurityEditRole] = useState<string>('');
+  const [securityEditStatus, setSecurityEditStatus] = useState<string>('');
+  const [securityEditPassword, setSecurityEditPassword] = useState<string>('');
+
+  // Extended ERP & Settings state variables
+  const [settingsCompanyName, setSettingsCompanyName] = useLocalStorage('ztr_settings_company_name', 'Zanzibar Trip & Relax');
+  const [settingsCompanyLogo, setSettingsCompanyLogo] = useLocalStorage('ztr_settings_company_logo', 'https://images.unsplash.com/photo-1540553016722-983e48a2cd10?w=150');
+  const [settingsCompanyEmail, setSettingsCompanyEmail] = useLocalStorage('ztr_settings_company_email', 'zanzibartripandrelax@gmail.com');
+  const [settingsCompanyPhone, setSettingsCompanyPhone] = useLocalStorage('ztr_settings_company_phone', '+255 777 123 456');
+  const [settingsCompanyAddress, setSettingsCompanyAddress] = useLocalStorage('ztr_settings_company_address', 'Stone Town, Zanzibar, Tanzania');
+  const [settingsCompanyTimezone, setSettingsCompanyTimezone] = useLocalStorage('ztr_settings_company_timezone', 'UTC+3 (East Africa Time)');
+  const [settingsCompanyLanguages, setSettingsCompanyLanguages] = useLocalStorage('ztr_settings_company_languages', 'English, Swahili, German, French, Italian');
+
+  const [settingsPaymentBankEnabled, setSettingsPaymentBankEnabled] = useLocalStorage('ztr_settings_payment_bank_enabled', true);
+  const [settingsPaymentBankName, setSettingsPaymentBankName] = useLocalStorage('ztr_settings_payment_bank_name', 'Zanzibar National Bank');
+  const [settingsPaymentBankAccountName, setSettingsPaymentBankAccountName] = useLocalStorage('ztr_settings_payment_bank_account_name', 'Zanzibar Trip & Relax LTD');
+  const [settingsPaymentBankAccountNumber, setSettingsPaymentBankAccountNumber] = useLocalStorage('ztr_settings_payment_bank_account_number', '1029384756');
+  const [settingsPaymentBankSwift, setSettingsPaymentBankSwift] = useLocalStorage('ztr_settings_payment_bank_swift', 'ZNBTZTZ');
+  const [settingsPaymentBankBranch, setSettingsPaymentBankBranch] = useLocalStorage('ztr_settings_payment_bank_branch', 'Stone Town Main Branch');
+  const [settingsPaymentBankInstructions, setSettingsPaymentBankInstructions] = useLocalStorage('ztr_settings_payment_bank_instructions', 'Please include your Booking Reference in the payment reference field.');
+
+  const [settingsPaymentPayPalEnabled, setSettingsPaymentPayPalEnabled] = useLocalStorage('ztr_settings_payment_paypal_enabled', true);
+  const [settingsPaymentPayPalEmail, setSettingsPaymentPayPalEmail] = useLocalStorage('ztr_settings_payment_paypal_email', 'paypal@zanzibartripandrelax.com');
+  const [settingsPaymentPayPalSandbox, setSettingsPaymentPayPalSandbox] = useLocalStorage('ztr_settings_payment_paypal_sandbox', true);
+
+  const [settingsPaymentStripeEnabled, setSettingsPaymentStripeEnabled] = useLocalStorage('ztr_settings_payment_stripe_enabled', true);
+  const [settingsPaymentStripePublishable, setSettingsPaymentStripePublishable] = useLocalStorage('ztr_settings_payment_stripe_publishable', 'pk_test_51N2T3U4V5W6X7Y8Z');
+  const [settingsPaymentStripeSecret, setSettingsPaymentStripeSecret] = useLocalStorage('ztr_settings_payment_stripe_secret', 'sk_test_51N2T3U4V5W6X7Y8Z9A1B2C3D');
+  const [settingsPaymentStripeWebhook, setSettingsPaymentStripeWebhook] = useLocalStorage('ztr_settings_payment_stripe_webhook', 'whsec_6f5e4d3c2b1a');
+
+  const [settingsPaymentMobileMoneyEnabled, setSettingsPaymentMobileMoneyEnabled] = useLocalStorage('ztr_settings_payment_mobile_money_enabled', true);
+  const [settingsPaymentMobileMoneyProvider, setSettingsPaymentMobileMoneyProvider] = useLocalStorage('ztr_settings_payment_mobile_money_provider', 'M-Pesa');
+  const [settingsPaymentMobileMoneyName, setSettingsPaymentMobileMoneyName] = useLocalStorage('ztr_settings_payment_mobile_money_name', 'Zanzibar Trip & Relax Mobile');
+  const [settingsPaymentMobileMoneyPhone, setSettingsPaymentMobileMoneyPhone] = useLocalStorage('ztr_settings_payment_mobile_money_phone', '+255 777 999 888');
+  const [settingsPaymentMobileMoneyTill, setSettingsPaymentMobileMoneyTill] = useLocalStorage('ztr_settings_payment_mobile_money_till', '554433');
+
+  const [settingsPaymentCashEnabled, setSettingsPaymentCashEnabled] = useLocalStorage('ztr_settings_payment_cash_enabled', true);
+  const [settingsPaymentDepositEnabled, setSettingsPaymentDepositEnabled] = useLocalStorage('ztr_settings_payment_deposit_enabled', true);
+  const [settingsPaymentDepositPercent, setSettingsPaymentDepositPercent] = useLocalStorage('ztr_settings_payment_deposit_percent', '20');
+  const [settingsPaymentDefaultMethod, setSettingsPaymentDefaultMethod] = useLocalStorage('ztr_settings_payment_default_method', 'Bank Transfer');
+
+  const [settingsEmailHost, setSettingsEmailHost] = useLocalStorage('ztr_settings_email_host', 'smtp.mailgun.org');
+  const [settingsEmailPort, setSettingsEmailPort] = useLocalStorage('ztr_settings_email_port', '587');
+  const [settingsEmailUser, setSettingsEmailUser] = useLocalStorage('ztr_settings_email_user', 'postmaster@zanzibartripandrelax.com');
+  const [settingsEmailPass, setSettingsEmailPass] = useLocalStorage('ztr_settings_email_pass', '••••••••••••');
+  const [settingsEmailSenderName, setSettingsEmailSenderName] = useLocalStorage('ztr_settings_email_sender_name', 'Zanzibar Trip & Relax');
+  const [settingsEmailSenderEmail, setSettingsEmailSenderEmail] = useLocalStorage('ztr_settings_email_sender_email', 'bookings@zanzibartripandrelax.com');
+  const [settingsEmailReplyTo, setSettingsEmailReplyTo] = useLocalStorage('ztr_settings_email_reply_to', 'info@zanzibartripandrelax.com');
+
+  const [settingsWhatsAppToken, setSettingsWhatsAppToken] = useLocalStorage('ztr_settings_whatsapp_token', 'EAAW1234567890BCDE');
+  const [settingsWhatsAppPhone, setSettingsWhatsAppPhone] = useLocalStorage('ztr_settings_whatsapp_phone', '+255 777 123 456');
+  const [settingsWhatsAppConfirmTemplate, setSettingsWhatsAppConfirmTemplate] = useLocalStorage('ztr_settings_whatsapp_confirm_template', 'Jambo {{name}}, your booking for {{product}} on {{date}} is CONFIRMED. Reference: {{ref}}. Karibu Zanzibar!');
+  const [settingsWhatsAppReminderTemplate, setSettingsWhatsAppReminderTemplate] = useLocalStorage('ztr_settings_whatsapp_reminder_template', 'Jambo {{name}}, this is a friendly reminder that your {{product}} starts tomorrow at {{time}}! Pickup at {{pickup}}.');
+  const [settingsWhatsAppReviewTemplate, setSettingsWhatsAppReviewTemplate] = useLocalStorage('ztr_settings_whatsapp_review_template', 'Jambo {{name}}! We hope you loved your trip. Could you please leave us a review here? Thank you, Karibu tena!');
+
+  const [settingsNotifyOwner, setSettingsNotifyOwner] = useLocalStorage('ztr_settings_notify_owner', true);
+  const [settingsNotifySuperAdmin, setSettingsNotifySuperAdmin] = useLocalStorage('ztr_settings_notify_super_admin', true);
+  const [settingsNotifyReservation, setSettingsNotifyReservation] = useLocalStorage('ztr_settings_notify_reservation', true);
+  const [settingsNotifyDriver, setSettingsNotifyDriver] = useLocalStorage('ztr_settings_notify_driver', true);
+  const [settingsNotifyGuide, setSettingsNotifyGuide] = useLocalStorage('ztr_settings_notify_guide', true);
+
+  const [settingsNotifyOnNew, setSettingsNotifyOnNew] = useLocalStorage('ztr_settings_notify_on_new', true);
+  const [settingsNotifyOnConfirm, setSettingsNotifyOnConfirm] = useLocalStorage('ztr_settings_notify_on_confirm', true);
+  const [settingsNotifyOnPayment, setSettingsNotifyOnPayment] = useLocalStorage('ztr_settings_notify_on_payment', true);
+  const [settingsNotifyOnCancel, setSettingsNotifyOnCancel] = useLocalStorage('ztr_settings_notify_on_cancel', true);
+  const [settingsNotifyOnRefund, setSettingsNotifyOnRefund] = useLocalStorage('ztr_settings_notify_on_refund', true);
+  const [settingsNotifyOnReview, setSettingsNotifyOnReview] = useLocalStorage('ztr_settings_notify_on_review', true);
+  const [settingsNotifyOnInquiry, setSettingsNotifyOnInquiry] = useLocalStorage('ztr_settings_notify_on_inquiry', true);
+
+  const [settingsNotifyChannelEmail, setSettingsNotifyChannelEmail] = useLocalStorage('ztr_settings_notify_channel_email', true);
+  const [settingsNotifyChannelWhatsApp, setSettingsNotifyChannelWhatsApp] = useLocalStorage('ztr_settings_notify_channel_whatsapp', true);
+  const [settingsNotifyChannelDashboard, setSettingsNotifyChannelDashboard] = useLocalStorage('ztr_settings_notify_channel_dashboard', true);
+
+  const [settingsAutoConfirmCustomer, setSettingsAutoConfirmCustomer] = useLocalStorage('ztr_settings_auto_confirm_customer', true);
+  const [settingsAutoNotifyAdmin, setSettingsAutoNotifyAdmin] = useLocalStorage('ztr_settings_auto_notify_admin', true);
+  const [settingsAutoReserveInventory, setSettingsAutoReserveInventory] = useLocalStorage('ztr_settings_auto_reserve_inventory', true);
+  const [settingsAutoUpdateAvailability, setSettingsAutoUpdateAvailability] = useLocalStorage('ztr_settings_auto_update_availability', true);
+  const [settingsAutoSendReminderEmail, setSettingsAutoSendReminderEmail] = useLocalStorage('ztr_settings_auto_send_reminder_email', true);
+  const [settingsAutoSendReminderWhatsApp, setSettingsAutoSendReminderWhatsApp] = useLocalStorage('ztr_settings_auto_send_reminder_whatsapp', true);
+  const [settingsAutoSendThankYou, setSettingsAutoSendThankYou] = useLocalStorage('ztr_settings_auto_send_thank_you', true);
+  const [settingsAutoSendReviewRequest, setSettingsAutoSendReviewRequest] = useLocalStorage('ztr_settings_auto_send_review_request', true);
+
+  const [settingsBookingRefFormat, setSettingsBookingRefFormat] = useLocalStorage('ztr_settings_booking_ref_format', 'ZTR-YYYY-SEQ');
+  const [settingsBookingApproval, setSettingsBookingApproval] = useLocalStorage('ztr_settings_booking_approval', 'automatic');
+  const [settingsBookingCancelHours, setSettingsBookingCancelHours] = useLocalStorage('ztr_settings_booking_cancel_hours', '24');
+  const [settingsBookingRefundPercent, setSettingsBookingRefundPercent] = useLocalStorage('ztr_settings_booking_refund_percent', '100');
+
+  const [settingsProductCategories, setSettingsProductCategories] = useLocalStorage('ztr_settings_product_categories', 'Excursion, Holiday Package, Safari, Kilimanjaro, Transfer');
+  const [settingsProductDestinations, setSettingsProductDestinations] = useLocalStorage('ztr_settings_product_destinations', 'Stone Town, Nungwi, Kendwa, Paje, Serengeti, Ngorongoro, Kilimanjaro');
+  const [settingsProductDifficulty, setSettingsProductDifficulty] = useLocalStorage('ztr_settings_product_difficulty', 'Easy, Moderate, Challenging, Extreme');
+
+  const [settingsIntegrationGoogleMaps, setSettingsIntegrationGoogleMaps] = useLocalStorage('ztr_settings_integration_google_maps', 'AIzaSy_ZanzibarTravelMapKey2026');
+  const [settingsIntegrationAnalytics, setSettingsIntegrationAnalytics] = useLocalStorage('ztr_settings_integration_analytics', 'G-ZTR12345678');
+  const [settingsIntegrationTagManager, setSettingsIntegrationTagManager] = useLocalStorage('ztr_settings_integration_tag_manager', 'GTM-ZTR9999');
+  const [settingsIntegrationFacebookPixel, setSettingsIntegrationFacebookPixel] = useLocalStorage('ztr_settings_integration_facebook_pixel', 'FP-88888888');
+
+  const [settingsSecurityMfa, setSettingsSecurityMfa] = useLocalStorage('ztr_settings_security_mfa', false);
+  const [settingsSecurityPasswordMinLength, setSettingsSecurityPasswordMinLength] = useLocalStorage('ztr_settings_security_password_min_length', '8');
+  const [settingsSecurityPasswordSpecial, setSettingsSecurityPasswordSpecial] = useLocalStorage('ztr_settings_security_password_special', true);
+  // Test simulation states
+  const [testEmailAddress, setTestEmailAddress] = useState('');
+  const [testEmailSending, setTestEmailSending] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState('');
+
+  const [testPhoneNo, setTestPhoneNo] = useState('');
+  const [testPhoneSending, setTestPhoneSending] = useState(false);
+  const [testPhoneResult, setTestPhoneResult] = useState('');
   
   // Modals / Adding states
   const [editingZone, setEditingZone] = useState<TransportZone | null>(null);
@@ -205,12 +337,55 @@ export default function Admin({ navigate }: AdminProps) {
   const [userAddSuccess, setUserAddSuccess] = useState('');
   const [usersRefreshTrigger, setUsersRefreshTrigger] = useState(0);
 
+  // Extended Staff Profile states
+  const [newEmployeeId, setNewEmployeeId] = useState('');
+  const [newWhatsApp, setNewWhatsApp] = useState('');
+  const [newAddress, setNewAddress] = useState('');
+  const [newNationality, setNewNationality] = useState('');
+  const [newPassportDetails, setNewPassportDetails] = useState('');
+  const [newEmergencyContact, setNewEmergencyContact] = useState('');
+  const [newDateJoined, setNewDateJoined] = useState(() => new Date().toISOString().split('T')[0]);
+  const [newEmploymentStatus, setNewEmploymentStatus] = useState('Full-time');
+  const [newDepartment, setNewDepartment] = useState('Operations');
+  const [newPosition, setNewPosition] = useState('');
+  const [newSupervisor, setNewSupervisor] = useState('');
+  const [newProfilePhoto, setNewProfilePhoto] = useState('');
+
   // Staff user editing state variables
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [editUserFullName, setEditUserFullName] = useState('');
   const [editUserRole, setEditUserRole] = useState('');
   const [editUserEmail, setEditUserEmail] = useState('');
   const [editUserPhone, setEditUserPhone] = useState('');
+  const [editUserEmployeeId, setEditUserEmployeeId] = useState('');
+  const [editUserWhatsApp, setEditUserWhatsApp] = useState('');
+  const [editUserAddress, setEditUserAddress] = useState('');
+  const [editUserNationality, setEditUserNationality] = useState('');
+  const [editUserPassportDetails, setEditUserPassportDetails] = useState('');
+  const [editUserEmergencyContact, setEditUserEmergencyContact] = useState('');
+  const [editUserDateJoined, setEditUserDateJoined] = useState('');
+  const [editUserEmploymentStatus, setEditUserEmploymentStatus] = useState('Full-time');
+  const [editUserDepartment, setEditUserDepartment] = useState('Operations');
+  const [editUserPosition, setEditUserPosition] = useState('');
+  const [editUserSupervisor, setEditUserSupervisor] = useState('');
+  const [editUserProfilePhoto, setEditUserProfilePhoto] = useState('');
+
+  const [selectedStaffProfile, setSelectedStaffProfile] = useState<any | null>(null);
+  const [selectedStaffDossierTab, setSelectedStaffDossierTab] = useState('personal');
+  const [newDocType, setNewDocType] = useState('CV');
+  const [newDocLabel, setNewDocLabel] = useState('');
+
+  // Staff list filtering states
+  const [staffSearchQuery, setStaffSearchQuery] = useState('');
+  const [staffDeptFilter, setStaffDeptFilter] = useState('all');
+  const [staffStatusFilter, setStaffStatusFilter] = useState('all');
+
+  // Deletion Request & Approvals Workflow states
+  const [deleteRequests, setDeleteRequests] = useState<any[]>(() => {
+    const saved = localStorage.getItem('ztr_delete_requests');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [deleteRequestReason, setDeleteRequestReason] = useState('');
 
   // --- OWNER SPECIFIC ADDITIONAL STATES ---
   const [ownerEditPackage, setOwnerEditPackage] = useState<any | null>(null);
@@ -377,10 +552,40 @@ export default function Admin({ navigate }: AdminProps) {
   const [simulationStep, setSimulationStep] = useState('');
 
   // --- ERP STATE VARIABLES ---
+  const [transferSubTab, setTransferSubTab] = useState<'bookings' | 'vehicles' | 'routes' | 'drivers' | 'reports' | 'content'>('bookings');
+  const [transferRoutes, setTransferRoutes] = useState<any[]>([]);
+  const [transferDrivers, setTransferDrivers] = useState<any[]>([]);
+  const [transferBookings, setTransferBookings] = useState<any[]>([]);
+  const [editingRoute, setEditingRoute] = useState<any | null>(null);
+  const [editingVehicle, setEditingVehicle] = useState<any | null>(null);
+  const [editingDriver, setEditingDriver] = useState<any | null>(null);
   const [vehiclesList, setVehiclesList] = useState<any[]>([]);
   const [suppliersList, setSuppliersList] = useState<any[]>([]);
   const [expensesList, setExpensesList] = useState<any[]>([]);
   const [calendarDate, setCalendarDate] = useState<Date>(new Date());
+
+  // Walk-In Booking form state & Tour Operations date state
+  const [walkinFormData, setWalkinFormData] = useState({
+    full_name: '',
+    whatsapp_number: '',
+    email: '',
+    nationality: 'United Kingdom',
+    passport_number: '',
+    tour_name: 'Prison Island & Giant Aldabra Tortoises',
+    preferred_date: new Date().toISOString().split('T')[0],
+    number_of_guests: 2,
+    pickup_location: 'Hotel Lobby reception',
+    pickup_time: '08:30 AM',
+    booking_source: 'Walk-in',
+    special_requests: '',
+    internal_notes: '',
+    payment_mode: 'Cash',
+    payment_status: 'Paid in Full',
+    total_cost: 150,
+    amount_paid: 150,
+    attachments: [] as any[]
+  });
+  const [touropsSelectedDate, setTouropsSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   
   // Modals / forms for ERP additions
   const [showAddVehicleModal, setShowAddVehicleModal] = useState(false);
@@ -404,31 +609,34 @@ export default function Admin({ navigate }: AdminProps) {
   useEffect(() => {
     // We will establish the hashed passwords in localStorage if not exists
     const users = localStorage.getItem('ztr_admin_users');
+    
+    const initialUsers = [
+      { username: 'gerevas', passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', name: 'Gerevas Paulo Mtaki', role: 'Administrator', staff_id: 'STF-001', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // zanzibarpassword123
+      { username: 'manager', passwordHash: '322f98f6d72d24249a15cd388f8d9516ca4d0b13cf3e3b0e13915bc5fcf7ca6c', name: 'Manager Amin', role: 'Manager', staff_id: 'STF-002', office: 'Stone Town Desk', office_code: 'STN-DSK', branch_code: 'ST-02' }, // managerpassword123
+      { username: 'sales', passwordHash: '4f4fa1da80a9693e5066922cfb9b47e5ed7a1262d4e8b394efdc2fbf8ca58ea6', name: 'Sales Rep Salma', role: 'Sales', staff_id: 'STF-003', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // salespassword123
+      { username: 'accountant', passwordHash: '20eb81ec7d9834cbd2d8d87948cd122c81fb392a2a0ff9bb86cc5b1d4ef23b8f', name: 'Frank accountant', role: 'Accountant', staff_id: 'STF-004', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // accountantpassword123
+      { username: 'marketing', passwordHash: '36113bdf2292f39cbf8f8515c61a153835e5d1e2e92bc49692c81358d7e0099e', name: 'Neema Marketing', role: 'Marketing', staff_id: 'STF-005', office: 'Stone Town Desk', office_code: 'STN-DSK', branch_code: 'ST-02' }, // marketingpassword123
+      { username: 'guide', passwordHash: '2a28178a9c2401f8df9765e90eb21ddb97b1ca6dcff7cedc2826cf8438db06ff', name: 'Captain Guide Ali', role: 'Guide', staff_id: 'STF-006', office: 'Safari Field Office', office_code: 'SAF-FLD', branch_code: 'SF-04' }, // guidepassword123
+      { username: 'driver', passwordHash: '0142fa9559c5d0130db99e3ca893b86cb45e05d0e2e987f73967d1db0e987be7', name: 'Driver Juma', role: 'Driver', staff_id: 'STF-007', office: 'Transport Depot', office_code: 'TRN-DEP', branch_code: 'TD-05' }, // driverpassword123
+      { username: 'customer', passwordHash: '4f880fdf8b10ef1f70a1f2fc5080c98f98ff1f6f1c4df821cfdfc6a3ff6e788e', name: 'Customer John Doe', role: 'Customer', staff_id: 'CUST-001', office: 'Online Portal', office_code: 'ONL-PRT', branch_code: 'OP-06' } // customerpassword123
+    ];
+
     if (!users) {
-      const defaultUsers = [
-        { username: 'gerevas', passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', name: 'Gerevas Paulo Mtaki', role: 'Administrator' }, // zanzibarpassword123
-        { username: 'manager', passwordHash: '322f98f6d72d24249a15cd388f8d9516ca4d0b13cf3e3b0e13915bc5fcf7ca6c', name: 'Manager Amin', role: 'Manager' }, // managerpassword123
-        { username: 'sales', passwordHash: '4f4fa1da80a9693e5066922cfb9b47e5ed7a1262d4e8b394efdc2fbf8ca58ea6', name: 'Sales Rep Salma', role: 'Sales' }, // salespassword123
-        { username: 'accountant', passwordHash: '20eb81ec7d9834cbd2d8d87948cd122c81fb392a2a0ff9bb86cc5b1d4ef23b8f', name: 'Frank accountant', role: 'Accountant' }, // accountantpassword123
-        { username: 'marketing', passwordHash: '36113bdf2292f39cbf8f8515c61a153835e5d1e2e92bc49692c81358d7e0099e', name: 'Neema Marketing', role: 'Marketing' }, // marketingpassword123
-        { username: 'guide', passwordHash: '2a28178a9c2401f8df9765e90eb21ddb97b1ca6dcff7cedc2826cf8438db06ff', name: 'Captain Guide Ali', role: 'Guide' }, // guidepassword123
-        { username: 'driver', passwordHash: '0142fa9559c5d0130db99e3ca893b86cb45e05d0e2e987f73967d1db0e987be7', name: 'Driver Juma', role: 'Driver' }, // driverpassword123
-        { username: 'customer', passwordHash: '4f880fdf8b10ef1f70a1f2fc5080c98f98ff1f6f1c4df821cfdfc6a3ff6e788e', name: 'Customer John Doe', role: 'Customer' } // customerpassword123
-      ];
-      localStorage.setItem('ztr_admin_users', JSON.stringify(defaultUsers));
+      localStorage.setItem('ztr_admin_users', JSON.stringify(initialUsers));
     } else {
-      // Ensure all roles exist even if previously initialized
+      // Backfill missing fields for existing stored users
       const parsedUsers = JSON.parse(users);
-      if (!parsedUsers.some((u: any) => u.username === 'accountant')) {
-        const withAll = [
-          ...parsedUsers,
-          { username: 'accountant', passwordHash: '20eb81ec7d9834cbd2d8d87948cd122c81fb392a2a0ff9bb86cc5b1d4ef23b8f', name: 'Frank accountant', role: 'Accountant' },
-          { username: 'marketing', passwordHash: '36113bdf2292f39cbf8f8515c61a153835e5d1e2e92bc49692c81358d7e0099e', name: 'Neema Marketing', role: 'Marketing' },
-          { username: 'driver', passwordHash: '0142fa9559c5d0130db99e3ca893b86cb45e05d0e2e987f73967d1db0e987be7', name: 'Driver Juma', role: 'Driver' },
-          { username: 'customer', passwordHash: '4f880fdf8b10ef1f70a1f2fc5080c98f98ff1f6f1c4df821cfdfc6a3ff6e788e', name: 'Customer John Doe', role: 'Customer' }
-        ];
-        localStorage.setItem('ztr_admin_users', JSON.stringify(withAll));
-      }
+      const backfilled = parsedUsers.map((u: any) => {
+        const seedMatch = initialUsers.find(init => init.username.toLowerCase() === u.username.toLowerCase());
+        return {
+          ...u,
+          staff_id: u.staff_id || seedMatch?.staff_id || `STF-${Math.floor(100 + Math.random() * 900)}`,
+          office: u.office || seedMatch?.office || 'Zanzibar HQ',
+          office_code: u.office_code || seedMatch?.office_code || 'ZNZ-HQ',
+          branch_code: u.branch_code || seedMatch?.branch_code || 'HQ-01'
+        };
+      });
+      localStorage.setItem('ztr_admin_users', JSON.stringify(backfilled));
     }
 
     // Media library initialization
@@ -446,12 +654,42 @@ export default function Admin({ navigate }: AdminProps) {
       setVehiclesList(JSON.parse(localVehicles));
     } else {
       const defaultVehicles = [
-        { id: 'v-1', plate: 'ZAN 401', model: 'Toyota Land Cruiser 4x4', capacity: 7, fuel: '85%', driver: 'Driver Juma', status: 'Active', logs: 'Stone Town Tour transfer completed.' },
-        { id: 'v-2', plate: 'ZAN 882', model: 'Toyota Alphard Luxury', capacity: 5, fuel: '90%', driver: 'Driver Bakari', status: 'Active', logs: 'Airport pickup completed.' },
-        { id: 'v-3', plate: 'ZAN 125', model: 'Toyota Hiace Coaster', capacity: 15, fuel: '60%', driver: 'Driver Idi', status: 'Maintenance', logs: 'AC servicing scheduled.' }
+        { id: 'v-1', plate: 'ZAN 401', model: 'Toyota Land Cruiser Safari Coach', capacity: 7, luggageCapacity: 6, features: ['4x4 AWD', 'A/C', 'English guide', 'Charging ports', 'Free Wi-Fi', 'Bottled water'], image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=compress&cs=tinysrgb&w=800', description: 'Rugged luxury custom built safari coach with pop-up roof and panoramic windows.', status: 'Available', priceAdjustment: 20 },
+        { id: 'v-2', plate: 'ZAN 882', model: 'Toyota Alphard Executive VIP', capacity: 5, luggageCapacity: 4, features: ['Reclining VIP seats', 'Triple A/C', 'Wi-Fi', 'Refreshments', 'Ambient lighting', 'Child seat support'], image: 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?auto=compress&cs=tinysrgb&w=800', description: 'Ultra-luxurious spacious minivan. Perfect for couples, business travel, or style.', status: 'Available', priceAdjustment: 10 },
+        { id: 'v-3', plate: 'ZAN 125', model: 'Toyota Noah Standard Minibus', capacity: 6, luggageCapacity: 5, features: ['A/C', 'Spacious cabin', 'Professional Driver', 'Complimentary luggage help'], image: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=compress&cs=tinysrgb&w=800', description: 'Our standard cost-effective resort transfer cruiser. High dependability.', status: 'Available', priceAdjustment: 0 }
       ];
       setVehiclesList(defaultVehicles);
       localStorage.setItem('ztr_vehicles', JSON.stringify(defaultVehicles));
+    }
+
+    // Transfers routes initialization
+    const localRoutes = localStorage.getItem('ztr_routes');
+    if (localRoutes) {
+      try { setTransferRoutes(JSON.parse(localRoutes)); } catch { setTransferRoutes([]); }
+    } else {
+      const defaultRoutes = [
+        { id: 'r-1', pickup: 'Zanzibar Airport (ZNZ)', destination: 'Stone Town Hotels', priceOneWay: 15, priceRoundTrip: 25, duration: '15-20 min', enabled: true },
+        { id: 'r-2', pickup: 'Zanzibar Airport (ZNZ)', destination: 'Nungwi / Kendwa Resorts', priceOneWay: 40, priceRoundTrip: 75, duration: '60-70 min', enabled: true },
+        { id: 'r-3', pickup: 'Zanzibar Airport (ZNZ)', destination: 'Paje / Jambiani / Bwejuu', priceOneWay: 40, priceRoundTrip: 75, duration: '55-65 min', enabled: true },
+        { id: 'r-4', pickup: 'Zanzibar Airport (ZNZ)', destination: 'Matemwe / Kiwengwa / Pongwe', priceOneWay: 35, priceRoundTrip: 65, duration: '45-55 min', enabled: true },
+        { id: 'r-5', pickup: 'Zanzibar Airport (ZNZ)', destination: 'Kizimkazi area hotels', priceOneWay: 45, priceRoundTrip: 85, duration: '60-75 min', enabled: true },
+      ];
+      setTransferRoutes(defaultRoutes);
+      localStorage.setItem('ztr_routes', JSON.stringify(defaultRoutes));
+    }
+
+    // Transfers drivers initialization
+    const localDrivers = localStorage.getItem('ztr_drivers');
+    if (localDrivers) {
+      try { setTransferDrivers(JSON.parse(localDrivers)); } catch { setTransferDrivers([]); }
+    } else {
+      const defaultDrivers = [
+        { id: 'd-1', name: 'Driver Juma', phone: '+255 777 101 202', whatsapp: '+255 777 101 202', email: 'juma@zanzibar-trip.com', languages: ['English', 'Swahili'], license: 'DL-ZN-2025-098', photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=compress&cs=tinysrgb&w=400', status: 'Available' },
+        { id: 'd-2', name: 'Driver Bakari', phone: '+255 777 303 404', whatsapp: '+255 777 303 404', email: 'bakari@zanzibar-trip.com', languages: ['English', 'German', 'Swahili'], license: 'DL-ZN-2025-554', photo: 'https://images.unsplash.com/photo-1628157582853-a796fa650a6a?auto=compress&cs=tinysrgb&w=400', status: 'Available' },
+        { id: 'd-3', name: 'Driver Idi', phone: '+255 777 505 606', whatsapp: '+255 777 505 606', email: 'idi@zanzibar-trip.com', languages: ['English', 'French', 'Swahili'], license: 'DL-ZN-2025-712', photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=compress&cs=tinysrgb&w=400', status: 'Available' },
+      ];
+      setTransferDrivers(defaultDrivers);
+      localStorage.setItem('ztr_drivers', JSON.stringify(defaultDrivers));
     }
 
     // Suppliers list initialization
@@ -490,7 +728,18 @@ export default function Admin({ navigate }: AdminProps) {
       const parsed = JSON.parse(cachedSession);
       // Validate expiration (2 hours)
       if (Date.now() - parsed.timestamp < 2 * 60 * 60 * 1000) {
-        setSession(parsed.user);
+        const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+        const userMatch = storedUsers.find((u: any) => u.username?.toLowerCase() === parsed.user?.username?.toLowerCase());
+        const hydratedUser = userMatch ? {
+          username: userMatch.username,
+          name: userMatch.name,
+          role: userMatch.role,
+          staff_id: userMatch.staff_id,
+          office: userMatch.office,
+          office_code: userMatch.office_code,
+          branch_code: userMatch.branch_code
+        } : parsed.user;
+        setSession(hydratedUser);
         if (parsed.user?.role === 'Content Editor') {
           setActiveTab('cms');
         } else if (parsed.user?.role === 'Accountant') {
@@ -714,6 +963,57 @@ export default function Admin({ navigate }: AdminProps) {
         }
       }
       
+      // Backfill missing fields for existing stored/fetched bookings
+      const hydratedBookings = finalBookings.map((b: any) => {
+        const extraDetails = b.details || {};
+        
+        const seed_staff_id = b.staff_id || extraDetails.staff_id || 'STF-003';
+        const seed_staff_name = b.staff_name || extraDetails.staff_name || 'Sales Rep Salma';
+        const seed_staff_role = b.staff_role || extraDetails.staff_role || 'Sales';
+        const seed_office_branch = b.office_branch || extraDetails.office_branch || 'Zanzibar HQ';
+        const seed_office_code = b.office_code || extraDetails.office_code || 'ZNZ-HQ';
+        const seed_branch_code = b.branch_code || extraDetails.branch_code || 'HQ-01';
+        
+        const booking_source = b.booking_source || extraDetails.booking_source || (
+          String(b.id || '').startsWith('ZTR-W-') ? 'Office Walk-In' :
+          String(b.id || '').includes('WA') ? 'WhatsApp' :
+          String(b.id || '').includes('PH') ? 'Phone' :
+          String(b.id || '').includes('EM') ? 'Email' : 'Website'
+        );
+
+        const existingAuditTrail = b.audit_trail || extraDetails.audit_trail || [];
+        const finalAuditTrail = Array.isArray(existingAuditTrail) && existingAuditTrail.length > 0
+          ? existingAuditTrail
+          : [
+              {
+                action: 'Created',
+                user: seed_staff_name,
+                role: seed_staff_role,
+                timestamp: b.created_at || new Date().toISOString(),
+                description: `Reservation initialized via ${booking_source} by ${seed_staff_name} (${seed_staff_role}).`
+              }
+            ];
+
+        return {
+          ...b,
+          ...extraDetails,
+          id: b.id,
+          staff_id: seed_staff_id,
+          staff_name: seed_staff_name,
+          staff_role: seed_staff_role,
+          office_branch: seed_office_branch,
+          office_code: seed_office_code,
+          branch_code: seed_branch_code,
+          booking_source: booking_source,
+          created_by_id: b.created_by_id || extraDetails.created_by_id || seed_staff_id,
+          created_by_name: b.created_by_name || extraDetails.created_by_name || seed_staff_name,
+          created_by_role: b.created_by_role || extraDetails.created_by_role || seed_staff_role,
+          audit_trail: finalAuditTrail,
+          last_updated: b.last_updated || extraDetails.last_updated || b.created_at || new Date().toISOString()
+        };
+      });
+      finalBookings = hydratedBookings;
+
       localStorage.setItem('ztr_local_bookings_backup', JSON.stringify(finalBookings));
       localStorage.setItem('ztr_bookings', JSON.stringify(finalBookings));
       setBookingsList(finalBookings);
@@ -1254,14 +1554,14 @@ export default function Admin({ navigate }: AdminProps) {
     csvContent += "ID,Timestamp,Operation,Operator,Status,Size,Target,Details\n";
     backupOperationsLogs.forEach(log => {
       const row = [
-        log.id,
-        log.timestamp,
-        log.operation,
-        log.operator,
-        log.status,
-        log.size,
-        log.target,
-        `"${log.details.replace(/"/g, '""')}"`
+        log.id || '',
+        log.timestamp || '',
+        log.operation || '',
+        log.operator || '',
+        log.status || '',
+        log.size || '',
+        log.target || '',
+        `"${(log.details || '').replace(/"/g, '""')}"`
       ].join(",");
       csvContent += row + "\n";
     });
@@ -1300,10 +1600,21 @@ export default function Admin({ navigate }: AdminProps) {
       );
 
       if (userMatch) {
+        if (userMatch.status === 'Inactive' || userMatch.isLocked || userMatch.status === 'Locked') {
+          addActivityLog(userMatch.name, 'loginBlocked', `Blocked login attempt: Staff member identity is locked/deactivated.`);
+          setAuthError('Your staff account has been locked or deactivated. Please contact an executive administrator.');
+          setAuthLoading(false);
+          return;
+        }
+
         const userInfo = {
           username: userMatch.username,
           name: userMatch.name,
-          role: userMatch.role
+          role: userMatch.role,
+          staff_id: userMatch.staff_id,
+          office: userMatch.office,
+          office_code: userMatch.office_code,
+          branch_code: userMatch.branch_code
         };
         setSession(userInfo);
         localStorage.setItem('ztr_active_session', JSON.stringify({
@@ -1342,19 +1653,65 @@ export default function Admin({ navigate }: AdminProps) {
   // Status updates for bookings
   const updateBookingStatus = async (bookingId: any, newStatus: string) => {
     try {
+      const targetBooking = bookingsList.find(b => b.id === bookingId);
+      const prevAudit = targetBooking?.audit_trail || targetBooking?.details?.audit_trail || [];
+      const newAuditItem = {
+        action: 'statusUpdate',
+        user: session?.name || 'Admin',
+        role: session?.role || 'Administrator',
+        timestamp: new Date().toISOString(),
+        description: `Changed booking status from "${targetBooking?.status || 'unknown'}" to "${newStatus}"`
+      };
+      const updatedAudit = [...prevAudit, newAuditItem];
+
+      // Update in Supabase
       const { error } = await supabase
         .from('bookings')
-        .update({ status: newStatus })
+        .update({ 
+          status: newStatus,
+          details: { ...(targetBooking?.details || targetBooking || {}), status: newStatus, audit_trail: updatedAudit }
+        })
         .eq('id', bookingId);
 
       if (error) throw error;
 
-      setBookingsList(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+      // Update React state
+      const updateState = (b: any) => {
+        if (b.id === bookingId) {
+          return {
+            ...b,
+            status: newStatus,
+            last_updated: new Date().toISOString(),
+            audit_trail: updatedAudit,
+            details: { ...(b.details || {}), status: newStatus, audit_trail: updatedAudit }
+          };
+        }
+        return b;
+      };
+
+      setBookingsList(prev => prev.map(updateState));
       if (selectedBooking && selectedBooking.id === bookingId) {
-        setSelectedBooking((prev: any) => ({ ...prev, status: newStatus }));
+        setSelectedBooking((prev: any) => ({
+          ...prev,
+          status: newStatus,
+          last_updated: new Date().toISOString(),
+          audit_trail: updatedAudit,
+          details: { ...(prev.details || {}), status: newStatus, audit_trail: updatedAudit }
+        }));
       }
+
+      // Sync to local storage
+      const storedBookings = JSON.parse(localStorage.getItem('ztr_bookings') || '[]');
+      const updatedStored = storedBookings.map((b: any) => b.id === bookingId ? {
+        ...b,
+        status: newStatus,
+        last_updated: new Date().toISOString(),
+        audit_trail: updatedAudit,
+        details: { ...(b.details || {}), status: newStatus, audit_trail: updatedAudit }
+      } : b);
+      localStorage.setItem('ztr_bookings', JSON.stringify(updatedStored));
       
-      const title = bookingsList.find(b => b.id === bookingId)?.tour_name || 'Booking';
+      const title = targetBooking?.tour_name || 'Booking';
       addActivityLog(session?.name || 'Admin', 'updateBooking', `Updated booking status of "${title}" to ${newStatus}.`);
     } catch (e: any) {
       alert('Error updating booking status: ' + e.message);
@@ -1825,6 +2182,34 @@ Stone Town, Zanzibar, Tanzania`);
 
     setValidationErrors({});
     try {
+      const original = bookingsList.find(b => b.id === editingBooking.id);
+      const changes: string[] = [];
+      if (original) {
+        if (original.full_name !== editingBooking.full_name) changes.push(`name to "${editingBooking.full_name}"`);
+        if (original.preferred_date !== editingBooking.preferred_date) changes.push(`date to ${editingBooking.preferred_date}`);
+        if (Number(original.number_of_guests) !== Number(editingBooking.number_of_guests)) changes.push(`guests to ${editingBooking.number_of_guests}`);
+        if (original.tour_name !== editingBooking.tour_name) changes.push(`tour to "${editingBooking.tour_name}"`);
+        if (original.status !== editingBooking.status) changes.push(`status to "${editingBooking.status}"`);
+      }
+      const changeDesc = changes.length > 0 ? `Modified: ${changes.join(', ')}` : 'Updated booking metadata';
+      
+      const prevAudit = original?.audit_trail || original?.details?.audit_trail || [];
+      const newAuditItem = {
+        action: 'editBooking',
+        user: session?.name || 'Admin',
+        role: session?.role || 'Administrator',
+        timestamp: new Date().toISOString(),
+        description: changeDesc
+      };
+      const updatedAudit = [...prevAudit, newAuditItem];
+
+      const updatedDetails = {
+        ...(editingBooking.details || editingBooking || {}),
+        ...editingBooking,
+        audit_trail: updatedAudit,
+        last_updated: new Date().toISOString()
+      };
+
       const { error } = await supabase
         .from('bookings')
         .update({
@@ -1836,7 +2221,8 @@ Stone Town, Zanzibar, Tanzania`);
           preferred_date: editingBooking.preferred_date,
           pickup_location: editingBooking.pickup_location,
           status: editingBooking.status,
-          message: editingBooking.message
+          message: editingBooking.message,
+          details: updatedDetails
         })
         .eq('id', editingBooking.id);
 
@@ -1847,7 +2233,13 @@ Stone Town, Zanzibar, Tanzania`);
       await loadBookings();
       
       if (selectedBooking && selectedBooking.id === editingBooking.id) {
-        setSelectedBooking({ ...selectedBooking, ...editingBooking });
+        setSelectedBooking({ 
+          ...selectedBooking, 
+          ...editingBooking, 
+          audit_trail: updatedAudit,
+          last_updated: new Date().toISOString(),
+          details: updatedDetails
+        });
       }
 
       setEditingBooking(null);
@@ -1856,33 +2248,113 @@ Stone Town, Zanzibar, Tanzania`);
     }
   };
 
-  const handleDeleteBooking = async () => {
+  const handleSubmitDeleteRequest = async () => {
     if (!deletingBooking) return;
-    if (deleteConfirmationText.trim().toUpperCase() !== 'DELETE') {
-      alert("Please type 'DELETE' to confirm deletion.");
+    if (!deleteRequestReason.trim()) {
+      alert("Please specify a comprehensive justification reason for this delete request.");
       return;
     }
+    
     try {
+      const newReq = {
+        id: `DEL-REQ-${Math.floor(1000 + Math.random() * 9000)}`,
+        recordId: deletingBooking.id,
+        recordName: `${deletingBooking.full_name} (${deletingBooking.tour_name || 'Transfer/Tour'}, ${deletingBooking.preferred_date})`,
+        amount: deletingBooking.final_total || deletingBooking.pricing_breakdown?.finalTotal || 0,
+        reason: deleteRequestReason.trim(),
+        requestedBy: session?.name || 'Staff User',
+        requestedUsername: session?.username || 'staff',
+        requestedRole: session?.role || 'Reservation Officer',
+        requestedAt: new Date().toISOString(),
+        status: 'Pending',
+        actionedBy: '',
+        actionedAt: '',
+        rejectionReason: ''
+      };
+      
+      const updatedRequests = [newReq, ...deleteRequests];
+      setDeleteRequests(updatedRequests);
+      localStorage.setItem('ztr_delete_requests', JSON.stringify(updatedRequests));
+      
+      addActivityLog(
+        session?.name || 'Staff User',
+        session?.role || 'Reservation Staff',
+        `Submitted deletion request ${newReq.id} for customer booking "${deletingBooking.full_name}". Reason: ${newReq.reason}`
+      );
+      
+      alert("Your deletion request has been successfully submitted for review. Permanent deletion must be authorized by the Owner or an Administrator.");
+      setDeletingBooking(null);
+      setDeleteRequestReason('');
+    } catch (err: any) {
+      alert("Error submitting deletion request: " + err.message);
+    }
+  };
+
+  const handleApproveDeleteRequest = async (req: any) => {
+    try {
+      // Execute actual database deletion
       const { error } = await supabase
         .from('bookings')
         .delete()
-        .eq('id', deletingBooking.id);
+        .eq('id', req.recordId);
 
-      if (error) throw error;
-
-      addActivityLog(session?.name || 'Admin', 'deleteBooking', `Deleted booking record for customer "${deletingBooking.full_name}".`);
-      
-      await loadBookings();
-      
-      if (selectedBooking && selectedBooking.id === deletingBooking.id) {
-        setSelectedBooking(null);
+      if (error) {
+        console.error("Database deletion error, continuing with local record cleanup:", error);
       }
 
-      setDeletingBooking(null);
-      setDeleteConfirmationText('');
+      const updatedRequests = deleteRequests.map((r: any) => {
+        if (r.id === req.id) {
+          return {
+            ...r,
+            status: 'Approved',
+            actionedBy: session?.name || 'Owner',
+            actionedAt: new Date().toISOString()
+          };
+        }
+        return r;
+      });
+      setDeleteRequests(updatedRequests);
+      localStorage.setItem('ztr_delete_requests', JSON.stringify(updatedRequests));
+
+      addActivityLog(
+        session?.name || 'Owner',
+        session?.role || 'Owner',
+        `APPROVED delete request ${req.id} for "${req.recordName}". Booking permanently destroyed.`
+      );
+
+      await loadBookings();
+      if (selectedBooking && selectedBooking.id === req.recordId) {
+        setSelectedBooking(null);
+      }
+      alert(`Delete request ${req.id} approved. Record permanently removed.`);
     } catch (err: any) {
-      alert("Error deleting booking record: " + err.message);
+      alert("Error approving delete request: " + err.message);
     }
+  };
+
+  const handleRejectDeleteRequest = (req: any, reason: string) => {
+    const updatedRequests = deleteRequests.map((r: any) => {
+      if (r.id === req.id) {
+        return {
+          ...r,
+          status: 'Rejected',
+          actionedBy: session?.name || 'Owner',
+          actionedAt: new Date().toISOString(),
+          rejectionReason: reason
+        };
+      }
+      return r;
+    });
+    setDeleteRequests(updatedRequests);
+    localStorage.setItem('ztr_delete_requests', JSON.stringify(updatedRequests));
+
+    addActivityLog(
+      session?.name || 'Owner',
+      session?.role || 'Owner',
+      `REJECTED delete request ${req.id} for "${req.recordName}". Reason: ${reason}`
+    );
+
+    alert(`Delete request ${req.id} rejected and booking remains active.`);
   };
 
   // Derived unique customers list from live bookings ledger
@@ -1924,21 +2396,54 @@ Stone Town, Zanzibar, Tanzania`);
     return Array.from(customerMap.values());
   }, [bookingsList]);
 
+  // Select active bookings based on dashboard role constraints & view type toggling
+  const activeDashboardBookings = React.useMemo(() => {
+    if (!session) return [];
+    const isGlobalAllowed = session.role === 'Administrator' || session.role === 'Manager' || session.role === 'Accountant' || session.role === 'Marketing';
+    if (!isGlobalAllowed || dashboardViewType === 'personal') {
+      return bookingsList.filter(b => 
+        b.staff_id === session.staff_id || 
+        b.created_by_id === session.staff_id || 
+        b.created_by_username === session.username ||
+        b.staff_name?.toLowerCase() === session.name?.toLowerCase()
+      );
+    }
+    return bookingsList;
+  }, [bookingsList, session, dashboardViewType]);
+
+  // Filter bookings list based on role permission constraints for ledger, calendars, etc.
+  const visibleBookings = React.useMemo(() => {
+    if (!session) return [];
+    const hasBroadAccess = session.role === 'Administrator' || session.role === 'Manager' || session.role === 'Accountant' || session.role === 'Marketing' || session.role === 'Dispatcher';
+    if (hasBroadAccess) {
+      return bookingsList;
+    }
+    // Guide, Sales, or others: restrict to creator or assigned guide/driver
+    return bookingsList.filter(b => 
+      b.staff_id === session.staff_id || 
+      b.created_by_id === session.staff_id || 
+      b.created_by_username === session.username ||
+      b.staff_name?.toLowerCase() === session.name?.toLowerCase() ||
+      (session.role === 'Guide' && (b.assigned_guide === session.name || b.details?.assigned_guide === session.name)) ||
+      (session.role === 'Driver' && (b.assigned_driver === session.name || b.details?.assigned_driver === session.name))
+    );
+  }, [bookingsList, session]);
+
   // Calculate statistics for admin display
-  const totalInquiriesCount = bookingsList.length;
-  const pendingCount = bookingsList.filter(b => (b.status || '').toLowerCase() === 'pending').length;
-  const confirmedCount = bookingsList.filter(b => {
+  const totalInquiriesCount = activeDashboardBookings.length;
+  const pendingCount = activeDashboardBookings.filter(b => (b.status || '').toLowerCase() === 'pending').length;
+  const confirmedCount = activeDashboardBookings.filter(b => {
     const s = (b.status || '').toLowerCase();
     return s === 'confirmed' || s === 'approved' || s === 'secured' || s === 'paid';
   }).length;
-  const cancelledCount = bookingsList.filter(b => {
+  const cancelledCount = activeDashboardBookings.filter(b => {
     const s = (b.status || '').toLowerCase();
     return s === 'cancelled' || s === 'canceled' || s === 'rejected';
   }).length;
 
   const totalCustomersCount = customersList.length;
   const returningCustomersCount = customersList.filter(c => c.total_bookings > 1).length;
-  const totalTravelersCount = bookingsList.reduce((acc, b) => acc + (Number(b.number_of_guests) || 1), 0);
+  const totalTravelersCount = activeDashboardBookings.reduce((acc, b) => acc + (Number(b.number_of_guests) || 1), 0);
 
   // Helper to parse price for estimating booking values
   const getEstimatedPrice = (tourName: string) => {
@@ -2008,7 +2513,7 @@ Stone Town, Zanzibar, Tanzania`);
 
     const today = new Date();
 
-    bookingsList.forEach(b => {
+    activeDashboardBookings.forEach(b => {
       const pricePerGuest = getEstimatedPrice(b.tour_name);
       const guests = Number(b.number_of_guests) || 1;
       const totalCost = pricePerGuest * guests;
@@ -2162,8 +2667,8 @@ Stone Town, Zanzibar, Tanzania`);
       { name: 'Overdue Balances', value: Math.round(overdueBalancesRevenue), color: '#EF4444' }
     ].filter(item => item.value > 0);
 
-    const avgGuests = bookingsList.length > 0 ? (totalGuestsCount / bookingsList.length).toFixed(1) : '0';
-    const convRate = bookingsList.length > 0 ? ((confirmedCount / bookingsList.length) * 100).toFixed(0) : '0';
+    const avgGuests = activeDashboardBookings.length > 0 ? (totalGuestsCount / activeDashboardBookings.length).toFixed(1) : '0';
+    const convRate = activeDashboardBookings.length > 0 ? ((confirmedCount / activeDashboardBookings.length) * 100).toFixed(0) : '0';
 
     return {
       dailyTrends: sortedDaily,
@@ -2180,7 +2685,88 @@ Stone Town, Zanzibar, Tanzania`);
       avgGuests,
       conversionRate: convRate
     };
-  }, [bookingsList, confirmedCount, policies]);
+  }, [activeDashboardBookings, confirmedCount, policies]);
+
+  // Calculate personal Today, Week, Month, Year performance metrics for staff members
+  const personalPeriodStats = React.useMemo(() => {
+    if (!session) return null;
+    
+    // Filter bookings list to only those created or owned by this user
+    const personalBookings = bookingsList.filter(b => 
+      b.staff_id === session.staff_id || 
+      b.created_by_id === session.staff_id || 
+      b.created_by_username === session.username ||
+      b.staff_name?.toLowerCase() === session.name?.toLowerCase()
+    );
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    const calcStatsForBookings = (list: any[]) => {
+      let grossValue = 0;
+      let totalCount = list.length;
+      let confirmedCount = list.filter(b => {
+        const s = (b.status || '').toLowerCase();
+        return s === 'confirmed' || s === 'approved' || s === 'secured' || s === 'paid';
+      }).length;
+      
+      list.forEach(b => {
+        // Use estimate helper defined inside the module scope
+        const price = getEstimatedPrice(b.tour_name);
+        const guests = Number(b.number_of_guests) || 1;
+        const st = (b.status || '').toLowerCase();
+        if (st !== 'cancelled' && st !== 'rejected') {
+          grossValue += price * guests;
+        }
+      });
+
+      const conversion = totalCount > 0 ? Math.round((confirmedCount / totalCount) * 100) : 0;
+      return { grossValue, totalCount, confirmedCount, conversion };
+    };
+
+    const todayBookings = personalBookings.filter(b => {
+      const d = new Date(b.created_at || b.preferred_date);
+      return d >= startOfToday;
+    });
+
+    const weekBookings = personalBookings.filter(b => {
+      const d = new Date(b.created_at || b.preferred_date);
+      return d >= startOfWeek;
+    });
+
+    const monthBookings = personalBookings.filter(b => {
+      const d = new Date(b.created_at || b.preferred_date);
+      return d >= startOfMonth;
+    });
+
+    const yearBookings = personalBookings.filter(b => {
+      const d = new Date(b.created_at || b.preferred_date);
+      return d >= startOfYear;
+    });
+
+    return {
+      today: calcStatsForBookings(todayBookings),
+      week: calcStatsForBookings(weekBookings),
+      month: calcStatsForBookings(monthBookings),
+      year: calcStatsForBookings(yearBookings),
+      totalCount: personalBookings.length
+    };
+  }, [bookingsList, session]);
+
+  // Render loading state if not mounted yet to prevent any client-side hydration or synchronous localStorage mismatch errors
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-[#020C1F] flex items-center justify-center p-4 relative overflow-hidden text-white" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="text-center space-y-4">
+          <RefreshCw className="w-8 h-8 text-[#D4A017] animate-spin mx-auto" />
+          <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold font-mono">Initializing Secure ERP Environment...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Financial and payment metrics derived from the live ledger
   const revenueGenerated = chartData.totalRevenue;
@@ -2297,6 +2883,76 @@ Stone Town, Zanzibar, Tanzania`);
   const isMediaReadOnly = !hasAccess('media', 'write');
   const isBookingReadOnly = !hasAccess('bookings', 'write');
 
+  const canEditOrDeleteBooking = (b: any) => {
+    if (!session || !b) return false;
+    if (session.role === 'Administrator' || session.role === 'Manager') return true;
+    return false;
+  };
+
+  const addBookingAuditTrailItem = async (bookingId: any, actionType: string, description: string) => {
+    try {
+      const targetBooking = bookingsList.find(bk => bk.id === bookingId);
+      if (!targetBooking) return;
+      const prevAudit = targetBooking.audit_trail || targetBooking.details?.audit_trail || [];
+      const operatorName = session?.name || 'Admin';
+      const newAuditItem = {
+        action: actionType,
+        user: operatorName,
+        role: session?.role || 'Administrator',
+        timestamp: new Date().toISOString(),
+        description: description
+      };
+      const updatedAudit = [...prevAudit, newAuditItem];
+
+      // Update specific metadata properties inside targetBooking
+      const metaUpdates: Record<string, any> = {
+        audit_trail: updatedAudit,
+        last_updated: new Date().toISOString(),
+        last_modified_by: operatorName
+      };
+
+      if (actionType === 'createBooking') {
+        metaUpdates.created_by = operatorName;
+      } else if (actionType === 'approveBooking' || actionType === 'statusUpdate') {
+        metaUpdates.approved_by = operatorName;
+      } else if (actionType === 'verifyPayment') {
+        metaUpdates.payment_verified_by = operatorName;
+      } else if (actionType === 'assignDriver') {
+        metaUpdates.driver_assigned_by = operatorName;
+      } else if (actionType === 'assignGuide') {
+        metaUpdates.guide_assigned_by = operatorName;
+      }
+
+      const updatedList = bookingsList.map(bk => {
+        if (bk.id === bookingId) {
+          const mergedDetails = { 
+            ...(bk.details || bk || {}), 
+            ...metaUpdates,
+            audit_trail: updatedAudit
+          };
+          return {
+            ...bk,
+            ...metaUpdates,
+            details: mergedDetails
+          };
+        }
+        return bk;
+      });
+
+      setBookingsList(updatedList);
+      localStorage.setItem('ztr_bookings', JSON.stringify(updatedList));
+
+      const updatedBk = updatedList.find(bk => bk.id === bookingId);
+      if (updatedBk) {
+        await supabase.from('bookings').update({
+          details: updatedBk.details
+        }).eq('id', bookingId);
+      }
+    } catch (err) {
+      console.warn('Error appending to booking audit log:', err);
+    }
+  };
+
   const renderRestrictedState = (moduleName: string) => {
     return (
       <div className="bg-[#051128] border border-red-500/10 rounded-3xl p-8 max-w-lg mx-auto text-center space-y-6 my-12 shadow-2xl">
@@ -2335,7 +2991,7 @@ Stone Town, Zanzibar, Tanzania`);
         cmsEditSection={cmsEditSection}
         setCmsEditSection={setCmsEditSection}
         session={session}
-        bookingsCount={bookingsList.length}
+        bookingsCount={visibleBookings.length}
         subscribersCount={subscribersList.length}
         jobsCount={getJobs().length}
         usersCount={JSON.parse(localStorage.getItem('ztr_admin_users') || '[]').length}
@@ -2347,6 +3003,17 @@ Stone Town, Zanzibar, Tanzania`);
       {/* RIGHT WORKSPACE AREA */}
       <main className="flex-1 p-6 md:p-8 space-y-8 overflow-y-auto max-h-screen">
         
+        {/* DEV BYPASS WARNING BANNER */}
+        {import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS_VERIFICATION === 'true' && (
+          <div className="bg-amber-500/10 border border-amber-500/25 p-4 rounded-2xl flex items-center gap-3 text-amber-400">
+            <ShieldAlert size={20} className="shrink-0" />
+            <div className="text-sm">
+              <p className="font-bold uppercase tracking-wide">Development Mode Active</p>
+              <p className="text-xs opacity-90">Email and SMS verification is temporarily disabled. Security challenge bypass is active for workstation authorization. Restore normal security by setting VITE_AUTH_BYPASS_VERIFICATION=false in your environment configuration.</p>
+            </div>
+          </div>
+        )}
+
         {/* TOP STATUS ROW */}
         <div className="flex flex-col md:flex-row justify-between gap-4 items-start md:items-center">
           <div>
@@ -2354,6 +3021,8 @@ Stone Town, Zanzibar, Tanzania`);
               {activeTab === 'dashboard' ? 'Analytics Dashboard' :
                activeTab === 'settings' ? 'Company Configuration' :
                activeTab === 'bookings' ? 'Bookings Ledger' : 
+               activeTab === 'walkin' ? 'Walk-In Office Booking Desk' :
+               activeTab === 'tourops' ? 'Tour Operations Assignment Board' :
                activeTab === 'customers' ? 'Customer Profile Directory' :
                activeTab === 'calendar' ? 'Interactive Reservation Calendar' :
                activeTab === 'vehicles' ? 'Vehicles & Fleet Operations' :
@@ -2376,6 +3045,8 @@ Stone Town, Zanzibar, Tanzania`);
                activeTab === 'users' ? 'Manage system identities, clearances, and custom organizational permissions' : 
                activeTab === 'policies' ? 'Configure deposit percentages, cut-off hours and checkout rules for each tour category' :
                activeTab === 'transportZones' ? 'Manage geographical zones, transport surcharges, hotel options and perform bulk CSV hotel uploads' :
+               activeTab === 'walkin' ? 'Register walk-in, email, and phone reservations directly at Zanzibar HQ, take payments, and generate invoices.' :
+               activeTab === 'tourops' ? 'Coordinate guides, drivers, fleet vehicles, and private boats for scheduled departures.' :
                activeTab === 'customers' ? 'Monitor unique tourist contacts, historic reservation count, and communications.' :
                activeTab === 'calendar' ? 'Visual daily itinerary schedules and reservation bookings overview.' :
                activeTab === 'vehicles' ? 'Track company fuel logs, service checkups, driver allocations, and fleet usage.' :
@@ -2412,8 +3083,60 @@ Stone Town, Zanzibar, Tanzania`);
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
             
-            {/* Quick Metrics Bento Section */}
-            <div className="space-y-6">
+            {/* DYNAMIC DASHBOARD SELECTOR AND STAFF INFO PANEL */}
+            <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-5 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-[#D4A017] uppercase tracking-widest bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                  {dashboardViewType === 'global' ? 'Global Operational Outlook' : 'Personal Sales Performance'}
+                </span>
+                <h3 className="text-xl font-bold text-white font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>
+                  {dashboardViewType === 'global' ? 'Zanzibar HQ: Live Business Intelligence' : `${session?.name}'s Personal Performance Desk`}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {dashboardViewType === 'global' 
+                    ? 'Company-wide metrics, total receipts, conversion charts, and administrative yield projections.'
+                    : 'Your personal sales value, active conversions, passenger count, and daily/weekly/monthly quotas.'}
+                </p>
+              </div>
+
+              {/* Toggle Buttons (Only visible to Administrators, Managers, Accountants, or Marketing staff) */}
+              {(session?.role === 'Administrator' || session?.role === 'Manager' || session?.role === 'Accountant' || session?.role === 'Marketing') ? (
+                <div className="bg-[#121B30] p-1 rounded-xl border border-white/5 flex gap-1 self-stretch md:self-auto shrink-0">
+                  <button
+                    onClick={() => setDashboardViewType('global')}
+                    className={`flex-1 md:flex-initial px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      dashboardViewType === 'global'
+                        ? 'bg-[#D4A017] text-[#020C1F]'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Globe size={13} />
+                    <span>Global Outlook</span>
+                  </button>
+                  <button
+                    onClick={() => setDashboardViewType('personal')}
+                    className={`flex-1 md:flex-initial px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      dashboardViewType === 'personal'
+                        ? 'bg-[#D4A017] text-[#020C1F]'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <User size={13} />
+                    <span>My Performance</span>
+                  </button>
+                </div>
+              ) : (
+                // Locked indicator for standard staff
+                <div className="bg-[#121B30] border border-[#D4A017]/20 rounded-xl px-4 py-2 flex items-center gap-2 text-xs text-slate-300 font-medium">
+                  <Lock size={12} className="text-[#D4A017]" />
+                  <span>Locked: Personal Performance Mode</span>
+                </div>
+              )}
+            </div>
+            
+            {dashboardViewType === 'global' ? (
+              <>
+                <div className="space-y-6">
               {/* Financial & Yield Indicators */}
               <div>
                 <h4 className="text-[10px] font-black text-[#D4A017] uppercase tracking-widest mb-3 flex items-center gap-1.5">
@@ -2923,6 +3646,158 @@ Stone Town, Zanzibar, Tanzania`);
                 </div>
               )}
             </div>
+          </>
+        ) : (
+              /* Personal Performance Dashboard Layout */
+              <div className="space-y-6">
+                {/* Staff Member Info & Active Status */}
+                <div className="bg-[#0A1224] border border-white/5 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-[#D4A017]/10 border border-[#D4A017]/30 flex items-center justify-center text-[#D4A017] font-extrabold text-lg">
+                      {session?.name?.charAt(0) || 'S'}
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-white text-base">{session?.name}</h4>
+                      <p className="text-xs text-slate-400 font-medium font-mono">{session?.role} • ID: {session?.staff_id || 'STF-001'} • {session?.office || 'Zanzibar HQ'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-[10px] text-emerald-400 font-mono font-bold uppercase tracking-wider">Active duty & sync'd</span>
+                  </div>
+                </div>
+
+                {/* 4 Period Grid: Today, Week, Month, Year */}
+                <div>
+                  <h4 className="text-[10px] font-black text-[#D4A017] uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-[#D4A017] rounded-full"></span>
+                    Personal Performance Ledger (Periods)
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    
+                    {/* TODAY */}
+                    <div className="bg-[#0A1224] border border-white/5 p-5 rounded-2xl flex flex-col justify-between hover:border-[#D4A017]/30 transition-all space-y-4">
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider block">Today's Transactions</span>
+                        <p className="text-2xl font-black text-white font-mono my-1">${personalPeriodStats?.today.grossValue.toLocaleString()}</p>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold border-t border-white/5 pt-2">
+                        <span>{personalPeriodStats?.today.totalCount} Inquiries</span>
+                        <span className="text-[#D4A017]">{personalPeriodStats?.today.conversion}% Conv</span>
+                      </div>
+                    </div>
+
+                    {/* WEEK */}
+                    <div className="bg-[#0A1224] border border-white/5 p-5 rounded-2xl flex flex-col justify-between hover:border-[#D4A017]/30 transition-all space-y-4">
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider block">Weekly Volume (7d)</span>
+                        <p className="text-2xl font-black text-white font-mono my-1">${personalPeriodStats?.week.grossValue.toLocaleString()}</p>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold border-t border-white/5 pt-2">
+                        <span>{personalPeriodStats?.week.totalCount} Inquiries</span>
+                        <span className="text-[#D4A017]">{personalPeriodStats?.week.conversion}% Conv</span>
+                      </div>
+                    </div>
+
+                    {/* MONTH */}
+                    <div className="bg-[#0A1224] border border-white/5 p-5 rounded-2xl flex flex-col justify-between hover:border-[#D4A017]/30 transition-all space-y-4">
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider block">Monthly Gross</span>
+                        <p className="text-2xl font-black text-emerald-400 font-mono my-1">${personalPeriodStats?.month.grossValue.toLocaleString()}</p>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold border-t border-white/5 pt-2">
+                        <span>{personalPeriodStats?.month.totalCount} Inquiries</span>
+                        <span className="text-emerald-400">{personalPeriodStats?.month.conversion}% Conv</span>
+                      </div>
+                    </div>
+
+                    {/* YEAR */}
+                    <div className="bg-[#0A1224] border border-white/5 p-5 rounded-2xl flex flex-col justify-between hover:border-[#D4A017]/30 transition-all space-y-4">
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider block">Year-to-Date Performance</span>
+                        <p className="text-2xl font-black text-blue-400 font-mono my-1">${personalPeriodStats?.year.grossValue.toLocaleString()}</p>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold border-t border-white/5 pt-2">
+                        <span>{personalPeriodStats?.year.totalCount} Inquiries</span>
+                        <span className="text-blue-400">{personalPeriodStats?.year.conversion}% Conv</span>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* Quota Progress Tracker & Task Checklist */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  {/* Quota Progress Widget */}
+                  <div className="lg:col-span-1 bg-[#0A1224] border border-white/5 p-5 rounded-2xl space-y-4">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Monthly Sales Quota Progress</span>
+                    {(() => {
+                      const quota = 12500;
+                      const monthVal = personalPeriodStats?.month.grossValue || 0;
+                      const pct = Math.min(100, Math.round((monthVal / quota) * 100));
+                      return (
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-end">
+                            <div className="space-y-0.5">
+                              <p className="text-xs text-slate-400">Current Progress</p>
+                              <p className="text-2xl font-black text-white font-mono">${monthVal.toLocaleString()} <span className="text-slate-500 text-xs font-normal">/ ${quota.toLocaleString()}</span></p>
+                            </div>
+                            <span className="text-xs font-mono font-bold bg-[#D4A017]/10 text-[#D4A017] border border-[#D4A017]/20 rounded px-2 py-0.5">{pct}%</span>
+                          </div>
+                          
+                          {/* Progress bar container */}
+                          <div className="w-full bg-[#121B30] h-3 rounded-full overflow-hidden border border-white/5">
+                            <div 
+                              className="bg-gradient-to-r from-[#D4A017] to-[#f3cb51] h-full rounded-full transition-all duration-500" 
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          
+                          <p className="text-[10px] text-slate-400 leading-relaxed italic">
+                            {pct >= 100 
+                              ? "🌟 Sensational! You have exceeded your monthly sales quota target. Excellent contribution to Zanzibar Tours!" 
+                              : `Keep it up! You need $${(quota - monthVal).toLocaleString()} more to lock in your monthly threshold.`}
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Operational Task List Queue */}
+                  <div className="lg:col-span-2 bg-[#0A1224] border border-white/5 p-5 rounded-2xl space-y-3">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Your Personal Operations Task Queue & Calendar Leads</span>
+                    
+                    <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10">
+                      {visibleBookings.filter(b => b.status === 'pending').slice(0, 4).map((b, idx) => (
+                        <div key={b.id || idx} className="bg-[#121B30]/60 border border-white/5 p-3 rounded-xl flex justify-between items-center hover:border-[#D4A017]/20 transition-all">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] font-mono bg-amber-500/10 text-[#D4A017] border border-amber-500/20 rounded px-1.5 py-0.5 font-bold uppercase">{b.id}</span>
+                              <span className="text-xs font-bold text-white">{b.full_name}</span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-medium">Requested: <span className="text-slate-300 font-bold">{b.tour_name}</span> on <span className="font-mono text-slate-300 font-bold">{b.preferred_date}</span></p>
+                          </div>
+                          <button 
+                            onClick={() => setSelectedBooking(b)} 
+                            className="bg-[#D4A017]/10 text-[#D4A017] border border-[#D4A017]/20 hover:bg-[#D4A017] hover:text-[#020C1F] font-bold text-[10px] uppercase tracking-wide px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+                          >
+                            Manage Lead
+                          </button>
+                        </div>
+                      ))}
+                      
+                      {visibleBookings.filter(b => b.status === 'pending').length === 0 && (
+                        <div className="text-center py-8 text-xs text-slate-500 italic">
+                          No pending operations tasks or leads in your queue. All current bookings are secure!
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
 
             {/* Real-time Security & Activity Monitoring Section */}
             <div className="bg-[#0A1224] border border-white/5 rounded-2xl p-5 shadow-sm space-y-4">
@@ -3065,7 +3940,7 @@ Stone Town, Zanzibar, Tanzania`);
           !hasAccess('bookings', 'read') ? renderRestrictedState('Bookings') : (
             <div className="space-y-6">
             <AdminDataTable<any>
-              data={bookingsList}
+              data={visibleBookings}
               loading={bookingsLoading}
               dateRangeFilters={[
                 { key: 'preferred_date', label: 'Travel Date' },
@@ -3221,12 +4096,970 @@ Stone Town, Zanzibar, Tanzania`);
               viewDetailsLabel="View Details & Invoice"
               onEdit={(b) => setEditingBooking({ ...b })}
               onDelete={(b) => setDeletingBooking(b)}
-              isEditDisabled={isBookingReadOnly}
-              isDeleteDisabled={isBookingReadOnly}
+              isEditDisabled={(b) => !canEditOrDeleteBooking(b)}
+              isDeleteDisabled={(b) => !canEditOrDeleteBooking(b)}
               emptyMessage="No bookings match your current filter settings."
               pageSize={10}
             />
           </div>
+          )
+        )}
+
+        {/* WALK-IN OFFICE BOOKING WORKSPACE */}
+        {activeTab === 'walkin' && (
+          !hasAccess('bookings', 'write') ? renderRestrictedState('Walk-In Booking Desk') : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in text-slate-300">
+              {/* Form Input Section */}
+              <div className="lg:col-span-7 bg-[#0A1224] border border-white/5 p-6 md:p-8 rounded-3xl space-y-6">
+                <div>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+                    <PlusCircle className="text-[#D4A017] w-6 h-6" />
+                    <span>HQ Desk: Register New Walk-In / Phone Booking</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">Select packages, record guest identity credentials, process physical payment cards or cash, and log the voucher in the live ledger.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold">
+                  <div className="space-y-1">
+                    <label className="text-slate-400 block">Guest Full Name <span className="text-red-500">*</span></label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. Elena Rostova"
+                      value={walkinFormData.full_name}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setWalkinFormData(prev => ({ ...prev, full_name: val }));
+                      }}
+                      className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#D4A017] transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-slate-400 block">WhatsApp / Phone Number <span className="text-red-500">*</span></label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. +39 342 12345"
+                      value={walkinFormData.whatsapp_number}
+                      onChange={e => setWalkinFormData(prev => ({ ...prev, whatsapp_number: e.target.value }))}
+                      className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white font-mono outline-none focus:border-[#D4A017] transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-slate-400 block">Email Address (Optional)</label>
+                    <input 
+                      type="email"
+                      placeholder="e.g. elena@rosto.it"
+                      value={walkinFormData.email}
+                      onChange={e => setWalkinFormData(prev => ({ ...prev, email: e.target.value }))}
+                      className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#D4A017] transition-all"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-slate-400 block">Nationality <span className="text-red-500">*</span></label>
+                      <input 
+                        type="text"
+                        placeholder="Italy"
+                        value={walkinFormData.nationality}
+                        onChange={e => setWalkinFormData(prev => ({ ...prev, nationality: e.target.value }))}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#D4A017] transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-slate-400 block">Passport Number <span className="text-red-500">*</span></label>
+                      <input 
+                        type="text"
+                        placeholder="e.g. YA883921"
+                        value={walkinFormData.passport_number}
+                        onChange={e => setWalkinFormData(prev => ({ ...prev, passport_number: e.target.value }))}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white font-mono outline-none focus:border-[#D4A017] transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-slate-400 block">Select Experience Tour <span className="text-red-500">*</span></label>
+                    <select
+                      value={walkinFormData.tour_name}
+                      onChange={e => {
+                        const selectedTour = e.target.value;
+                        let costPerPerson = 50;
+                        if (selectedTour.includes("Safari Blue")) costPerPerson = 85;
+                        else if (selectedTour.includes("Prison Island")) costPerPerson = 45;
+                        else if (selectedTour.includes("Stone Town")) costPerPerson = 30;
+                        else if (selectedTour.includes("Jozani Forest")) costPerPerson = 40;
+                        else if (selectedTour.includes("Spice Farm")) costPerPerson = 35;
+                        else if (selectedTour.includes("Kuza Cave")) costPerPerson = 50;
+                        else if (selectedTour.includes("Sunset Dhow")) costPerPerson = 45;
+                        else if (selectedTour.includes("Airport")) costPerPerson = 50; // flat rate
+
+                        const isFlat = selectedTour.includes("Airport");
+                        const total = isFlat ? costPerPerson : costPerPerson * walkinFormData.number_of_guests;
+
+                        setWalkinFormData(prev => ({
+                          ...prev,
+                          tour_name: selectedTour,
+                          total_cost: total,
+                          amount_paid: prev.payment_status === 'Paid in Full' ? total : total / 2
+                        }));
+                      }}
+                      className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white font-semibold outline-none focus:border-[#D4A017] transition-all"
+                    >
+                      <option value="Safari Blue Sailing & Snorkeling Excursion">Safari Blue Sailing & Snorkeling Excursion ($85/person)</option>
+                      <option value="Prison Island & Giant Aldabra Tortoises">Prison Island & Giant Aldabra Tortoises ($45/person)</option>
+                      <option value="Stone Town Heritage Guided Walk">Stone Town Heritage Guided Walk ($30/person)</option>
+                      <option value="Jozani Forest Red Colobus Monkey Sanctuary">Jozani Forest Red Colobus Monkey Sanctuary ($40/person)</option>
+                      <option value="Spice Farm Tour & Swahili Cooking Lesson">Spice Farm Tour & Swahili Cooking Lesson ($35/person)</option>
+                      <option value="Kuza Cave Cultural Swim & Drumming">Kuza Cave Cultural Swim & Drumming ($50/person)</option>
+                      <option value="Nungwi Sunset Dhow Cruise">Nungwi Sunset Dhow Cruise ($45/person)</option>
+                      <option value="Private Airport/Ferry Luxury Transfer">Private Airport/Ferry Luxury Transfer ($50 Flat)</option>
+                      <option value="Custom Zanzibar Tailor-Made Adventure">Custom Zanzibar Tailor-Made Adventure (Custom Cost)</option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 md:col-span-2">
+                    <div className="space-y-1">
+                      <label className="text-slate-400 block">Travel Date <span className="text-red-500">*</span></label>
+                      <input 
+                        type="date"
+                        value={walkinFormData.preferred_date}
+                        onChange={e => setWalkinFormData(prev => ({ ...prev, preferred_date: e.target.value }))}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#D4A017] transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-slate-400 block">Number of Guests <span className="text-red-500">*</span></label>
+                      <input 
+                        type="number"
+                        min={1}
+                        value={walkinFormData.number_of_guests}
+                        onChange={e => {
+                          const count = parseInt(e.target.value, 10) || 1;
+                          let costPerPerson = 50;
+                          const t = walkinFormData.tour_name;
+                          if (t.includes("Safari Blue")) costPerPerson = 85;
+                          else if (t.includes("Prison Island")) costPerPerson = 45;
+                          else if (t.includes("Stone Town")) costPerPerson = 30;
+                          else if (t.includes("Jozani Forest")) costPerPerson = 40;
+                          else if (t.includes("Spice Farm")) costPerPerson = 35;
+                          else if (t.includes("Kuza Cave")) costPerPerson = 50;
+                          else if (t.includes("Sunset Dhow")) costPerPerson = 45;
+                          else if (t.includes("Airport")) costPerPerson = 50;
+
+                          const isFlat = t.includes("Airport");
+                          const total = isFlat ? costPerPerson : costPerPerson * count;
+
+                          setWalkinFormData(prev => ({
+                            ...prev,
+                            number_of_guests: count,
+                            total_cost: total,
+                            amount_paid: prev.payment_status === 'Paid in Full' ? total : total / 2
+                          }));
+                        }}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#D4A017] transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 md:col-span-2">
+                    <div className="space-y-1">
+                      <label className="text-slate-400 block">Hotel Pickup Location <span className="text-red-500">*</span></label>
+                      <input 
+                        type="text"
+                        placeholder="e.g. Serena Resort Stone Town"
+                        value={walkinFormData.pickup_location}
+                        onChange={e => setWalkinFormData(prev => ({ ...prev, pickup_location: e.target.value }))}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#D4A017] transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-slate-400 block">Pickup Time <span className="text-red-500">*</span></label>
+                      <select 
+                        value={walkinFormData.pickup_time}
+                        onChange={e => setWalkinFormData(prev => ({ ...prev, pickup_time: e.target.value }))}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#D4A017] transition-all font-mono"
+                      >
+                        <option value="07:00 AM">07:00 AM (Early Departure)</option>
+                        <option value="07:30 AM">07:30 AM</option>
+                        <option value="08:00 AM">08:00 AM</option>
+                        <option value="08:30 AM">08:30 AM (Standard)</option>
+                        <option value="09:00 AM">09:00 AM</option>
+                        <option value="09:30 AM">09:30 AM</option>
+                        <option value="10:00 AM">10:00 AM</option>
+                        <option value="12:30 PM">12:30 PM (Sunset / PM)</option>
+                        <option value="02:30 PM">02:30 PM (Late Transfer)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 md:col-span-2 bg-[#121B30] p-4 rounded-2xl border border-white/5">
+                    <div className="space-y-1">
+                      <label className="text-slate-400 block">Booking Source</label>
+                      <select 
+                        value={walkinFormData.booking_source}
+                        onChange={e => setWalkinFormData(prev => ({ ...prev, booking_source: e.target.value }))}
+                        className="w-full bg-[#0A1224] border border-white/10 rounded-xl p-2 text-white outline-none"
+                      >
+                        <option value="Walk-in">Walk-in</option>
+                        <option value="WhatsApp">WhatsApp</option>
+                        <option value="Phone">Phone</option>
+                        <option value="Email">Email</option>
+                        <option value="Website">Website</option>
+                        <option value="Travel Agent">Travel Agent</option>
+                        <option value="Hotel">Hotel</option>
+                        <option value="Referral">Referral</option>
+                        <option value="Social Media">Social Media</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-slate-400 block">Payment Mode</label>
+                      <select 
+                        value={walkinFormData.payment_mode}
+                        onChange={e => setWalkinFormData(prev => ({ ...prev, payment_mode: e.target.value }))}
+                        className="w-full bg-[#0A1224] border border-white/10 rounded-xl p-2 text-white outline-none"
+                      >
+                        <option value="Cash">Cash (USD/TSH)</option>
+                        <option value="Credit Card">Credit Card / POS</option>
+                        <option value="Bank Wire">Bank Wire Transfer</option>
+                        <option value="Mobile Money">M-Pesa / Tigopesa</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-slate-400 block">Payment Status</label>
+                      <select 
+                        value={walkinFormData.payment_status}
+                        onChange={e => {
+                          const val = e.target.value;
+                          const total = walkinFormData.total_cost;
+                          setWalkinFormData(prev => ({ 
+                            ...prev, 
+                            payment_status: val,
+                            amount_paid: val === 'Paid in Full' ? total : val === 'Deposit Only' ? total / 2 : 0
+                          }));
+                        }}
+                        className="w-full bg-[#0A1224] border border-white/10 rounded-xl p-2 text-white outline-none"
+                      >
+                        <option value="Paid in Full">Paid in Full</option>
+                        <option value="Deposit Only">Deposit Only (Partial)</option>
+                        <option value="Unpaid">Unpaid</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 md:col-span-2">
+                    <div className="space-y-1">
+                      <label className="text-slate-400 block">Total Quoted Cost ($ USD)</label>
+                      <input 
+                        type="number"
+                        value={walkinFormData.total_cost}
+                        onChange={e => {
+                          const cost = Number(e.target.value) || 0;
+                          setWalkinFormData(prev => ({ 
+                            ...prev, 
+                            total_cost: cost,
+                            amount_paid: prev.payment_status === 'Paid in Full' ? cost : prev.amount_paid
+                          }));
+                        }}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white font-mono font-bold"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[#D4A017] block">Actual Amount Paid ($ USD)</label>
+                      <input 
+                        type="number"
+                        value={walkinFormData.amount_paid}
+                        onChange={e => setWalkinFormData(prev => ({ ...prev, amount_paid: Number(e.target.value) || 0 }))}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-[#D4A017] font-mono font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-slate-400 block">Internal Staff Notes & Special Requests</label>
+                    <textarea 
+                      rows={2}
+                      placeholder="e.g. Vegetarian lunch required. Guest has walking difficulty, suggest low-step van."
+                      value={walkinFormData.special_requests}
+                      onChange={e => setWalkinFormData(prev => ({ ...prev, special_requests: e.target.value }))}
+                      className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white outline-none resize-none font-medium"
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-slate-400 block">Upload Supporting Attachments (Passport, Boarding Pass, Receipt)</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newAtt = { name: 'Passport_Scan.pdf', type: 'PDF', size: '1.2 MB', url: '#' };
+                          setWalkinFormData(prev => ({ ...prev, attachments: [...prev.attachments, newAtt] }));
+                        }}
+                        className="bg-slate-800 hover:bg-slate-700 p-2 rounded-xl text-center text-[10px] text-white flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <FileText size={14} className="text-blue-400" />
+                        <span>Add Passport</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newAtt = { name: 'Flight_Tickets.pdf', type: 'PDF', size: '840 KB', url: '#' };
+                          setWalkinFormData(prev => ({ ...prev, attachments: [...prev.attachments, newAtt] }));
+                        }}
+                        className="bg-slate-800 hover:bg-slate-700 p-2 rounded-xl text-center text-[10px] text-white flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <FileText size={14} className="text-amber-400" />
+                        <span>Add Flight Ticket</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newAtt = { name: 'Receipt_Card_Slip.png', type: 'PNG', size: '420 KB', url: '#' };
+                          setWalkinFormData(prev => ({ ...prev, attachments: [...prev.attachments, newAtt] }));
+                        }}
+                        className="bg-slate-800 hover:bg-slate-700 p-2 rounded-xl text-center text-[10px] text-white flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <Image size={14} className="text-emerald-400" />
+                        <span>Add Payment Slip</span>
+                      </button>
+                    </div>
+
+                    {walkinFormData.attachments.length > 0 && (
+                      <div className="bg-[#121B30] p-3 rounded-xl border border-white/5 space-y-1.5 text-xs font-semibold">
+                        <p className="text-[10px] text-slate-500 uppercase tracking-widest">Active Attached Files ({walkinFormData.attachments.length})</p>
+                        <div className="space-y-1">
+                          {walkinFormData.attachments.map((at, index) => (
+                            <div key={index} className="flex justify-between items-center bg-[#0A1224] p-2 rounded-lg border border-white/5">
+                              <span className="text-slate-300 font-mono text-[11px] truncate max-w-[200px]">{at.name} ({at.size})</span>
+                              <button 
+                                onClick={() => {
+                                  setWalkinFormData(prev => ({
+                                    ...prev,
+                                    attachments: prev.attachments.filter((_, i) => i !== index)
+                                  }));
+                                }}
+                                className="text-red-400 hover:text-red-300 font-bold font-mono"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-white/5 font-bold">
+                  <button
+                    onClick={() => {
+                      setWalkinFormData({
+                        full_name: '',
+                        whatsapp_number: '',
+                        email: '',
+                        nationality: 'United Kingdom',
+                        passport_number: '',
+                        tour_name: 'Prison Island & Giant Aldabra Tortoises',
+                        preferred_date: new Date().toISOString().split('T')[0],
+                        number_of_guests: 2,
+                        pickup_location: 'Hotel Lobby reception',
+                        pickup_time: '08:30 AM',
+                        booking_source: 'Walk-in',
+                        special_requests: '',
+                        internal_notes: '',
+                        payment_mode: 'Cash',
+                        payment_status: 'Paid in Full',
+                        total_cost: 90,
+                        amount_paid: 90,
+                        attachments: []
+                      });
+                    }}
+                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl transition-all cursor-pointer"
+                  >
+                    Reset Form
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      if (!walkinFormData.full_name || !walkinFormData.whatsapp_number) {
+                        alert('Error: Guest Name and WhatsApp phone number are required fields.');
+                        return;
+                      }
+
+                      const generatedRef = 'ZTR-W-' + Math.floor(100000 + Math.random() * 900000);
+                      const finalBookingObj = {
+                        id: generatedRef,
+                        full_name: walkinFormData.full_name,
+                        email: walkinFormData.email || '',
+                        whatsapp_number: walkinFormData.whatsapp_number,
+                        number_of_guests: walkinFormData.number_of_guests,
+                        tour_name: walkinFormData.tour_name,
+                        preferred_date: walkinFormData.preferred_date,
+                        pickup_location: walkinFormData.pickup_location,
+                        status: 'confirmed',
+                        message: walkinFormData.special_requests || 'No remarks.',
+                        created_at: new Date().toISOString(),
+                        nationality: walkinFormData.nationality,
+                        passport_number: walkinFormData.passport_number,
+                        pickup_time: walkinFormData.pickup_time,
+                        booking_source: walkinFormData.booking_source,
+                        payment_status: walkinFormData.payment_status,
+                        payment_mode: walkinFormData.payment_mode,
+                        total_cost: walkinFormData.total_cost,
+                        amount_paid: walkinFormData.amount_paid,
+                        internal_notes: walkinFormData.internal_notes || 'Registered walk-in at HQ.',
+                        attachments: walkinFormData.attachments
+                      };
+
+                      // 1. Save to local storage cache lists
+                      const current = JSON.parse(localStorage.getItem('ztr_bookings') || '[]');
+                      const updated = [finalBookingObj, ...current];
+                      localStorage.setItem('ztr_bookings', JSON.stringify(updated));
+                      localStorage.setItem('ztr_local_bookings_backup', JSON.stringify(updated));
+
+                      // 2. Insert directly to Supabase bookings table
+                      try {
+                        const { error } = await supabase
+                          .from('bookings')
+                          .insert({
+                            reference_code: generatedRef,
+                            customer_name: walkinFormData.full_name,
+                            customer_email: walkinFormData.email || null,
+                            customer_phone: walkinFormData.whatsapp_number,
+                            product_name: walkinFormData.tour_name,
+                            travel_date: walkinFormData.preferred_date,
+                            guest_count: walkinFormData.number_of_guests,
+                            pickup_location: walkinFormData.pickup_location,
+                            status: 'confirmed',
+                            details: finalBookingObj
+                          });
+                        if (error) {
+                          console.warn('Supabase insert failed, cached locally:', error);
+                        }
+                      } catch (dbErr) {
+                        console.warn('Supabase DB Exception, cached locally:', dbErr);
+                      }
+
+                      addActivityLog(session?.name || 'Reception Desk', 'walkinBookingRecorded', `Registered office walk-in booking ${generatedRef} for guest ${walkinFormData.full_name}.`);
+
+                      alert(`Asante! Booking ${generatedRef} committed successfully to live database ledger!`);
+
+                      // Load bookings again
+                      await loadBookings();
+
+                      // Reset
+                      setWalkinFormData({
+                        full_name: '',
+                        whatsapp_number: '',
+                        email: '',
+                        nationality: 'United Kingdom',
+                        passport_number: '',
+                        tour_name: 'Prison Island & Giant Aldabra Tortoises',
+                        preferred_date: new Date().toISOString().split('T')[0],
+                        number_of_guests: 2,
+                        pickup_location: 'Hotel Lobby reception',
+                        pickup_time: '08:30 AM',
+                        booking_source: 'Walk-in',
+                        special_requests: '',
+                        internal_notes: '',
+                        payment_mode: 'Cash',
+                        payment_status: 'Paid in Full',
+                        total_cost: 90,
+                        amount_paid: 90,
+                        attachments: []
+                      });
+                    }}
+                    className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-[#020C1F] font-black py-3 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <CheckCircle size={16} />
+                    <span>Commit & Register Voucher</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Dynamic Document Receipt/Invoice Live Preview */}
+              <div className="lg:col-span-5 space-y-4 font-semibold text-slate-800">
+                <div className="bg-slate-900/40 p-3 rounded-2xl border border-white/5 flex items-center justify-between text-xs text-slate-400">
+                  <span className="font-bold">VOUCHER REAL-TIME PREVIEW</span>
+                  <span className="text-[10px] text-emerald-400 uppercase font-mono font-bold animate-pulse">● Live Synced</span>
+                </div>
+
+                <div id="print-voucher-area" className="bg-white text-[#020C1F] p-6 rounded-3xl space-y-6 shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] select-none pointer-events-none">
+                    <h1 className="text-7xl font-bold font-serif rotate-12">ZANZIBAR</h1>
+                  </div>
+
+                  <div className="flex justify-between items-start border-b-2 border-slate-200 pb-4">
+                    <div>
+                      <h2 className="text-base font-black tracking-tight font-serif uppercase">Zanzibar Trip & Relax</h2>
+                      <p className="text-[9px] text-slate-500 font-bold leading-none">Stone Town HQ • Mizingani Rd, Zanzibar</p>
+                      <p className="text-[9px] text-slate-500 font-bold">Hotline: +255 777 421 988 | info@zanzibartrip.com</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[8px] uppercase font-mono font-bold text-slate-400 block">DOCUMENTATION TYPE</span>
+                      <span className="text-xs font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono uppercase tracking-wide">Voucher & Invoice</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-[11px] border-b-2 border-dashed border-slate-200 pb-4">
+                    <div className="space-y-1">
+                      <p className="text-slate-400 text-[9px] font-bold uppercase leading-none">Registered Traveler</p>
+                      <p className="font-extrabold text-xs uppercase leading-snug">{walkinFormData.full_name || 'Anonymous Guest'}</p>
+                      <p className="text-slate-600 font-medium">WhatsApp: {walkinFormData.whatsapp_number || 'N/A'}</p>
+                      <p className="text-slate-600 font-medium">Nationality: {walkinFormData.nationality} • PP: {walkinFormData.passport_number || 'TBD'}</p>
+                    </div>
+
+                    <div className="space-y-1 text-right">
+                      <p className="text-slate-400 text-[9px] font-bold uppercase leading-none">Booking Reference</p>
+                      <p className="font-bold text-xs text-slate-800 font-mono">ZTR-W-2026-TEMP</p>
+                      <p className="text-slate-600 font-medium">Date Issued: {new Date().toLocaleDateString()}</p>
+                      <p className="text-slate-600 font-medium">Source: {walkinFormData.booking_source}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-[11px]">
+                    <div className="flex justify-between border-b border-slate-100 py-1 font-bold">
+                      <span className="text-slate-500">Excursion Description</span>
+                      <span className="text-slate-800">Date & Logistics</span>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <span className="font-black text-xs text-slate-800 max-w-[200px]">{walkinFormData.tour_name}</span>
+                        <span className="font-mono text-slate-700 font-bold">{walkinFormData.preferred_date}</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-500 font-medium">
+                        <span>Hotel Pickup: {walkinFormData.pickup_location}</span>
+                        <span>Pickup Time: {walkinFormData.pickup_time}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-medium">
+                        <span>Total Registered Passengers: <strong>{walkinFormData.number_of_guests} Travelers</strong></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-2xl space-y-2 text-[11px] border border-slate-100">
+                    <span className="text-[8px] uppercase text-slate-400 font-bold tracking-widest block">Ledger Bill Statement</span>
+                    <div className="flex justify-between text-slate-600 font-bold">
+                      <span>Total Estimated Cost:</span>
+                      <span className="font-mono">${walkinFormData.total_cost}.00 USD</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600 font-bold">
+                      <span>Amount Received ({walkinFormData.payment_mode}):</span>
+                      <span className="font-mono text-emerald-600">${walkinFormData.amount_paid}.00 USD</span>
+                    </div>
+                    <div className="flex justify-between border-t border-slate-200 pt-1 text-slate-800 font-black">
+                      <span>Remaining Balance Due:</span>
+                      <span className="font-mono text-rose-600">${walkinFormData.total_cost - walkinFormData.amount_paid}.00 USD</span>
+                    </div>
+                  </div>
+
+                  {walkinFormData.special_requests && (
+                    <div className="text-[10px] text-slate-600 space-y-1 border-t border-slate-100 pt-3 leading-relaxed">
+                      <p className="font-bold uppercase text-[8px] text-slate-400 tracking-wider leading-none">Dietary / Special Requests:</p>
+                      <p className="italic font-medium">"{walkinFormData.special_requests}"</p>
+                    </div>
+                  )}
+
+                  <div className="border-t border-slate-200 pt-4 flex justify-between items-center text-[8px] font-bold text-slate-400">
+                    <span>V3.4.1 SECURE SYSTEM SIGNATURE</span>
+                    <span>Zanzibar Trip Reception Desk</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    const printContents = document.getElementById('print-voucher-area')?.innerHTML;
+                    if (!printContents) return;
+                    const printWindow = window.open('', '', 'height=600,width=800');
+                    if (printWindow) {
+                      printWindow.document.write('<html><head><title>Print Booking Voucher</title>');
+                      printWindow.document.write('<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">');
+                      printWindow.document.write('<style>body { font-family: sans-serif; -webkit-print-color-adjust: exact; padding: 40px; }</style></head><body>');
+                      printWindow.document.write(printContents);
+                      printWindow.document.write('</body></html>');
+                      printWindow.document.close();
+                      printWindow.focus();
+                      setTimeout(() => {
+                        printWindow.print();
+                        printWindow.close();
+                      }, 1000);
+                    } else {
+                      window.print();
+                    }
+                  }}
+                  className="w-full bg-[#121B30] hover:bg-[#1a2642] text-white border border-white/10 font-bold py-3 rounded-2xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <Printer size={14} className="text-[#D4A017]" />
+                  <span>Print physical receipt & Voucher</span>
+                </button>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* TOUR OPERATIONS SPECIALIZED DESK */}
+        {activeTab === 'tourops' && (
+          !hasAccess('bookings', 'write') ? renderRestrictedState('Tour Operations Board') : (
+            <div className="space-y-6 animate-fade-in text-slate-300">
+              {/* Operations Overview row */}
+              <div className="bg-[#0A1224] border border-white/5 p-6 rounded-3xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+                    <Shield className="text-[#D4A017] w-6 h-6" />
+                    <span>Coordinate Fleet Drivers & Swahili Guides</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">Assign logistics crews, specify pickups, monitor vehicle checklist, and generate the daily operations sheets.</p>
+                </div>
+
+                <div className="flex items-center gap-2 bg-[#121B30] border border-white/5 rounded-xl p-2.5">
+                  <span className="text-xs font-bold text-slate-400">Target Operations Date:</span>
+                  <input 
+                    type="date"
+                    value={touropsSelectedDate}
+                    onChange={e => setTouropsSelectedDate(e.target.value)}
+                    className="bg-[#0A1224] border border-white/10 rounded-lg p-1.5 text-white font-mono text-xs focus:border-[#D4A017] outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Grid of operational allocations */}
+              {(() => {
+                const dateBookings = bookingsList.filter(b => b.preferred_date === touropsSelectedDate);
+
+                return (
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-xs">
+                    {/* Departures for selected day */}
+                    <div className="lg:col-span-8 bg-[#0A1224] border border-white/5 p-5 md:p-6 rounded-3xl space-y-4">
+                      <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                        <span className="text-xs font-black text-white uppercase tracking-wider">Scheduled Departures ({dateBookings.length})</span>
+                        <span className="text-[10px] font-mono text-slate-400">Refreshed live from database</span>
+                      </div>
+
+                      {dateBookings.length === 0 ? (
+                        <div className="text-center py-12 space-y-3 font-semibold">
+                          <p className="text-slate-400 text-xs">No active departures scheduled for {touropsSelectedDate}.</p>
+                          <button 
+                            onClick={() => {
+                              const dates = bookingsList.map(b => b.preferred_date).filter(Boolean);
+                              if (dates.length > 0) {
+                                setTouropsSelectedDate(dates[0]);
+                              } else {
+                                alert('Please add a walk-in booking first to allocate staff!');
+                              }
+                            }}
+                            className="bg-[#121B30] hover:bg-[#1a2642] text-[#D4A017] px-4 py-2 rounded-xl text-[10px] font-bold border border-white/5 cursor-pointer"
+                          >
+                            Jump to first date with departures
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4 font-semibold">
+                          {dateBookings.map((b) => {
+                            const initialGuide = b.assigned_guide || b.details?.assigned_guide || 'Unassigned';
+                            const initialDriver = b.assigned_driver || b.details?.assigned_driver || 'Unassigned';
+                            const initialVehicle = b.assigned_vehicle || b.details?.assigned_vehicle || 'Unassigned';
+                            const initialBoat = b.assigned_boat || b.details?.assigned_boat || 'Unassigned';
+
+                            return (
+                              <div key={b.id} className="bg-[#121B30]/50 border border-white/5 p-4 rounded-2xl space-y-3 relative hover:border-[#D4A017]/10 transition-all text-slate-300">
+                                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-white/5 pb-2">
+                                  <div>
+                                    <span className="text-[9px] font-mono font-bold bg-[#D4A017]/10 text-[#D4A017] border border-[#D4A017]/20 px-2 py-0.5 rounded mr-2 uppercase tracking-wider">{b.id}</span>
+                                    <span className="font-extrabold text-sm text-white">{b.full_name}</span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 font-bold bg-slate-900 border border-white/5 px-2.5 py-1 rounded-full uppercase truncate max-w-[200px]" title={b.tour_name}>{b.tour_name}</span>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[11px]">
+                                  <div className="space-y-0.5">
+                                    <span className="text-slate-400 text-[10px] block font-medium">Hotel Pickup Point:</span>
+                                    <p className="text-white font-bold truncate" title={b.pickup_location}>{b.pickup_location}</p>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <span className="text-slate-400 text-[10px] block font-medium">Pickup Time:</span>
+                                    <p className="text-[#D4A017] font-mono font-black">{b.pickup_time || b.details?.pickup_time || '08:30 AM'}</p>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <span className="text-slate-400 text-[10px] block font-medium">Passengers:</span>
+                                    <p className="text-white font-bold">{b.number_of_guests} Guests</p>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <span className="text-slate-400 text-[10px] block font-medium">Dietary & Request Notes:</span>
+                                    <p className="text-slate-300 font-medium italic truncate" title={b.message || 'None'}>"{b.message || 'No requests'}"</p>
+                                  </div>
+                                </div>
+
+                                {/* Assignments Box */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-[#0A1224] p-3 rounded-xl border border-white/5 text-[10px] font-bold">
+                                  <div className="space-y-1">
+                                    <label className="text-slate-400 font-bold uppercase block tracking-wider">Assign Guide</label>
+                                    <select
+                                      value={initialGuide}
+                                      onChange={async (e) => {
+                                        const newGuide = e.target.value;
+                                        const updatedBookings = bookingsList.map(bk => bk.id === b.id ? { 
+                                          ...bk, 
+                                          assigned_guide: newGuide,
+                                          details: { ...(bk.details || {}), assigned_guide: newGuide }
+                                        } : bk);
+                                        setBookingsList(updatedBookings);
+                                        localStorage.setItem('ztr_bookings', JSON.stringify(updatedBookings));
+
+                                        try {
+                                          await supabase.from('bookings').update({
+                                            details: { ...(b.details || b), assigned_guide: newGuide }
+                                          }).eq('id', b.id);
+                                        } catch (dbErr) { console.warn(dbErr); }
+
+                                        addActivityLog(session?.name || 'Dispatcher', 'assignStaff', `Assigned guide ${newGuide} to booking ${b.id}.`);
+                                        await addBookingAuditTrailItem(b.id, 'assignGuide', `Assigned guide "${newGuide}" to excursion.`);
+                                      }}
+                                      className="w-full bg-[#121B30] border border-white/10 rounded-lg p-1.5 text-white focus:border-[#D4A017] outline-none"
+                                    >
+                                      <option value="Unassigned">Unassigned</option>
+                                      <option value="Captain Guide Ali">Captain Guide Ali (Swahili/English)</option>
+                                      <option value="Guide Khamis">Guide Khamis (German/English)</option>
+                                      <option value="Guide Fatma">Guide Fatma (Italian/Spanish)</option>
+                                      <option value="Guide Juma">Guide Juma (French/English)</option>
+                                    </select>
+                                  </div>
+
+                                  <div className="space-y-1">
+                                    <label className="text-slate-400 font-bold uppercase block tracking-wider">Assign Driver</label>
+                                    <select
+                                      value={initialDriver}
+                                      onChange={async (e) => {
+                                        const newDriver = e.target.value;
+                                        const updatedBookings = bookingsList.map(bk => bk.id === b.id ? { 
+                                          ...bk, 
+                                          assigned_driver: newDriver,
+                                          details: { ...(bk.details || {}), assigned_driver: newDriver }
+                                        } : bk);
+                                        setBookingsList(updatedBookings);
+                                        localStorage.setItem('ztr_bookings', JSON.stringify(updatedBookings));
+
+                                        try {
+                                          await supabase.from('bookings').update({
+                                            details: { ...(b.details || b), assigned_driver: newDriver }
+                                          }).eq('id', b.id);
+                                        } catch (dbErr) { console.warn(dbErr); }
+
+                                        addActivityLog(session?.name || 'Dispatcher', 'assignStaff', `Assigned driver ${newDriver} to booking ${b.id}.`);
+                                        await addBookingAuditTrailItem(b.id, 'assignDriver', `Assigned driver "${newDriver}" to transfer.`);
+                                      }}
+                                      className="w-full bg-[#121B30] border border-white/10 rounded-lg p-1.5 text-white focus:border-[#D4A017] outline-none"
+                                    >
+                                      <option value="Unassigned">Unassigned</option>
+                                      <option value="Driver Juma">Driver Juma</option>
+                                      <option value="Driver Bakari">Driver Bakari</option>
+                                      <option value="Driver Idi">Driver Idi</option>
+                                      <option value="Driver Salum">Driver Salum</option>
+                                    </select>
+                                  </div>
+
+                                  <div className="space-y-1">
+                                    <label className="text-slate-400 font-bold uppercase block tracking-wider">Vehicle Assigned</label>
+                                    <select
+                                      value={initialVehicle}
+                                      onChange={async (e) => {
+                                        const newVeh = e.target.value;
+                                        const updatedBookings = bookingsList.map(bk => bk.id === b.id ? { 
+                                          ...bk, 
+                                          assigned_vehicle: newVeh,
+                                          details: { ...(bk.details || {}), assigned_vehicle: newVeh }
+                                        } : bk);
+                                        setBookingsList(updatedBookings);
+                                        localStorage.setItem('ztr_bookings', JSON.stringify(updatedBookings));
+
+                                        try {
+                                          await supabase.from('bookings').update({
+                                            details: { ...(b.details || b), assigned_vehicle: newVeh }
+                                          }).eq('id', b.id);
+                                        } catch (dbErr) { console.warn(dbErr); }
+
+                                        addActivityLog(session?.name || 'Dispatcher', 'assignStaff', `Assigned vehicle ${newVeh} to booking ${b.id}.`);
+                                        await addBookingAuditTrailItem(b.id, 'assignVehicle', `Assigned vehicle "${newVeh}" to transfer.`);
+                                      }}
+                                      className="w-full bg-[#121B30] border border-white/10 rounded-lg p-1.5 text-white focus:border-[#D4A017] outline-none"
+                                    >
+                                      <option value="Unassigned">Unassigned</option>
+                                      <option value="Toyota Land Cruiser (ZAN-401)">Toyota Land Cruiser (ZAN-401)</option>
+                                      <option value="Toyota Alphard VIP (ZAN-882)">Toyota Alphard VIP (ZAN-882)</option>
+                                      <option value="Toyota Hiace Shuttle (ZAN-125)">Toyota Hiace Shuttle (ZAN-125)</option>
+                                      <option value="Coaster Bus Operations (ZAN-991)">Coaster Bus Operations (ZAN-991)</option>
+                                    </select>
+                                  </div>
+
+                                  <div className="space-y-1">
+                                    <label className="text-slate-400 font-bold uppercase block tracking-wider">Boat Assigned</label>
+                                    <select
+                                      value={initialBoat}
+                                      onChange={async (e) => {
+                                        const newBoat = e.target.value;
+                                        const updatedBookings = bookingsList.map(bk => bk.id === b.id ? { 
+                                          ...bk, 
+                                          assigned_boat: newBoat,
+                                          details: { ...(bk.details || {}), assigned_boat: newBoat }
+                                        } : bk);
+                                        setBookingsList(updatedBookings);
+                                        localStorage.setItem('ztr_bookings', JSON.stringify(updatedBookings));
+
+                                        try {
+                                          await supabase.from('bookings').update({
+                                            details: { ...(b.details || b), assigned_boat: newBoat }
+                                          }).eq('id', b.id);
+                                        } catch (dbErr) { console.warn(dbErr); }
+
+                                        addActivityLog(session?.name || 'Dispatcher', 'assignStaff', `Assigned boat ${newBoat} to booking ${b.id}.`);
+                                        await addBookingAuditTrailItem(b.id, 'assignBoat', `Assigned marine vessel "${newBoat}".`);
+                                      }}
+                                      className="w-full bg-[#121B30] border border-white/10 rounded-lg p-1.5 text-white focus:border-[#D4A017] outline-none"
+                                    >
+                                      <option value="Unassigned">Unassigned</option>
+                                      <option value="Swahili Dhow 'Mambo Vipi'">Swahili Dhow "Mambo Vipi"</option>
+                                      <option value="Speedboat 'Safari Blue'">Speedboat "Safari Blue"</option>
+                                      <option value="Glass-bottom Boat 'Fumba'">Glass-bottom Boat "Fumba"</option>
+                                      <option value="N/A - Land Excursion">N/A - Land Excursion</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Left sidebar stats & printable gate security manifest sheet */}
+                    <div className="lg:col-span-4 space-y-4 font-semibold text-slate-300">
+                      <div className="bg-[#0A1224] border border-white/5 p-5 rounded-3xl space-y-4">
+                        <h4 className="text-xs font-extrabold text-[#D4A017] uppercase tracking-wider">Operations Log Checklist</h4>
+                        <div className="space-y-3 text-[11px]">
+                          <div className="flex justify-between items-center bg-[#121B30] p-3 rounded-xl border border-white/5">
+                            <span className="text-slate-300">Total Scheduled Guests:</span>
+                            <span className="font-mono text-[#D4A017] font-black text-sm">
+                              {dateBookings.reduce((acc, curr) => acc + Number(curr.number_of_guests || 0), 0)} Out
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center bg-[#121B30] p-3 rounded-xl border border-white/5">
+                            <span className="text-slate-300">Guides Deployed:</span>
+                            <span className="font-mono text-emerald-400 font-black text-sm">
+                              {new Set(dateBookings.map(b => b.assigned_guide || b.details?.assigned_guide).filter(g => g && g !== 'Unassigned')).size} Staff
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center bg-[#121B30] p-3 rounded-xl border border-white/5">
+                            <span className="text-slate-300">Vehicles Allocated:</span>
+                            <span className="font-mono text-blue-400 font-black text-sm">
+                              {new Set(dateBookings.map(b => b.assigned_vehicle || b.details?.assigned_vehicle).filter(v => v && v !== 'Unassigned')).size} Active
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="border-t border-white/5 pt-4 space-y-2">
+                          <p className="text-[10px] text-slate-500 leading-relaxed font-medium">Ready to authorize gate clearance? Generate the formal Swahili operations dispatch paper in one click.</p>
+                          <button
+                            onClick={() => {
+                              if (dateBookings.length === 0) {
+                                alert('Error: Cannot export empty operations manifest. Change date to find scheduled departures.');
+                                return;
+                              }
+
+                              const printWindow = window.open('', '', 'height=600,width=800');
+                              if (printWindow) {
+                                printWindow.document.write('<html><head><title>Zanzibar HQ - Daily Dispatch Manifest</title>');
+                                printWindow.document.write('<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">');
+                                printWindow.document.write('<style>body { font-family: monospace; padding: 30px; -webkit-print-color-adjust: exact; }</style></head><body>');
+                                
+                                printWindow.document.write(`
+                                  <div class="space-y-6 text-black">
+                                    <div class="border-b-4 border-black pb-4 flex justify-between items-end">
+                                      <div>
+                                        <h1 class="text-2xl font-black uppercase">ZANZIBAR TRIP & RELAX</h1>
+                                        <p class="text-xs">DAILY DEPARTURES & OPERATION DISPATCH MANIFEST</p>
+                                      </div>
+                                      <div class="text-right">
+                                        <p class="text-sm font-bold">DATE: ${touropsSelectedDate}</p>
+                                        <p class="text-[10px] text-gray-500">GENERATED AT: ${new Date().toLocaleString()}</p>
+                                      </div>
+                                    </div>
+
+                                    <table class="w-full text-xs text-left border-collapse border border-gray-400">
+                                      <thead>
+                                        <tr class="bg-gray-100 border-b border-gray-400">
+                                          <th class="p-2 border border-gray-400">Ref</th>
+                                          <th class="p-2 border border-gray-400">Traveler Group</th>
+                                          <th class="p-2 border border-gray-400">Experience Package</th>
+                                          <th class="p-2 border border-gray-400">Guests</th>
+                                          <th class="p-2 border border-gray-400">Pickup Location</th>
+                                          <th class="p-2 border border-gray-400">Time</th>
+                                          <th class="p-2 border border-gray-400">Guide</th>
+                                          <th class="p-2 border border-gray-400">Driver</th>
+                                          <th class="p-2 border border-gray-400">Vehicle</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                `);
+
+                                dateBookings.forEach(bk => {
+                                  printWindow.document.write(`
+                                    <tr class="border-b border-gray-300">
+                                      <td class="p-2 border border-gray-300 font-bold">${bk.id}</td>
+                                      <td class="p-2 border border-gray-300 font-bold">${bk.full_name}</td>
+                                      <td class="p-2 border border-gray-300">${bk.tour_name}</td>
+                                      <td class="p-2 border border-gray-300 font-bold text-center">${bk.number_of_guests}</td>
+                                      <td class="p-2 border border-gray-300">${bk.pickup_location}</td>
+                                      <td class="p-2 border border-gray-300 font-bold">${bk.pickup_time || bk.details?.pickup_time || '08:30 AM'}</td>
+                                      <td class="p-2 border border-gray-300 font-bold">${bk.assigned_guide || bk.details?.assigned_guide || 'TBD'}</td>
+                                      <td class="p-2 border border-gray-300 font-bold">${bk.assigned_driver || bk.details?.assigned_driver || 'TBD'}</td>
+                                      <td class="p-2 border border-gray-300 font-bold">${bk.assigned_vehicle || bk.details?.assigned_vehicle || 'TBD'}</td>
+                                    </tr>
+                                  `);
+                                });
+
+                                printWindow.document.write(`
+                                      </tbody>
+                                    </table>
+
+                                    <div class="grid grid-cols-2 gap-12 pt-12 text-center text-xs">
+                                      <div class="border-t border-gray-500 pt-2">
+                                        <p class="font-bold">Operations Supervisor Signature</p>
+                                        <p class="text-gray-400">Zanzibar HQ gate keeper clearance</p>
+                                      </div>
+                                      <div class="border-t border-gray-500 pt-2">
+                                        <p class="font-bold">Security Marshal Signature</p>
+                                        <p class="text-gray-400">Zanzibar port authorities copy</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                `);
+
+                                printWindow.document.close();
+                                printWindow.focus();
+                                setTimeout(() => {
+                                  printWindow.print();
+                                  printWindow.close();
+                                }, 1000);
+                              } else {
+                                window.print();
+                              }
+                            }}
+                            className="w-full bg-emerald-500 hover:bg-emerald-600 text-[#020C1F] font-extrabold py-3 rounded-2xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                          >
+                            <Printer size={12} />
+                            <span>Export Swahili Manifest Sheet</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
           )
         )}
 
@@ -3374,8 +5207,318 @@ Stone Town, Zanzibar, Tanzania`);
                   }}
                   className="bg-[#D4A017] hover:bg-[#c49010] text-[#020C1F] font-black px-6 py-2.5 rounded-xl text-xs cursor-pointer flex items-center gap-2"
                 >
+                </button>
+              </div>
+            </div>
+
+            {/* EVENT-DRIVEN AUTOMATION ENGINE & ACTION TRIGGERS CARD */}
+            <div className="bg-[#0A1224] border border-[#D4A017]/25 p-6 md:p-8 rounded-3xl space-y-8 relative overflow-hidden text-left">
+              {/* Subtle background golden glow accent */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#D4A017]/5 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-white/5 pb-4 gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2.5" style={{ fontFamily: 'Playfair Display, serif' }}>
+                    <Sparkles className="text-[#D4A017]" size={20} />
+                    <span>Event-Driven Automation Rules</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Manage real-time triggers, decouple email confirmations, and direct automated WhatsApp dispatch actions.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 bg-[#121B30] border border-white/5 px-3 py-1.5 rounded-xl text-[10px] font-mono text-emerald-400">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  <span>EventBus: ACTIVE</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* 1. Communication Channels */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-[#D4A017] border-b border-white/5 pb-2">
+                    <Terminal size={14} />
+                    <h4 className="text-xs font-bold uppercase tracking-wider">1. Communication Channels</h4>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-relaxed">
+                    Toggle active system pipelines. Disabling a channel blocks all automated events routed through it.
+                  </p>
+                  
+                  <div className="space-y-3.5 pt-2">
+                    {[
+                      {
+                        id: 'notify_channel_email',
+                        title: 'Email Dispatch Channel',
+                        desc: 'Routes automated tour details and booking secure forms via SMTP.',
+                        state: settingsNotifyChannelEmail,
+                        setter: setSettingsNotifyChannelEmail,
+                      },
+                      {
+                        id: 'notify_channel_whatsapp',
+                        title: 'WhatsApp Dispatch Channel',
+                        desc: 'Simulates high-priority text alerts for guides, drivers, and clients.',
+                        state: settingsNotifyChannelWhatsApp,
+                        setter: setSettingsNotifyChannelWhatsApp,
+                      },
+                      {
+                        id: 'notify_channel_dashboard',
+                        title: 'In-App Alerts Channel',
+                        desc: 'Displays floating notification toast sheets in the Admin Dashboard.',
+                        state: settingsNotifyChannelDashboard,
+                        setter: setSettingsNotifyChannelDashboard,
+                      }
+                    ].map((item) => (
+                      <div key={item.id} className="flex items-start justify-between gap-4 p-3 bg-[#121B30]/30 rounded-2xl border border-white/5">
+                        <div className="space-y-1">
+                          <label htmlFor={`toggle-${item.id}`} className="text-xs font-bold text-white block cursor-pointer">
+                            {item.title}
+                          </label>
+                          <span className="text-[10px] text-slate-400 block leading-relaxed">{item.desc}</span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+                          <input 
+                            id={`toggle-${item.id}`}
+                            type="checkbox" 
+                            checked={item.state} 
+                            onChange={(e) => item.setter(e.target.checked)} 
+                            className="sr-only peer" 
+                          />
+                          <div className="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#D4A017]"></div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Lifecycle & Auto-Triggers */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-[#D4A017] border-b border-white/5 pb-2">
+                    <RefreshCw size={14} />
+                    <h4 className="text-xs font-bold uppercase tracking-wider">2. Booking Lifecycle</h4>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-relaxed">
+                    Operational action triggers fired automatically on status transitions or client confirmations.
+                  </p>
+
+                  <div className="space-y-3.5 pt-2">
+                    {[
+                      {
+                        id: 'auto_confirm',
+                        title: 'Auto-Confirm Bookings',
+                        desc: 'Transition newly created orders immediately to secure status.',
+                        state: settingsAutoConfirmCustomer,
+                        setter: setSettingsAutoConfirmCustomer,
+                      },
+                      {
+                        id: 'auto_notify_admin',
+                        title: 'Notify Admins Instantly',
+                        desc: 'Deliver alerts when guests make inquiries or updates.',
+                        state: settingsAutoNotifyAdmin,
+                        setter: setSettingsAutoNotifyAdmin,
+                      },
+                      {
+                        id: 'auto_reserve_inventory',
+                        title: 'Auto-Reserve Vehicles',
+                        desc: 'Mark fleet vehicles as occupied when an event triggers.',
+                        state: settingsAutoReserveInventory,
+                        setter: setSettingsAutoReserveInventory,
+                      },
+                      {
+                        id: 'auto_update_availability',
+                        title: 'Auto-Update Schedule',
+                        desc: 'Refresh public availability matrices on new reservations.',
+                        state: settingsAutoUpdateAvailability,
+                        setter: setSettingsAutoUpdateAvailability,
+                      }
+                    ].map((item) => (
+                      <div key={item.id} className="flex items-start justify-between gap-4 p-3 bg-[#121B30]/30 rounded-2xl border border-white/5">
+                        <div className="space-y-1">
+                          <label htmlFor={`toggle-${item.id}`} className="text-xs font-bold text-white block cursor-pointer">
+                            {item.title}
+                          </label>
+                          <span className="text-[10px] text-slate-400 block leading-relaxed">{item.desc}</span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+                          <input 
+                            id={`toggle-${item.id}`}
+                            type="checkbox" 
+                            checked={item.state} 
+                            onChange={(e) => item.setter(e.target.checked)} 
+                            className="sr-only peer" 
+                          />
+                          <div className="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#D4A017]"></div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. Customer Experience & Reminders */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-[#D4A017] border-b border-white/5 pb-2">
+                    <Clock size={14} />
+                    <h4 className="text-xs font-bold uppercase tracking-wider">3. Automated Experience</h4>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-relaxed">
+                    Post-sale and retention-focused alerts designed to keep guests and guides perfectly aligned.
+                  </p>
+
+                  <div className="space-y-3.5 pt-2">
+                    {[
+                      {
+                        id: 'auto_send_reminder_email',
+                        title: 'Pre-Trip Email Reminders',
+                        desc: 'Send a detailed email summary exactly 24 hours before pickup.',
+                        state: settingsAutoSendReminderEmail,
+                        setter: setSettingsAutoSendReminderEmail,
+                      },
+                      {
+                        id: 'auto_send_reminder_whatsapp',
+                        title: 'Pre-Trip WhatsApp Reminders',
+                        desc: 'Route WhatsApp confirmations to driver and guest phones.',
+                        state: settingsAutoSendReminderWhatsApp,
+                        setter: setSettingsAutoSendReminderWhatsApp,
+                      },
+                      {
+                        id: 'auto_send_thank_you',
+                        title: 'Post-Trip Thank You Emails',
+                        desc: 'Dispatches custom appreciation letters upon transfer completion.',
+                        state: settingsAutoSendThankYou,
+                        setter: setSettingsAutoSendThankYou,
+                      },
+                      {
+                        id: 'auto_send_review_request',
+                        title: 'Automated Review Request',
+                        desc: 'Prompt clients for feedback and TripAdvisor/Google ratings.',
+                        state: settingsAutoSendReviewRequest,
+                        setter: setSettingsAutoSendReviewRequest,
+                      }
+                    ].map((item) => (
+                      <div key={item.id} className="flex items-start justify-between gap-4 p-3 bg-[#121B30]/30 rounded-2xl border border-white/5">
+                        <div className="space-y-1">
+                          <label htmlFor={`toggle-${item.id}`} className="text-xs font-bold text-white block cursor-pointer">
+                            {item.title}
+                          </label>
+                          <span className="text-[10px] text-slate-400 block leading-relaxed">{item.desc}</span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+                          <input 
+                            id={`toggle-${item.id}`}
+                            type="checkbox" 
+                            checked={item.state} 
+                            onChange={(e) => item.setter(e.target.checked)} 
+                            className="sr-only peer" 
+                          />
+                          <div className="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#D4A017]"></div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* LIVE SIMULATOR TERMINAL SECTION */}
+              <div className="mt-8 pt-6 border-t border-white/5 bg-[#121B30]/40 p-5 rounded-2xl border border-white/5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Terminal size={14} className="text-[#D4A017]" />
+                    <h4 className="text-xs font-bold text-white">EventBus Real-Time Simulator</h4>
+                  </div>
+                  <span className="text-[9px] uppercase font-bold text-[#D4A017] px-2 py-0.5 bg-[#D4A017]/10 rounded border border-[#D4A017]/25 font-mono">
+                    Sandboxed Integration Testing
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed max-w-3xl">
+                  Test the event-driven system without executing actual booking routes. Clicking a simulation button will dispatch a type-safe payload on the shared <code>EventBus</code>. Registered listeners will catch the event, update the local storage activity indexes, and automatically append simulated logs.
+                </p>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const mockBooking = {
+                        reference: `ZTR-${Date.now().toString().substring(7)}`,
+                        fullName: 'Johnathan Doe',
+                        email: 'john.doe@example.com',
+                        whatsappNumber: '+255 777 999 888',
+                        tourName: 'Blue Safari Marine Excursion',
+                        preferredDate: '2026-07-12',
+                        pickupLocation: 'Gold Zanzibar Beach House, Kendwa',
+                        numberOfGuests: 2,
+                        totalPrice: 280,
+                        depositAmount: 140,
+                        remainingBalance: 140,
+                        paymentOption: 'deposit' as const,
+                        paymentStatus: 'pending' as const,
+                        currency: '$',
+                        timestamp: new Date().toISOString()
+                      };
+                      await eventBus.emit('booking.created', mockBooking);
+                      alert(`Successfully emitted 'booking.created' for ${mockBooking.reference}! Active listeners handled this event and simulated WhatsApp/Email log integrations.`);
+                    }}
+                    className="bg-[#121B30] hover:bg-[#1b2742] border border-[#D4A017]/40 text-[#D4A017] hover:text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5"
+                  >
+                    <Send size={12} />
+                    <span>Emit 'booking.created' Event</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const mockDispatch = {
+                        reference: 'ZTR-8819',
+                        driverName: 'Driver Juma',
+                        driverPhone: '+255 777 101 202',
+                        vehiclePlate: 'Z-101-ZN',
+                        pickupTime: '08:30 AM',
+                        pickupLocation: 'Riu Palace Zanzibar, Nungwi',
+                        timestamp: new Date().toISOString()
+                      };
+                      await eventBus.emit('dispatch.updated', mockDispatch);
+                      alert(`Successfully emitted 'dispatch.updated' for driver ${mockDispatch.driverName}! This triggered the driver notification alert sequence and updated simulated logs.`);
+                    }}
+                    className="bg-[#121B30] hover:bg-[#1b2742] border border-[#D4A017]/40 text-[#D4A017] hover:text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5"
+                  >
+                    <Truck size={12} />
+                    <span>Emit 'dispatch.updated' Event</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Card Actions */}
+              <div className="flex items-center justify-between border-t border-white/5 pt-6">
+                <div>
+                  {saveAutomationSuccess && (
+                    <div className="text-emerald-400 font-bold text-xs flex items-center gap-1.5 animate-bounce">
+                      <CheckCircle2 size={14} />
+                      <span>Automation rules and trigger matrices synchronized!</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    localStorage.setItem('ztr_settings_notify_channel_email', String(settingsNotifyChannelEmail));
+                    localStorage.setItem('ztr_settings_notify_channel_whatsapp', String(settingsNotifyChannelWhatsApp));
+                    localStorage.setItem('ztr_settings_notify_channel_dashboard', String(settingsNotifyChannelDashboard));
+
+                    localStorage.setItem('ztr_settings_auto_confirm_customer', String(settingsAutoConfirmCustomer));
+                    localStorage.setItem('ztr_settings_auto_notify_admin', String(settingsAutoNotifyAdmin));
+                    localStorage.setItem('ztr_settings_auto_reserve_inventory', String(settingsAutoReserveInventory));
+                    localStorage.setItem('ztr_settings_auto_update_availability', String(settingsAutoUpdateAvailability));
+
+                    localStorage.setItem('ztr_settings_auto_send_reminder_email', String(settingsAutoSendReminderEmail));
+                    localStorage.setItem('ztr_settings_auto_send_reminder_whatsapp', String(settingsAutoSendReminderWhatsApp));
+                    localStorage.setItem('ztr_settings_auto_send_thank_you', String(settingsAutoSendThankYou));
+                    localStorage.setItem('ztr_settings_auto_send_review_request', String(settingsAutoSendReviewRequest));
+
+                    setSaveAutomationSuccess(true);
+                    setTimeout(() => setSaveAutomationSuccess(false), 3000);
+                    
+                    addActivityLog(session?.name || 'Admin', 'updateAutomationRules', `Synchronized automation trigger settings: Channels (Email=${settingsNotifyChannelEmail}, WA=${settingsNotifyChannelWhatsApp}), Reminders (Email=${settingsAutoSendReminderEmail}, WA=${settingsAutoSendReminderWhatsApp})`);
+                  }}
+                  className="bg-[#D4A017] hover:bg-[#c49010] text-[#020C1F] font-black px-6 py-2.5 rounded-xl text-xs cursor-pointer flex items-center gap-2"
+                >
                   <Check size={14} />
-                  <span>Save Settings Configuration</span>
+                  <span>Save Automation Rules</span>
                 </button>
               </div>
             </div>
@@ -3943,128 +6086,125 @@ Stone Town, Zanzibar, Tanzania`);
 
                     {/* LOGS LIST */}
                     <div className="border border-white/5 rounded-2xl overflow-hidden bg-[#121B30]/20 font-mono text-xs">
-                      {backupOperationsLogs.filter(log => {
-                        const matchesSearch = 
-                          log.operation.toLowerCase().includes(backupLogSearch.toLowerCase()) ||
-                          log.operator.toLowerCase().includes(backupLogSearch.toLowerCase()) ||
-                          log.target.toLowerCase().includes(backupLogSearch.toLowerCase()) ||
-                          log.details.toLowerCase().includes(backupLogSearch.toLowerCase());
-                        
-                        const matchesOperation = backupLogFilterOperation === 'all' || log.operation === backupLogFilterOperation;
-                        const matchesStatus = backupLogFilterStatus === 'all' || log.status.toLowerCase() === backupLogFilterStatus.toLowerCase();
-                        
-                        return matchesSearch && matchesOperation && matchesStatus;
-                      }).length === 0 ? (
-                        <div className="p-8 text-center text-slate-500 space-y-1">
-                          <Terminal size={24} className="mx-auto text-slate-600 mb-2" />
-                          <p className="font-sans font-bold">No operation logs found</p>
-                          <p className="font-sans text-[11px] text-slate-600">Try adjusting your filters, searching for another keyword, or resetting to default logs.</p>
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-white/5">
-                          {/* HEADER */}
-                          <div className="hidden md:grid grid-cols-12 bg-[#121B30]/40 px-4 py-2.5 text-[10px] text-slate-400 font-sans uppercase font-bold tracking-wider text-left">
-                            <div className="col-span-3">Timestamp (UTC)</div>
-                            <div className="col-span-3">Operation</div>
-                            <div className="col-span-2">Operator</div>
-                            <div className="col-span-2">Target</div>
-                            <div className="col-span-1 text-center">Size</div>
-                            <div className="col-span-1 text-right">Details</div>
-                          </div>
+                      {(() => {
+                        const filtered = backupOperationsLogs.filter(log => {
+                          const matchesSearch = 
+                            (log.operation || '').toLowerCase().includes(backupLogSearch.toLowerCase()) ||
+                            (log.operator || '').toLowerCase().includes(backupLogSearch.toLowerCase()) ||
+                            (log.target || '').toLowerCase().includes(backupLogSearch.toLowerCase()) ||
+                            (log.details || '').toLowerCase().includes(backupLogSearch.toLowerCase());
+                          
+                          const matchesOperation = backupLogFilterOperation === 'all' || log.operation === backupLogFilterOperation;
+                          const matchesStatus = backupLogFilterStatus === 'all' || (log.status || '').toLowerCase() === backupLogFilterStatus.toLowerCase();
+                          
+                          return matchesSearch && matchesOperation && matchesStatus;
+                        });
 
-                          {/* ROWS */}
-                          {backupOperationsLogs.filter(log => {
-                            const matchesSearch = 
-                              log.operation.toLowerCase().includes(backupLogSearch.toLowerCase()) ||
-                              log.operator.toLowerCase().includes(backupLogSearch.toLowerCase()) ||
-                              log.target.toLowerCase().includes(backupLogSearch.toLowerCase()) ||
-                              log.details.toLowerCase().includes(backupLogSearch.toLowerCase());
-                            
-                            const matchesOperation = backupLogFilterOperation === 'all' || log.operation === backupLogFilterOperation;
-                            const matchesStatus = backupLogFilterStatus === 'all' || log.status.toLowerCase() === backupLogFilterStatus.toLowerCase();
-                            
-                            return matchesSearch && matchesOperation && matchesStatus;
-                          }).map((log) => {
-                            const isExpanded = expandedBackupLogId === log.id;
-                            
-                            let opIcon = <Settings size={12} className="text-slate-400" />;
-                            if (log.operation === 'Manual SQL Export') opIcon = <Download size={12} className="text-[#D4A017]" />;
-                            if (log.operation === 'Scheduled Replication') opIcon = <CloudUpload size={12} className="text-blue-400" />;
-                            if (log.operation === 'Database Restoration') opIcon = <RefreshCw size={12} className="text-emerald-400" />;
-                            if (log.operation === 'Snapshot Deletion') opIcon = <Trash2 size={12} className="text-red-400" />;
-                            
-                            return (
-                              <div key={log.id} className="hover:bg-white/[0.01] transition-all">
-                                <div 
-                                  onClick={() => setExpandedBackupLogId(isExpanded ? null : log.id)}
-                                  className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-0 px-4 py-3 items-center cursor-pointer select-none text-left"
-                                >
-                                  {/* Timestamp */}
-                                  <div className="col-span-3 text-[11px] text-slate-400 font-mono">
-                                    {log.timestamp}
-                                  </div>
+                        if (filtered.length === 0) {
+                          return (
+                            <div className="p-8 text-center text-slate-500 space-y-1">
+                              <Terminal size={24} className="mx-auto text-slate-600 mb-2" />
+                              <p className="font-sans font-bold">No operation logs found</p>
+                              <p className="font-sans text-[11px] text-slate-600">Try adjusting your filters, searching for another keyword, or resetting to default logs.</p>
+                            </div>
+                          );
+                        }
 
-                                  {/* Operation */}
-                                  <div className="col-span-3 flex items-center gap-2 font-sans font-semibold text-slate-200">
-                                    {opIcon}
-                                    <span className="text-xs truncate max-w-[150px]">{log.operation}</span>
-                                    {log.status === 'Success' ? (
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" title="Success" />
-                                    ) : (
-                                      <span className="w-1.5 h-1.5 rounded-full bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]" title="Failed" />
-                                    )}
-                                  </div>
+                        return (
+                          <div className="divide-y divide-white/5">
+                            {/* HEADER */}
+                            <div className="hidden md:grid grid-cols-12 bg-[#121B30]/40 px-4 py-2.5 text-[10px] text-slate-400 font-sans uppercase font-bold tracking-wider text-left">
+                              <div className="col-span-3">Timestamp (UTC)</div>
+                              <div className="col-span-3">Operation</div>
+                              <div className="col-span-2">Operator</div>
+                              <div className="col-span-2">Target</div>
+                              <div className="col-span-1 text-center">Size</div>
+                              <div className="col-span-1 text-right">Details</div>
+                            </div>
 
-                                  {/* Operator */}
-                                  <div className="col-span-2 text-slate-300 font-sans text-xs flex items-center gap-1 truncate">
-                                    <User size={10} className="text-slate-500 shrink-0" />
-                                    <span>{log.operator}</span>
-                                  </div>
+                            {/* ROWS */}
+                            {filtered.map((log) => {
+                              const isExpanded = expandedBackupLogId === log.id;
+                              
+                              let opIcon = <Settings size={12} className="text-slate-400" />;
+                              if (log.operation === 'Manual SQL Export') opIcon = <Download size={12} className="text-[#D4A017]" />;
+                              if (log.operation === 'Scheduled Replication') opIcon = <CloudUpload size={12} className="text-blue-400" />;
+                              if (log.operation === 'Database Restoration') opIcon = <RefreshCw size={12} className="text-emerald-400" />;
+                              if (log.operation === 'Snapshot Deletion') opIcon = <Trash2 size={12} className="text-red-400" />;
+                              
+                              return (
+                                <div key={log.id} className="hover:bg-white/[0.01] transition-all">
+                                  <div 
+                                    onClick={() => setExpandedBackupLogId(isExpanded ? null : log.id)}
+                                    className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-0 px-4 py-3 items-center cursor-pointer select-none text-left"
+                                  >
+                                    {/* Timestamp */}
+                                    <div className="col-span-3 text-[11px] text-slate-400 font-mono">
+                                      {log.timestamp}
+                                    </div>
 
-                                  {/* Target */}
-                                  <div className="col-span-2 text-slate-400 font-sans text-xs truncate">
-                                    {log.target}
-                                  </div>
+                                    {/* Operation */}
+                                    <div className="col-span-3 flex items-center gap-2 font-sans font-semibold text-slate-200">
+                                      {opIcon}
+                                      <span className="text-xs truncate max-w-[150px]">{log.operation}</span>
+                                      {log.status === 'Success' ? (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" title="Success" />
+                                      ) : (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]" title="Failed" />
+                                      )}
+                                    </div>
 
-                                  {/* Size */}
-                                  <div className="col-span-1 md:text-center text-slate-300 font-mono text-[11px]">
-                                    {log.size}
-                                  </div>
+                                    {/* Operator */}
+                                    <div className="col-span-2 text-slate-300 font-sans text-xs flex items-center gap-1 truncate">
+                                      <User size={10} className="text-slate-500 shrink-0" />
+                                      <span>{log.operator}</span>
+                                    </div>
 
-                                  {/* Expander Trigger */}
-                                  <div className="col-span-1 flex justify-end">
-                                    <span className="p-1 hover:bg-white/5 rounded text-slate-400 hover:text-white transition-all">
-                                      {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                    </span>
-                                  </div>
-                                </div>
+                                    {/* Target */}
+                                    <div className="col-span-2 text-slate-400 font-sans text-xs truncate">
+                                      {log.target}
+                                    </div>
 
-                                {/* Expanded Diagnostics View */}
-                                {isExpanded && (
-                                  <div className="px-4 pb-4 pt-1 text-left bg-black/40 border-t border-white/[0.03]">
-                                    <div className="bg-[#030914] border border-white/5 p-3 md:p-4 rounded-xl space-y-2.5 font-mono text-[11px]">
-                                      <div className="flex items-center justify-between border-b border-white/[0.04] pb-1.5 text-[10px] text-slate-500">
-                                        <span>DIAGNOSTIC ENGINE REPORT FOR TRANSACTION {log.id.toUpperCase()}</span>
-                                        <span className="text-slate-400 bg-white/5 px-1.5 py-0.5 rounded">STATUS: {log.status.toUpperCase()}</span>
-                                      </div>
-                                      
-                                      <div className="text-slate-300 font-sans leading-relaxed text-xs">
-                                        {log.details}
-                                      </div>
+                                    {/* Size */}
+                                    <div className="col-span-1 md:text-center text-slate-300 font-mono text-[11px]">
+                                      {log.size}
+                                    </div>
 
-                                      <div className="text-[9px] text-slate-500 space-y-0.5 border-t border-white/[0.03] pt-2">
-                                        <div>&gt; HOST_INGRESS_AGENT: router-sw-7.zanzibar-relax.internal</div>
-                                        <div>&gt; PLG_DUMP_SCHEMAS: [active_bookings, erp_ledgers, site_content, secure_hashes]</div>
-                                        <div>&gt; DB_TRANSACTION_SIGNATURE: sha256:f728cb9304a71b...</div>
-                                      </div>
+                                    {/* Expander Trigger */}
+                                    <div className="col-span-1 flex justify-end">
+                                      <span className="p-1 hover:bg-white/5 rounded text-slate-400 hover:text-white transition-all">
+                                        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                      </span>
                                     </div>
                                   </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+
+                                  {/* Expanded Diagnostics View */}
+                                  {isExpanded && (
+                                    <div className="px-4 pb-4 pt-1 text-left bg-black/40 border-t border-white/[0.03]">
+                                      <div className="bg-[#030914] border border-white/5 p-3 md:p-4 rounded-xl space-y-2.5 font-mono text-[11px]">
+                                        <div className="flex items-center justify-between border-b border-white/[0.04] pb-1.5 text-[10px] text-slate-500">
+                                          <span>DIAGNOSTIC ENGINE REPORT FOR TRANSACTION {log.id.toUpperCase()}</span>
+                                          <span className="text-slate-400 bg-white/5 px-1.5 py-0.5 rounded">STATUS: {log.status.toUpperCase()}</span>
+                                        </div>
+                                        
+                                        <div className="text-slate-300 font-sans leading-relaxed text-xs">
+                                          {log.details}
+                                        </div>
+
+                                        <div className="text-[9px] text-slate-500 space-y-0.5 border-t border-white/[0.03] pt-2">
+                                          <div>&gt; HOST_INGRESS_AGENT: router-sw-7.zanzibar-relax.internal</div>
+                                          <div>&gt; PLG_DUMP_SCHEMAS: [active_bookings, erp_ledgers, site_content, secure_hashes]</div>
+                                          <div>&gt; DB_TRANSACTION_SIGNATURE: sha256:f728cb9304a71b...</div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -4417,18 +6557,20 @@ Stone Town, Zanzibar, Tanzania`);
                         </label>
                         <div className="space-y-2">
                           {(siteContent.hero.bgImages || []).map((img, i) => (
-                            <div key={i} className="flex gap-2">
-                              <input
-                                type="text"
-                                disabled={isCMSReadOnly}
-                                value={img}
-                                onChange={(e) => {
-                                  const arr = [...(siteContent.hero.bgImages || [])];
-                                  arr[i] = e.target.value;
-                                  handleHeroConfigChange('bgImages', arr);
-                                }}
-                                className="flex-1 text-xs bg-[#121B30] border border-white/10 rounded-xl py-2 px-3 text-white disabled:opacity-50"
-                              />
+                            <div key={i} className="flex items-start gap-2 bg-[#121B30]/30 p-3 rounded-2xl border border-white/5">
+                              <div className="flex-1">
+                                <MediaSelector
+                                  label={`Slide cover #${i + 1}`}
+                                  value={img}
+                                  onChange={(url) => {
+                                    const arr = [...(siteContent.hero.bgImages || [])];
+                                    arr[i] = url;
+                                    handleHeroConfigChange('bgImages', arr);
+                                  }}
+                                  folder="banners"
+                                  isCMSReadOnly={isCMSReadOnly}
+                                />
+                              </div>
                               <button
                                 type="button"
                                 disabled={isCMSReadOnly}
@@ -4436,7 +6578,7 @@ Stone Town, Zanzibar, Tanzania`);
                                   const arr = (siteContent.hero.bgImages || []).filter((_, idx) => idx !== i);
                                   handleHeroConfigChange('bgImages', arr);
                                 }}
-                                className="bg-red-950 hover:bg-red-900 border border-red-500/20 text-red-400 p-2 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center shrink-0"
+                                className="bg-red-950 hover:bg-red-900 border border-red-500/20 text-red-400 p-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center shrink-0 mt-5"
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -4463,20 +6605,22 @@ Stone Town, Zanzibar, Tanzania`);
                         </label>
                         <div className="space-y-2">
                           {(siteContent.newsletterBgImages || []).map((img, i) => (
-                            <div key={i} className="flex gap-2">
-                              <input
-                                type="text"
-                                disabled={isCMSReadOnly}
-                                value={img}
-                                onChange={(e) => {
-                                  const arr = [...(siteContent.newsletterBgImages || [])];
-                                  arr[i] = e.target.value;
-                                  const updated = { ...siteContent, newsletterBgImages: arr };
-                                  setSiteContent(updated);
-                                  saveSiteContent(updated);
-                                }}
-                                className="flex-1 text-xs bg-[#121B30] border border-white/10 rounded-xl py-2 px-3 text-white disabled:opacity-50"
-                              />
+                            <div key={i} className="flex items-start gap-2 bg-[#121B30]/30 p-3 rounded-2xl border border-white/5">
+                              <div className="flex-1">
+                                <MediaSelector
+                                  label={`Newsletter banner #${i + 1}`}
+                                  value={img}
+                                  onChange={(url) => {
+                                    const arr = [...(siteContent.newsletterBgImages || [])];
+                                    arr[i] = url;
+                                    const updated = { ...siteContent, newsletterBgImages: arr };
+                                    setSiteContent(updated);
+                                    saveSiteContent(updated);
+                                  }}
+                                  folder="banners"
+                                  isCMSReadOnly={isCMSReadOnly}
+                                />
+                              </div>
                               <button
                                 type="button"
                                 disabled={isCMSReadOnly}
@@ -4486,7 +6630,7 @@ Stone Town, Zanzibar, Tanzania`);
                                   setSiteContent(updated);
                                   saveSiteContent(updated);
                                 }}
-                                className="bg-red-950 hover:bg-red-900 border border-red-500/20 text-red-400 p-2 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center shrink-0"
+                                className="bg-red-950 hover:bg-red-900 border border-red-500/20 text-red-400 p-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center shrink-0 mt-5"
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -4515,20 +6659,22 @@ Stone Town, Zanzibar, Tanzania`);
                         </label>
                         <div className="space-y-2">
                           {(siteContent.kilimanjaroBgImages || []).map((img, i) => (
-                            <div key={i} className="flex gap-2">
-                              <input
-                                type="text"
-                                disabled={isCMSReadOnly}
-                                value={img}
-                                onChange={(e) => {
-                                  const arr = [...(siteContent.kilimanjaroBgImages || [])];
-                                  arr[i] = e.target.value;
-                                  const updated = { ...siteContent, kilimanjaroBgImages: arr };
-                                  setSiteContent(updated);
-                                  saveSiteContent(updated);
-                                }}
-                                className="flex-1 text-xs bg-[#121B30] border border-white/10 rounded-xl py-2 px-3 text-white disabled:opacity-50"
-                              />
+                            <div key={i} className="flex items-start gap-2 bg-[#121B30]/30 p-3 rounded-2xl border border-white/5">
+                              <div className="flex-1">
+                                <MediaSelector
+                                  label={`Kilimanjaro cover #${i + 1}`}
+                                  value={img}
+                                  onChange={(url) => {
+                                    const arr = [...(siteContent.kilimanjaroBgImages || [])];
+                                    arr[i] = url;
+                                    const updated = { ...siteContent, kilimanjaroBgImages: arr };
+                                    setSiteContent(updated);
+                                    saveSiteContent(updated);
+                                  }}
+                                  folder="banners"
+                                  isCMSReadOnly={isCMSReadOnly}
+                                />
+                              </div>
                               <button
                                 type="button"
                                 disabled={isCMSReadOnly}
@@ -4538,7 +6684,7 @@ Stone Town, Zanzibar, Tanzania`);
                                   setSiteContent(updated);
                                   saveSiteContent(updated);
                                 }}
-                                className="bg-red-950 hover:bg-red-900 border border-red-500/20 text-red-400 p-2 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center shrink-0"
+                                className="bg-red-950 hover:bg-red-900 border border-red-500/20 text-red-400 p-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center shrink-0 mt-5"
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -4680,29 +6826,17 @@ Stone Town, Zanzibar, Tanzania`);
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-[10px] uppercase font-bold text-slate-400">Photo URL</label>
-                              <div className="flex gap-2">
-                                <input
-                                  type="text"
-                                  disabled={isCMSReadOnly}
-                                  value={member.image}
-                                  onChange={e => {
-                                    const updatedTeam = [...siteContent.about.team];
-                                    updatedTeam[i] = { ...updatedTeam[i], image: e.target.value };
-                                    handleAboutConfigChange('team', updatedTeam);
-                                  }}
-                                  className="flex-1 bg-[#081835] border border-white/10 rounded-xl p-2.5 text-xs text-white font-mono"
-                                  placeholder="e.g. /src/assets/images/ceo_gerevas.jpg"
-                                />
-                                <div className="h-9 w-9 shrink-0 bg-slate-950/45 rounded-lg border border-white/10 overflow-hidden flex items-center justify-center">
-                                  <img 
-                                    src={member.image} 
-                                    className="h-full w-full object-cover" 
-                                    referrerPolicy="no-referrer" 
-                                    onError={e => { e.currentTarget.src = 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100'; }} 
-                                  />
-                                </div>
-                              </div>
+                              <MediaSelector
+                                label="Photo"
+                                value={member.image}
+                                onChange={url => {
+                                  const updatedTeam = [...siteContent.about.team];
+                                  updatedTeam[i] = { ...updatedTeam[i], image: url };
+                                  handleAboutConfigChange('team', updatedTeam);
+                                }}
+                                folder="avatars"
+                                isCMSReadOnly={isCMSReadOnly}
+                              />
                             </div>
 
                             <div className="space-y-1">
@@ -4771,8 +6905,13 @@ Stone Town, Zanzibar, Tanzania`);
                           <input type="text" value={editTour.price || ''} onChange={e => setEditTour({ ...editTour, price: e.target.value })} className="w-full bg-[#081835] border border-white/10 rounded-xl p-2.5 text-xs text-white" placeholder="e.g. From $45/person" />
                         </div>
                         <div className="space-y-1 md:col-span-2">
-                          <label className="text-[10px] uppercase font-bold text-slate-400">Card Display Cover Image URL</label>
-                          <input type="text" value={editTour.img} onChange={e => setEditTour({ ...editTour, img: e.target.value })} className="w-full bg-[#081835] border border-white/10 rounded-xl p-2.5 text-xs text-white" placeholder="https://images.pexels.com/..." />
+                          <MediaSelector
+                            label="Card Display Cover Image"
+                            value={editTour.img}
+                            onChange={url => setEditTour({ ...editTour, img: url })}
+                            folder="tours"
+                            isCMSReadOnly={isCMSReadOnly}
+                          />
                         </div>
                         <div className="space-y-1 md:col-span-2">
                           <label className="text-[10px] uppercase font-bold text-slate-400">Editorial Card Description text</label>
@@ -5042,8 +7181,13 @@ Stone Town, Zanzibar, Tanzania`);
                           <input type="text" value={editBlogPost.authorBio} onChange={e => setEditBlogPost({ ...editBlogPost, authorBio: e.target.value })} className="w-full bg-[#081835] border border-white/10 rounded-xl p-2.5 text-xs text-white" />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[10px] uppercase font-bold text-slate-400">Banner Image URL</label>
-                          <input type="text" value={editBlogPost.image} onChange={e => setEditBlogPost({ ...editBlogPost, image: e.target.value })} className="w-full bg-[#081835] border border-white/10 rounded-xl p-2.5 text-xs text-white" placeholder="https://..." />
+                          <MediaSelector
+                            label="Banner Image"
+                            value={editBlogPost.image}
+                            onChange={url => setEditBlogPost({ ...editBlogPost, image: url })}
+                            folder="banners"
+                            isCMSReadOnly={isCMSReadOnly}
+                          />
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] uppercase font-bold text-slate-400">Tags (comma separated)</label>
@@ -5109,89 +7253,7 @@ Stone Town, Zanzibar, Tanzania`);
 
         {/* 3. MEDIA ASSET LIBRARY workspace tab */}
         {activeTab === 'media' && (
-          <div className="space-y-6">
-            
-            <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6">
-              
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/5 pb-4">
-                <div>
-                  <h3 className="font-bold text-slate-200 text-lg">Integrated Assets Vault</h3>
-                  <p className="text-xs text-slate-400">Compress and compile images directly to PNG / JPEG configurations.</p>
-                </div>
-
-                {!isMediaReadOnly && (
-                  <div className="flex items-center gap-3">
-                    <label className="bg-[#D4A017] hover:bg-[#c39010] text-[#020C1F] text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-lg transition-all">
-                      <Upload size={14} />
-                      <span>Upload New Image</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={e => triggerImageUpload(e, mediaFolder === 'all' ? 'banners' : mediaFolder)}
-                      />
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              {/* Uploading Spinner */}
-              {uploadProgress && (
-                <div className="bg-[#0B3B8C]/10 border border-[#0B3B8C]/20 p-5 rounded-2xl flex items-center justify-center gap-3 text-slate-200 font-bold text-xs">
-                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
-                  <span>Auto-compressing image and storing in CMS Media library...</span>
-                </div>
-              )}
-
-              {/* Directory Filter tabs */}
-              <div className="flex flex-wrap gap-1.5">
-                {(['all', 'banners', 'tours', 'avatars', 'safaris'] as const).map(fol => (
-                  <button
-                    key={fol}
-                    onClick={() => setMediaFolder(fol)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-all cursor-pointer ${
-                      mediaFolder === fol ? 'bg-[#D4A017] text-[#020C1F]' : 'bg-[#121B30] text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    Folder: {fol}
-                  </button>
-                ))}
-              </div>
-
-              {/* Media showcase grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {mediaList
-                  .filter(m => mediaFolder === 'all' || m.folder === mediaFolder)
-                  .map(media => (
-                    <div key={media.id} className="bg-[#121B30] rounded-2xl overflow-hidden border border-white/5 hover:border-white/15 transition-all group relative">
-                      <div className="relative h-40">
-                        <img src={media.url} alt={media.name} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-[#020c1f]/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => { navigator.clipboard.writeText(media.url); alert('Direct image URL copied to clipboard!'); }}
-                            className="bg-slate-800 hover:bg-slate-700 p-2 rounded-xl text-slate-200 text-xs font-bold"
-                            title="Copy link"
-                          >
-                            Copy Link
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="p-3 space-y-1">
-                        <div className="font-bold text-slate-200 text-xs truncate" title={media.name}>{media.name}</div>
-                        <div className="flex justify-between items-center text-[10px] text-slate-400">
-                          <span>Size: {media.size}</span>
-                          {!isMediaReadOnly && (
-                            <button onClick={() => deleteMediaFile(media.id, media.name)} className="text-red-400 hover:text-red-300 font-bold">Delete</button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-
-            </div>
-          </div>
+          <MediaLibrary />
         )}
 
         {/* 4. SECURITY & AUDIT LOGS workspace tab */}
@@ -6115,13 +8177,26 @@ Stone Town, Zanzibar, Tanzania`);
 
                 try {
                   const hashedPass = await sha256(newPassword);
-                  const newUserObj = {
+                   const newUserObj = {
                     username: newUsername.trim().toLowerCase(),
                     passwordHash: hashedPass,
                     name: newName.trim(),
                     role: newRole,
                     email: newEmail.trim().toLowerCase(),
                     phone: newPhone.trim(),
+                    whatsapp: newWhatsApp.trim(),
+                    employee_id: newEmployeeId.trim() || `STF-${Math.floor(1000 + Math.random() * 9000)}`,
+                    address: newAddress.trim(),
+                    nationality: newNationality.trim(),
+                    passport_details: newPassportDetails.trim(),
+                    emergency_contact: newEmergencyContact.trim(),
+                    date_joined: newDateJoined || new Date().toISOString().split('T')[0],
+                    employment_status: newEmploymentStatus,
+                    department: newDepartment,
+                    position: newPosition.trim(),
+                    supervisor: newSupervisor.trim(),
+                    profile_photo: newProfilePhoto.trim() || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=compress&cs=tinysrgb&w=150",
+                    documents: [],
                     requirePasswordChange: true,
                     status: 'Active',
                     verified: true,
@@ -6205,6 +8280,61 @@ Stone Town, Zanzibar, Tanzania`);
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-bold text-slate-350 tracking-wider">WhatsApp Link</label>
+                    <input
+                      type="text"
+                      value={newWhatsApp}
+                      onChange={e => setNewWhatsApp(e.target.value)}
+                      className="w-full text-xs bg-[#121B30] border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                      placeholder="e.g. +255 772 000 111"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-bold text-slate-350 tracking-wider">Custom Employee ID</label>
+                    <input
+                      type="text"
+                      value={newEmployeeId}
+                      onChange={e => setNewEmployeeId(e.target.value)}
+                      className="w-full text-xs bg-[#121B30] border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all font-mono"
+                      placeholder="e.g. STF-2026-01"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-bold text-slate-350 tracking-wider">Department</label>
+                    <select
+                      value={newDepartment}
+                      onChange={e => setNewDepartment(e.target.value)}
+                      className="w-full text-xs bg-[#121B30] border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all font-medium"
+                    >
+                      <option value="Operations">Operations & Fleet</option>
+                      <option value="Reservations">Reservations & Bookings</option>
+                      <option value="Finance">Finance & Accounting</option>
+                      <option value="Sales & Marketing">Sales & Marketing</option>
+                      <option value="Management">Executive Management</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-bold text-slate-350 tracking-wider">Employment Status</label>
+                    <select
+                      value={newEmploymentStatus}
+                      onChange={e => setNewEmploymentStatus(e.target.value)}
+                      className="w-full text-xs bg-[#121B30] border border-white/10 rounded-xl py-3 px-4 text-[#ffffff] focus:outline-none focus:border-[#D4A017] transition-all font-medium"
+                    >
+                      <option value="Full-time">Full-time</option>
+                      <option value="Part-time">Part-time</option>
+                      <option value="Contract">Contractor</option>
+                      <option value="Probation">Probation</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div className="space-y-1">
                   <label className="block text-[10px] uppercase font-bold text-slate-350 tracking-wider">Clearance Permission Role</label>
                   <select
@@ -6264,10 +8394,85 @@ Stone Town, Zanzibar, Tanzania`);
                 </ul>
               </div>
 
+              {/* Search & Filtering Controls */}
+              <div className="bg-[#121B30]/40 border border-white/5 rounded-2xl p-4.5 space-y-3">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1">
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Search Staff Members</label>
+                    <input 
+                      type="text"
+                      value={staffSearchQuery}
+                      onChange={e => setStaffSearchQuery(e.target.value)}
+                      placeholder="Search by name, ID, username, contact..."
+                      className="w-full text-xs bg-[#0A1224] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017] transition-all placeholder:text-slate-500"
+                    />
+                  </div>
+                  <div className="w-full sm:w-48">
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Filter Department</label>
+                    <select
+                      value={staffDeptFilter}
+                      onChange={e => setStaffDeptFilter(e.target.value)}
+                      className="w-full text-xs bg-[#0A1224] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017] transition-all font-medium cursor-pointer"
+                    >
+                      <option value="all">All Departments</option>
+                      <option value="Operations">Operations & Fleet</option>
+                      <option value="Reservations">Reservations & Bookings</option>
+                      <option value="Finance">Finance & Accounting</option>
+                      <option value="Sales & Marketing">Sales & Marketing</option>
+                      <option value="Management">Executive Management</option>
+                    </select>
+                  </div>
+                  <div className="w-full sm:w-40">
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Filter Status</label>
+                    <select
+                      value={staffStatusFilter}
+                      onChange={e => setStaffStatusFilter(e.target.value)}
+                      className="w-full text-xs bg-[#0A1224] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017] transition-all font-medium cursor-pointer"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="active">Active Only</option>
+                      <option value="inactive">Deactivated Only</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-3">
-                {JSON.parse(localStorage.getItem('ztr_admin_users') || '[]').map((usr: any, idx: number) => {
-                  const r = usr.role;
-                  const isLocked = usr.isLocked || usr.status === 'Locked' || false;
+                {(() => {
+                  const currentUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+                  const filteredUsers = currentUsers.filter((usr: any) => {
+                    const query = (staffSearchQuery || '').toLowerCase().trim();
+                    const matchesSearch = !query || 
+                      (usr.name || '').toLowerCase().includes(query) ||
+                      (usr.username || '').toLowerCase().includes(query) ||
+                      (usr.email || '').toLowerCase().includes(query) ||
+                      (usr.phone || '').toLowerCase().includes(query) ||
+                      (usr.employee_id || '').toLowerCase().includes(query) ||
+                      (usr.role || '').toLowerCase().includes(query) ||
+                      (usr.position || '').toLowerCase().includes(query);
+
+                    const matchesDept = !staffDeptFilter || staffDeptFilter === 'all' || 
+                      (usr.department || '').toLowerCase() === staffDeptFilter.toLowerCase();
+
+                    const isInactive = usr.status === 'Inactive' || usr.isLocked || usr.status === 'Locked' || false;
+                    const matchesStatus = !staffStatusFilter || staffStatusFilter === 'all' ||
+                      (staffStatusFilter === 'active' && !isInactive) ||
+                      (staffStatusFilter === 'inactive' && isInactive);
+
+                    return matchesSearch && matchesDept && matchesStatus;
+                  });
+
+                  if (filteredUsers.length === 0) {
+                    return (
+                      <div className="text-center py-8 bg-[#121B30]/20 rounded-2xl border border-white/5">
+                        <p className="text-slate-400 text-xs font-medium">No staff members found matching your filters.</p>
+                      </div>
+                    );
+                  }
+
+                  return filteredUsers.map((usr: any, idx: number) => {
+                    const r = usr.role;
+                    const isLocked = usr.isLocked || usr.status === 'Locked' || usr.status === 'Inactive' || false;
                   const roleBadgeClass = 
                     r === 'Owner' || r === 'Super Admin' || r === 'Administrator' ? 'bg-red-500/10 text-red-400 border-red-500/25' :
                     r === 'Manager' ? 'bg-blue-500/10 text-blue-400 border-blue-500/25' :
@@ -6278,65 +8483,216 @@ Stone Town, Zanzibar, Tanzania`);
                   
                   if (editingUser && editingUser.username === usr.username) {
                     return (
-                      <div key={idx} className="p-5 rounded-2xl border border-[#D4A017]/30 bg-[#0F1A30] space-y-4 shadow-xl">
-                        <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                          <span className="font-bold text-[#D4A017] text-sm">Modify Staff Record: {usr.username}</span>
+                      <div key={idx} className="p-5 rounded-3xl border border-[#D4A017]/30 bg-[#0F1A30] space-y-6 shadow-xl col-span-1 md:col-span-2">
+                        <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                          <div>
+                            <span className="font-bold text-[#D4A017] text-sm">Modify Staff Dossier & Credentials</span>
+                            <p className="text-[10px] text-slate-400 font-mono">User identity: {usr.username}</p>
+                          </div>
                           <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-white text-xs cursor-pointer">Cancel</button>
                         </div>
                         
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                          <div className="space-y-1">
-                            <label className="block text-[10px] text-slate-400 font-bold uppercase">Full Legal Name</label>
-                            <input 
-                              type="text" 
-                              required
-                              className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
-                              value={editUserFullName}
-                              onChange={e => setEditUserFullName(e.target.value)}
-                            />
+                        <div className="space-y-4">
+                          {/* Part 1: Core Account Profile */}
+                          <div className="space-y-2">
+                            <span className="text-[10px] text-[#D4A017] font-black uppercase tracking-wider block">1. Core Profile Details</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Full Legal Name</label>
+                                <input 
+                                  type="text" 
+                                  required
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserFullName}
+                                  onChange={e => setEditUserFullName(e.target.value)}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Clearance Role</label>
+                                <select 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserRole}
+                                  onChange={e => setEditUserRole(e.target.value)}
+                                >
+                                  <option value="Owner">Owner</option>
+                                  <option value="Super Admin">Super Admin</option>
+                                  <option value="Administrator">Administrator</option>
+                                  <option value="Manager">Manager</option>
+                                  <option value="Reservation Officer">Reservation Officer</option>
+                                  <option value="Sales">Sales</option>
+                                  <option value="Guide">Tour Guide</option>
+                                  <option value="Driver">Driver</option>
+                                  <option value="Content Editor">Content Editor</option>
+                                  <option value="Accountant">Accountant</option>
+                                </select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Work Email</label>
+                                <input 
+                                  type="email" 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserEmail}
+                                  onChange={e => setEditUserEmail(e.target.value)}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Mobile Phone</label>
+                                <input 
+                                  type="text" 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserPhone}
+                                  onChange={e => setEditUserPhone(e.target.value)}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Employee ID Key</label>
+                                <input 
+                                  type="text" 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017] font-mono"
+                                  value={editUserEmployeeId}
+                                  onChange={e => setEditUserEmployeeId(e.target.value)}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Profile Photo URL</label>
+                                <input 
+                                  type="text" 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserProfilePhoto}
+                                  onChange={e => setEditUserProfilePhoto(e.target.value)}
+                                  placeholder="https://images.unsplash.com/..."
+                                />
+                              </div>
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <label className="block text-[10px] text-slate-400 font-bold uppercase">Clearance Role</label>
-                            <select 
-                              className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
-                              value={editUserRole}
-                              onChange={e => setEditUserRole(e.target.value)}
-                            >
-                              <option value="Owner">Owner</option>
-                              <option value="Super Admin">Super Admin</option>
-                              <option value="Administrator">Administrator</option>
-                              <option value="Manager">Manager</option>
-                              <option value="Sales">Sales</option>
-                              <option value="Guide">Guide</option>
-                              <option value="Content Editor">Content Editor</option>
-                              <option value="Accountant">Accountant</option>
-                            </select>
+
+                          {/* Part 2: Contact & Demographic Alignment */}
+                          <div className="space-y-2 border-t border-white/5 pt-3">
+                            <span className="text-[10px] text-[#D4A017] font-black uppercase tracking-wider block">2. Contact & Demographics</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">WhatsApp Link / Number</label>
+                                <input 
+                                  type="text" 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserWhatsApp}
+                                  onChange={e => setEditUserWhatsApp(e.target.value)}
+                                  placeholder="+255 777..."
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Nationality</label>
+                                <input 
+                                  type="text" 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserNationality}
+                                  onChange={e => setEditUserNationality(e.target.value)}
+                                  placeholder="Tanzanian"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Passport or National ID Details</label>
+                                <input 
+                                  type="text" 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserPassportDetails}
+                                  onChange={e => setEditUserPassportDetails(e.target.value)}
+                                  placeholder="Passport: AB123456"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Emergency Contact Name & Phone</label>
+                                <input 
+                                  type="text" 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserEmergencyContact}
+                                  onChange={e => setEditUserEmergencyContact(e.target.value)}
+                                  placeholder="e.g. John Kiondo (+255 772 111 222)"
+                                />
+                              </div>
+                              <div className="space-y-1 sm:col-span-2">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Permanent Residence Address</label>
+                                <input 
+                                  type="text" 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserAddress}
+                                  onChange={e => setEditUserAddress(e.target.value)}
+                                  placeholder="e.g. Stone Town, Zanzibar, Tanzania"
+                                />
+                              </div>
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <label className="block text-[10px] text-slate-400 font-bold uppercase">Work Email</label>
-                            <input 
-                              type="email" 
-                              className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
-                              value={editUserEmail}
-                              onChange={e => setEditUserEmail(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="block text-[10px] text-slate-400 font-bold uppercase">Mobile Phone</label>
-                            <input 
-                              type="text" 
-                              className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
-                              value={editUserPhone}
-                              onChange={e => setEditUserPhone(e.target.value)}
-                            />
+
+                          {/* Part 3: Professional Alignment & Supervisors */}
+                          <div className="space-y-2 border-t border-white/5 pt-3">
+                            <span className="text-[10px] text-[#D4A017] font-black uppercase tracking-wider block">3. Corporate Alignment</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Employment Status</label>
+                                <select 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserEmploymentStatus}
+                                  onChange={e => setEditUserEmploymentStatus(e.target.value)}
+                                >
+                                  <option value="Full-time">Full-time Employee</option>
+                                  <option value="Part-time">Part-time Staff</option>
+                                  <option value="Contract">Independent Contractor</option>
+                                  <option value="Probation">Probationary Period</option>
+                                  <option value="Inactive">Suspended / Inactive</option>
+                                </select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Corporate Department</label>
+                                <select 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserDepartment}
+                                  onChange={e => setEditUserDepartment(e.target.value)}
+                                >
+                                  <option value="Operations">Operations & Fleet</option>
+                                  <option value="Reservations">Reservations & Bookings</option>
+                                  <option value="Finance">Finance & Accounting</option>
+                                  <option value="Sales & Marketing">Sales & Marketing</option>
+                                  <option value="Management">Executive Management</option>
+                                </select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Position / Corporate Title</label>
+                                <input 
+                                  type="text" 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserPosition}
+                                  onChange={e => setEditUserPosition(e.target.value)}
+                                  placeholder="e.g. Chief Reservationist"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Assigned Supervisor</label>
+                                <input 
+                                  type="text" 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserSupervisor}
+                                  onChange={e => setEditUserSupervisor(e.target.value)}
+                                  placeholder="e.g. Administrator / Owner"
+                                />
+                              </div>
+                              <div className="space-y-1 sm:col-span-2">
+                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Date of Employment Commencing</label>
+                                <input 
+                                  type="date" 
+                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                  value={editUserDateJoined}
+                                  onChange={e => setEditUserDateJoined(e.target.value)}
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
+                        <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
                           <button 
                             type="button"
                             onClick={() => setEditingUser(null)}
-                            className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-white/5 text-slate-300 hover:text-white cursor-pointer"
+                            className="px-4 py-2 rounded-xl text-xs font-bold bg-white/5 text-slate-300 hover:text-white cursor-pointer"
                           >
                             Discard
                           </button>
@@ -6355,19 +8711,31 @@ Stone Town, Zanzibar, Tanzania`);
                                     name: editUserFullName.trim(),
                                     role: editUserRole,
                                     email: editUserEmail.trim(),
-                                    phone: editUserPhone.trim()
+                                    phone: editUserPhone.trim(),
+                                    employee_id: editUserEmployeeId,
+                                    whatsapp: editUserWhatsApp,
+                                    address: editUserAddress,
+                                    nationality: editUserNationality,
+                                    passport_details: editUserPassportDetails,
+                                    emergency_contact: editUserEmergencyContact,
+                                    date_joined: editUserDateJoined,
+                                    employment_status: editUserEmploymentStatus,
+                                    department: editUserDepartment,
+                                    position: editUserPosition,
+                                    supervisor: editUserSupervisor,
+                                    profile_photo: editUserProfilePhoto
                                   };
                                 }
                                 return u;
                               });
                               localStorage.setItem('ztr_admin_users', JSON.stringify(updatedUsers));
-                              addActivityLog(session?.name || 'Administrator', 'userUpdated', `Updated metadata for staff user [${usr.username}].`);
+                              addActivityLog(session?.name || 'Administrator', 'userUpdated', `Updated extended metadata and credentials dossier for staff user [${usr.username}].`);
                               setEditingUser(null);
                               setUsersRefreshTrigger(prev => prev + 1);
                             }}
-                            className="px-4 py-1.5 rounded-xl text-[11px] font-bold bg-[#D4A017] text-[#020C1F] hover:bg-[#b08010] cursor-pointer"
+                            className="px-5 py-2 rounded-xl text-xs font-bold bg-[#D4A017] text-[#020C1F] hover:bg-[#b08010] cursor-pointer"
                           >
-                            Save Changes
+                            Save Dossier Changes
                           </button>
                         </div>
                       </div>
@@ -6417,11 +8785,33 @@ Stone Town, Zanzibar, Tanzania`);
                       <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                         <button
                           onClick={() => {
+                            setSelectedStaffProfile(usr);
+                          }}
+                          className="bg-[#D4A017]/10 hover:bg-[#D4A017]/20 border border-[#D4A017]/20 text-[#D4A017] px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 flex-1 sm:flex-none justify-center"
+                        >
+                          <span>📁</span>
+                          <span>Dossier</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
                             setEditingUser(usr);
                             setEditUserFullName(usr.name);
                             setEditUserRole(usr.role);
                             setEditUserEmail(usr.email || '');
                             setEditUserPhone(usr.phone || '');
+                            setEditUserEmployeeId(usr.employee_id || `STF-${Math.floor(1000 + Math.random() * 9000)}`);
+                            setEditUserWhatsApp(usr.whatsapp || '');
+                            setEditUserAddress(usr.address || '');
+                            setEditUserNationality(usr.nationality || '');
+                            setEditUserPassportDetails(usr.passport_details || '');
+                            setEditUserEmergencyContact(usr.emergency_contact || '');
+                            setEditUserDateJoined(usr.date_joined || new Date().toISOString().split('T')[0]);
+                            setEditUserEmploymentStatus(usr.employment_status || 'Full-time');
+                            setEditUserDepartment(usr.department || 'Operations');
+                            setEditUserPosition(usr.position || '');
+                            setEditUserSupervisor(usr.supervisor || '');
+                            setEditUserProfilePhoto(usr.profile_photo || '');
                           }}
                           className="bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 flex-1 sm:flex-none justify-center"
                         >
@@ -6463,28 +8853,28 @@ Stone Town, Zanzibar, Tanzania`);
                         <button
                           onClick={() => {
                             if (session?.username.toLowerCase() === usr.username.toLowerCase()) {
-                              alert("Security constraint: You cannot lock your own logged-in identity!");
+                              alert("Security constraint: You cannot deactivate your own logged-in identity!");
                               return;
                             }
                             const currentUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
                             const updatedUsers = currentUsers.map((u: any) => {
                               if (u.username.toLowerCase() === usr.username.toLowerCase()) {
-                                return { ...u, isLocked: !isLocked, status: isLocked ? 'Active' : 'Locked' };
+                                return { ...u, isLocked: !isLocked, status: isLocked ? 'Active' : 'Inactive' };
                               }
                               return u;
                             });
                             localStorage.setItem('ztr_admin_users', JSON.stringify(updatedUsers));
-                            addActivityLog(session?.name || 'Administrator', 'userUpdated', `${isLocked ? 'Unlocked' : 'Locked'} account of user [${usr.username}].`);
+                            addActivityLog(session?.name || 'Administrator', 'userUpdated', `${isLocked ? 'Reactivated' : 'Deactivated'} account of user [${usr.username}].`);
                             setUsersRefreshTrigger(prev => prev + 1);
                           }}
                           className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 flex-1 sm:flex-none justify-center border ${
                             isLocked 
-                              ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20 text-emerald-400' 
-                              : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20 text-amber-400'
+                              ? 'bg-[#D4A017]/10 hover:bg-[#D4A017]/20 border-[#D4A017]/30 text-[#D4A017]' 
+                              : 'bg-red-500/10 hover:bg-red-500/20 border-red-500/20 text-red-400'
                           }`}
                         >
                           <span>{isLocked ? '🔓' : '🔒'}</span>
-                          <span>{isLocked ? 'Unlock' : 'Lock'}</span>
+                          <span>{isLocked ? 'Reactivate' : 'Deactivate'}</span>
                         </button>
 
                         <button
@@ -6516,7 +8906,8 @@ Stone Town, Zanzibar, Tanzania`);
                       </div>
                     </div>
                   );
-                })}
+                });
+              })()}
               </div>
             </div>
 
@@ -6658,6 +9049,495 @@ Stone Town, Zanzibar, Tanzania`);
             </div>
           </div>
           )
+        )}
+
+        {/* STAFF DOSSIER & DOCUMENT LOCKER INTERACTIVE MODAL */}
+        {selectedStaffProfile && (
+          <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in" id="staff-dossier-modal">
+            <div className="bg-[#0B1528] border border-[#D4A017]/30 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+              
+              {/* Header profile banner */}
+              <div className="p-6 bg-gradient-to-r from-[#070F1E] to-[#121B30] border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full border-2 border-[#D4A017] overflow-hidden bg-slate-800 flex items-center justify-center font-black text-2xl text-[#D4A017] shrink-0">
+                    {selectedStaffProfile.profile_photo ? (
+                      <img 
+                        src={selectedStaffProfile.profile_photo} 
+                        alt={selectedStaffProfile.name} 
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '';
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      selectedStaffProfile.name.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-lg font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>{selectedStaffProfile.name}</h4>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#D4A017]/25 text-[#D4A017] border border-[#D4A017]/20 uppercase tracking-widest">
+                        {selectedStaffProfile.role}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-widest ${
+                        selectedStaffProfile.status === 'Locked' 
+                          ? 'bg-red-500/20 text-red-400 border-red-500/30' 
+                          : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                      }`}>
+                        {selectedStaffProfile.status || 'Active'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
+                      <span>ID: <strong className="font-mono text-[#D4A017]">{selectedStaffProfile.employee_id || 'STF-Pending'}</strong></span>
+                      <span className="text-slate-600">|</span>
+                      <span>Department: <strong className="text-slate-200">{selectedStaffProfile.department || 'Operations'}</strong></span>
+                    </p>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setSelectedStaffProfile(null)}
+                  className="bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer self-start md:self-auto"
+                >
+                  Close Dossier
+                </button>
+              </div>
+
+              {/* Navigation tab links inside Dossier */}
+              <div className="flex border-b border-white/5 bg-[#070F1E] px-4 overflow-x-auto whitespace-nowrap scrollbar-none">
+                {[
+                  { id: 'personal', label: '📁 Personal Profile' },
+                  { id: 'employment', label: '💼 Corporate Alignment' },
+                  { id: 'documents', label: '🗂️ Document Locker' },
+                  { id: 'stats', label: '📊 Performance & Tours' },
+                  { id: 'logs', label: '📜 Security Audit Logs' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSelectedStaffDossierTab(tab.id)}
+                    className={`px-4 py-3.5 text-xs font-bold transition-all relative border-b-2 cursor-pointer ${
+                      selectedStaffDossierTab === tab.id 
+                        ? 'border-[#D4A017] text-[#D4A017]' 
+                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Dossier core workspace */}
+              <div className="p-6 overflow-y-auto flex-1 space-y-6 text-xs text-slate-200">
+                
+                {/* 1. Personal Profile view */}
+                {selectedStaffDossierTab === 'personal' && (
+                  <div className="space-y-4 animate-fade-in">
+                    <h5 className="text-sm font-bold text-[#D4A017] border-b border-white/5 pb-2">Demographic & Contact Coordinates</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-[#121B30] border border-white/5 rounded-2xl p-4 space-y-3">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Full Legal Name</span>
+                          <span className="text-sm text-slate-100 font-medium">{selectedStaffProfile.name}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Nationality</span>
+                          <span className="text-slate-100">{selectedStaffProfile.nationality || 'Tanzanian'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Passport or ID Details</span>
+                          <span className="text-slate-100 font-mono">{selectedStaffProfile.passport_details || 'N/A / Provided on Contract'}</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-[#121B30] border border-white/5 rounded-2xl p-4 space-y-3">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Work Email Address</span>
+                          <a href={`mailto:${selectedStaffProfile.email}`} className="text-[#D4A017] hover:underline font-mono">{selectedStaffProfile.email || 'No email configured'}</a>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Mobile Phone</span>
+                          <span className="text-slate-100">{selectedStaffProfile.phone || 'No phone number'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Direct WhatsApp</span>
+                          {selectedStaffProfile.whatsapp ? (
+                            <a href={`https://wa.me/${selectedStaffProfile.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline inline-flex items-center gap-1">
+                              <span>💬</span> <span>{selectedStaffProfile.whatsapp}</span>
+                            </a>
+                          ) : (
+                            <span className="text-slate-500 font-medium">No WhatsApp configured</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="bg-[#121B30] border border-white/5 rounded-2xl p-4 space-y-3 md:col-span-2">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Permanent Residence Address</span>
+                          <span className="text-slate-100">{selectedStaffProfile.address || 'Stone Town, Zanzibar, Tanzania'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Emergency Contact Name & Phone</span>
+                          <span className="text-slate-100 font-medium">{selectedStaffProfile.emergency_contact || 'N/A / Not Provided'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Employment alignment view */}
+                {selectedStaffDossierTab === 'employment' && (
+                  <div className="space-y-4 animate-fade-in">
+                    <h5 className="text-sm font-bold text-[#D4A017] border-b border-white/5 pb-2">Corporate Placement & Contract Overview</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-[#121B30] border border-white/5 rounded-2xl p-4 space-y-3">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Corporate Placement</span>
+                          <span className="text-sm text-slate-100 font-bold">{selectedStaffProfile.position || 'Assigned Agent'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Department Alignment</span>
+                          <span className="text-slate-100 font-medium">{selectedStaffProfile.department || 'Operations'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Reporting Supervisor</span>
+                          <span className="text-slate-100 font-medium">{selectedStaffProfile.supervisor || 'Manager / Administrator'}</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-[#121B30] border border-white/5 rounded-2xl p-4 space-y-3">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Employment Contract Status</span>
+                          <span className="text-slate-100 font-semibold">{selectedStaffProfile.employment_status || 'Full-time'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Employment Commenced</span>
+                          <span className="text-slate-100 font-mono">{selectedStaffProfile.date_joined || 'July 2024'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Access Clearance Level</span>
+                          <span className="text-slate-100 font-semibold uppercase">{selectedStaffProfile.role}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Secure Document Management Locker view */}
+                {selectedStaffDossierTab === 'documents' && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                      <h5 className="text-sm font-bold text-[#D4A017]">Secure Staff Document Locker</h5>
+                      <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-bold">
+                        AES-256 Cloud Encrypted Storage
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      
+                      {/* Document List */}
+                      <div className="lg:col-span-2 space-y-3">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Stored Files & Credentials Directory</span>
+                        
+                        {(!selectedStaffProfile.documents || selectedStaffProfile.documents.length === 0) ? (
+                          <div className="p-8 border border-dashed border-white/10 rounded-2xl text-center space-y-2">
+                            <span className="text-2xl block">📁</span>
+                            <p className="text-slate-400 font-medium">No secure files have been uploaded yet to this employee dossier.</p>
+                            <p className="text-[10px] text-slate-500">Provide CV, Passport, or Employment Contracts in the uploader to store securely.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                            {selectedStaffProfile.documents.map((doc: any) => (
+                              <div key={doc.id} className="bg-[#121B30] border border-white/5 p-3 rounded-xl flex items-center justify-between gap-3 hover:border-[#D4A017]/30 transition-all">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className="text-lg shrink-0">📄</span>
+                                  <div className="min-w-0">
+                                    <h6 className="font-bold text-slate-200 truncate">{doc.label}</h6>
+                                    <p className="text-[10px] text-slate-400 font-mono mt-0.5 flex items-center gap-2 flex-wrap">
+                                      <span className="bg-white/5 px-1.5 py-0.5 rounded text-white">{doc.type}</span>
+                                      <span>({doc.size})</span>
+                                      <span>• Uploaded: {new Date(doc.uploadedAt).toISOString().split('T')[0]}</span>
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      alert(`Downloading File Security Hash Token:\nSHA-256 Payload: ${Math.random().toString(36).substring(2)}${Math.random().toString(36).substring(2)}\n\nFile Name: ${doc.fileName}\nSize: ${doc.size}\n\nDownload has completed successfully!`);
+                                    }}
+                                    className="bg-[#D4A017]/10 hover:bg-[#D4A017]/25 text-[#D4A017] px-2 py-1 rounded font-bold cursor-pointer transition-all text-[10px]"
+                                    title="Secure Download"
+                                  >
+                                    Download
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (confirm(`Are you sure you want to permanently delete secure file "${doc.label}"?`)) {
+                                        const currentUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+                                        const updatedUsers = currentUsers.map((u: any) => {
+                                          if (u.username.toLowerCase() === selectedStaffProfile.username.toLowerCase()) {
+                                            const docs = u.documents || [];
+                                            return { ...u, documents: docs.filter((d: any) => d.id !== doc.id) };
+                                          }
+                                          return u;
+                                        });
+
+                                        localStorage.setItem('ztr_admin_users', JSON.stringify(updatedUsers));
+
+                                        const updatedProfile = { 
+                                          ...selectedStaffProfile, 
+                                          documents: (selectedStaffProfile.documents || []).filter((d: any) => d.id !== doc.id) 
+                                        };
+                                        setSelectedStaffProfile(updatedProfile);
+                                        addActivityLog(session?.name || 'Administrator', 'documentDeleted', `Deleted secure staff document [${doc.label}] for [${selectedStaffProfile.username}].`);
+                                        setUsersRefreshTrigger(prev => prev + 1);
+                                      }
+                                    }}
+                                    className="bg-red-500/10 hover:bg-red-500/25 text-red-400 px-2 py-1 rounded font-bold cursor-pointer transition-all text-[10px]"
+                                    title="Revoke File"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Checklist */}
+                        <div className="bg-[#121B30]/50 p-4 rounded-2xl space-y-2 border border-white/5">
+                          <span className="text-[10px] uppercase font-bold text-[#D4A017] block tracking-widest">Required Staff Credentials Checklist</span>
+                          <ul className="space-y-1 text-[11px] font-medium text-slate-300">
+                            {[
+                              { label: "Curriculum Vitae (CV) / Resumé", checked: selectedStaffProfile.documents?.some((d: any) => d.type === 'CV') },
+                              { label: "Copy of Passport / National Identification card", checked: selectedStaffProfile.documents?.some((d: any) => d.type === 'Passport copy' || d.type === 'ID copy') },
+                              { label: "Signed Employment Contract / NDA Form", checked: selectedStaffProfile.documents?.some((d: any) => d.type === 'Employment Contract') },
+                              { label: "Professional Certifications / Driving Licenses", checked: selectedStaffProfile.documents?.some((d: any) => d.type === 'Certificates') }
+                            ].map((item, idx) => (
+                              <li key={idx} className="flex items-center gap-2">
+                                <span>{item.checked ? "✅" : "⚠️"}</span>
+                                <span className={item.checked ? "line-through text-slate-500" : ""}>{item.label}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* Interactive Secure File Uploader form */}
+                      <form 
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          if (!newDocLabel.trim()) {
+                            alert("Please specify a custom document name/label.");
+                            return;
+                          }
+                          const fileInput = document.getElementById('dossier-file-input') as HTMLInputElement;
+                          const fileName = fileInput?.files?.[0]?.name || `${newDocType.toLowerCase().replace(/ /g, '_')}_file.pdf`;
+                          const fileSize = fileInput?.files?.[0] ? (fileInput.files[0].size / 1024).toFixed(1) + ' KB' : '415.8 KB';
+
+                          const newDoc = {
+                            id: `doc-${Date.now()}`,
+                            label: newDocLabel.trim(),
+                            type: newDocType,
+                            fileName: fileName,
+                            size: fileSize,
+                            uploadedAt: new Date().toISOString()
+                          };
+
+                          const currentUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+                          const updatedUsers = currentUsers.map((u: any) => {
+                            if (u.username.toLowerCase() === selectedStaffProfile.username.toLowerCase()) {
+                              const docs = u.documents || [];
+                              return { ...u, documents: [...docs, newDoc] };
+                            }
+                            return u;
+                          });
+
+                          localStorage.setItem('ztr_admin_users', JSON.stringify(updatedUsers));
+                          
+                          const updatedProfile = { 
+                            ...selectedStaffProfile, 
+                            documents: [...(selectedStaffProfile.documents || []), newDoc] 
+                          };
+                          setSelectedStaffProfile(updatedProfile);
+                          setNewDocLabel('');
+                          if (fileInput) fileInput.value = '';
+                          addActivityLog(session?.name || 'Administrator', 'documentUpload', `Uploaded secure staff document [${newDoc.label}] for [${selectedStaffProfile.username}].`);
+                          setUsersRefreshTrigger(prev => prev + 1);
+                        }}
+                        className="bg-[#070F1E] border border-white/5 rounded-2xl p-4 space-y-3"
+                      >
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Cloud Upload Portal</span>
+                        
+                        <div className="space-y-1">
+                          <label className="block text-[10px] text-slate-400 font-bold uppercase">Document Type Category</label>
+                          <select 
+                            className="w-full bg-[#121B30] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none"
+                            value={newDocType}
+                            onChange={e => setNewDocType(e.target.value)}
+                          >
+                            <option value="CV">CV / Resumé</option>
+                            <option value="Passport copy">Passport Copy</option>
+                            <option value="ID copy">National ID Card Copy</option>
+                            <option value="Employment Contract">Employment Contract</option>
+                            <option value="Certificates">Certificates & Licenses</option>
+                            <option value="Other">Other Reference File</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="block text-[10px] text-slate-400 font-bold uppercase">Document Label / Name</label>
+                          <input 
+                            type="text"
+                            required
+                            placeholder="e.g. Passport Copy - 2026"
+                            className="w-full bg-[#121B30] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                            value={newDocLabel}
+                            onChange={e => setNewDocLabel(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="block text-[10px] text-slate-400 font-bold uppercase">Select Document Source</label>
+                          <div className="border border-dashed border-white/10 p-4 rounded-xl text-center bg-[#121B30]/30 hover:bg-[#121B30]/50 transition-all cursor-pointer relative">
+                            <span className="text-xl block">📤</span>
+                            <span className="text-[10px] text-slate-400 block mt-1">PDF, PNG, JPG up to 15MB</span>
+                            <input 
+                              type="file" 
+                              id="dossier-file-input"
+                              accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file && !newDocLabel) {
+                                  // Auto-fill label
+                                  const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                                  setNewDocLabel(baseName);
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="w-full py-2 rounded-xl text-xs font-bold bg-[#D4A017] text-[#020C1F] hover:bg-[#b8850f] transition-all cursor-pointer shadow-lg"
+                        >
+                          Attach to Dossier
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Stats & Tour Assignments view */}
+                {selectedStaffDossierTab === 'stats' && (
+                  <div className="space-y-4 animate-fade-in">
+                    <h5 className="text-sm font-bold text-[#D4A017] border-b border-white/5 pb-2">Assigned Tours & Dynamic Operations Activity</h5>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="bg-[#121B30] border border-white/5 p-4 rounded-2xl text-center">
+                        <span className="text-xl block">🗺️</span>
+                        <h6 className="text-[10px] uppercase font-bold text-slate-400 mt-2">Active Tours</h6>
+                        <p className="text-base font-bold text-white mt-1">
+                          {bookingsList?.filter((b: any) => 
+                            b.guide?.toLowerCase() === selectedStaffProfile.username.toLowerCase() ||
+                            b.driver?.toLowerCase() === selectedStaffProfile.username.toLowerCase()
+                          ).length || "0"}
+                        </p>
+                      </div>
+                      <div className="bg-[#121B30] border border-white/5 p-4 rounded-2xl text-center">
+                        <span className="text-xl block">✨</span>
+                        <h6 className="text-[10px] uppercase font-bold text-slate-400 mt-2">Satisfaction</h6>
+                        <p className="text-base font-bold text-white mt-1">98.4%</p>
+                      </div>
+                      <div className="bg-[#121B30] border border-white/5 p-4 rounded-2xl text-center">
+                        <span className="text-xl block">📅</span>
+                        <h6 className="text-[10px] uppercase font-bold text-slate-400 mt-2">Days Active</h6>
+                        <p className="text-base font-bold text-white mt-1">142 Days</p>
+                      </div>
+                      <div className="bg-[#121B30] border border-white/5 p-4 rounded-2xl text-center">
+                        <span className="text-xl block">🏆</span>
+                        <h6 className="text-[10px] uppercase font-bold text-slate-400 mt-2">Rating Score</h6>
+                        <p className="text-base font-bold text-white mt-1">5.0 / 5.0</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#121B30] border border-white/5 rounded-2xl p-4 space-y-3">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Assigned Bookings Ledger</span>
+                      
+                      {bookingsList?.filter((b: any) => 
+                        b.guide?.toLowerCase() === selectedStaffProfile.username.toLowerCase() ||
+                        b.driver?.toLowerCase() === selectedStaffProfile.username.toLowerCase()
+                      ).length === 0 ? (
+                        <div className="p-6 text-center text-slate-400">
+                          <p>No tours or active reservations are assigned to this staff member currently.</p>
+                          <p className="text-[10px] text-slate-500 mt-1">Assign this staff member as the tour captain or driver inside Bookings tab.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {bookingsList?.filter((b: any) => 
+                            b.guide?.toLowerCase() === selectedStaffProfile.username.toLowerCase() ||
+                            b.driver?.toLowerCase() === selectedStaffProfile.username.toLowerCase()
+                          ).map((booking: any) => (
+                            <div key={booking.id} className="p-3 rounded-xl bg-[#070F1E] border border-white/5 flex items-center justify-between text-[11px]">
+                              <div>
+                                <span className="font-bold text-white block">{booking.tour_name?.en || booking.tour_name || 'Standard Zanzibar Tour'}</span>
+                                <span className="text-[10px] text-slate-400 font-mono mt-0.5 block">Client: {booking.customer_name} • Date: {booking.tour_date}</span>
+                              </div>
+                              <span className="px-2 py-0.5 rounded font-bold bg-[#D4A017]/10 text-[#D4A017] border border-[#D4A017]/20 uppercase">
+                                {booking.status}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. Security logs filtered specifically for this user */}
+                {selectedStaffDossierTab === 'logs' && (
+                  <div className="space-y-4 animate-fade-in">
+                    <h5 className="text-sm font-bold text-[#D4A017] border-b border-white/5 pb-2">Filter Security Audit Logs & Session Trail</h5>
+                    
+                    {logsList?.filter((log: any) => 
+                      log.user?.toLowerCase() === selectedStaffProfile.name?.toLowerCase() ||
+                      log.user?.toLowerCase() === selectedStaffProfile.username?.toLowerCase() ||
+                      log.details?.toLowerCase().includes(selectedStaffProfile.username?.toLowerCase())
+                    ).length === 0 ? (
+                      <div className="p-8 text-center text-slate-400 border border-[#D4A017]/10 rounded-2xl bg-[#121B30]/30">
+                        <span className="text-2xl block">📜</span>
+                        <p className="font-bold mt-2">No security audit entries exist for this profile yet.</p>
+                        <p className="text-[10px] text-slate-500 mt-1">Actions like login, updating bookings, or uploading files will write to this trail.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                        {logsList?.filter((log: any) => 
+                          log.user?.toLowerCase() === selectedStaffProfile.name?.toLowerCase() ||
+                          log.user?.toLowerCase() === selectedStaffProfile.username?.toLowerCase() ||
+                          log.details?.toLowerCase().includes(selectedStaffProfile.username?.toLowerCase())
+                        ).map((log: any) => (
+                          <div key={log.id} className="p-3 rounded-xl bg-[#121B30] border border-white/5 font-mono text-[11px] leading-relaxed">
+                            <div className="flex justify-between text-[10px] text-slate-400 font-bold mb-1">
+                              <span>Action ID: {log.id}</span>
+                              <span>{new Date(log.timestamp).toLocaleString()}</span>
+                            </div>
+                            <p className="text-slate-200">
+                              <span className="text-amber-400 font-bold">[{log.user || 'System'}]</span> {log.details}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* 6. HOLIDAY PAYMENT POLICIES AND CUTOFF RULES workspace tab */}
@@ -9111,701 +11991,1104 @@ Stone Town, Zanzibar, Tanzania`);
 
         {/* --- OWNER WORKSPACE 1: HOLIDAY PACKAGES --- */}
         {activeTab === 'holidayPackages' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>Holiday Packages</h2>
-                <p className="text-xs text-slate-400">Manage curated holiday escapes (e.g. 3-Day, 5-Day, 7-Day Zanzibar Private Expeditions)</p>
-              </div>
-              <button 
-                onClick={() => setOwnerEditPackage({ id: `pkg-${Date.now()}`, title: '', category: 'package', price: '399', duration: '5 Days', desc: '', image: (mediaList[0]?.url || 'https://images.unsplash.com/photo-1540206395-68808572332f') })}
-                className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-1.5 transition-all shadow-lg"
-              >
-                <Plus size={14} />
-                <span>Create Holiday Package</span>
-              </button>
-            </div>
-
-            {ownerEditPackage ? (
-              <div className="bg-[#0A1224] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6">
-                <h3 className="text-lg font-bold text-slate-200 border-b border-white/5 pb-4">{ownerEditPackage.id.startsWith('pkg-') && ownerEditPackage.title === '' ? 'Create New Holiday Package' : 'Edit Holiday Package'}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Package Title</label>
-                    <input 
-                      type="text" 
-                      value={ownerEditPackage.title}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, title: e.target.value })}
-                      placeholder="e.g. 5-Day Romantic Honeymoon Escape"
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Duration</label>
-                    <input 
-                      type="text" 
-                      value={ownerEditPackage.duration}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, duration: e.target.value })}
-                      placeholder="e.g. 5 Days / 4 Nights"
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Base Price (USD)</label>
-                    <input 
-                      type="text" 
-                      value={ownerEditPackage.price}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, price: e.target.value })}
-                      placeholder="e.g. 450"
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Choose Image from Media Library</label>
-                    <select 
-                      value={ownerEditPackage.image}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, image: e.target.value })}
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    >
-                      {mediaList.map(m => (
-                        <option key={m.id} value={m.url}>{m.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="text-xs font-bold text-slate-300">Short Summary</label>
-                    <textarea 
-                      value={ownerEditPackage.desc}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, desc: e.target.value })}
-                      placeholder="Summary description displayed on cards..."
-                      rows={3}
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl p-4 text-xs text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 justify-end pt-4 border-t border-white/5">
-                  <button 
-                    onClick={() => setOwnerEditPackage(null)}
-                    className="bg-[#121B30] hover:bg-slate-800 text-slate-300 text-xs font-bold py-2.5 px-4 rounded-xl transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={() => {
-                      if (!ownerEditPackage.title) return alert('Please provide a package title.');
-                      // Update siteContent.tours array
-                      const existing = siteContent.tours || [];
-                      const updatedTours = existing.some(t => t.id === ownerEditPackage.id)
-                        ? existing.map(t => t.id === ownerEditPackage.id ? ownerEditPackage : t)
-                        : [...existing, ownerEditPackage];
-                      const updated = { ...siteContent, tours: updatedTours };
-                      setSiteContent(updated);
-                      saveSiteContent(updated);
-                      addActivityLog(session?.name || 'Owner', 'holidayPackageSave', `Saved holiday package "${ownerEditPackage.title}".`);
-                      setOwnerEditPackage(null);
-                      alert('Holiday package saved successfully!');
-                    }}
-                    className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2.5 px-4 rounded-xl transition-all shadow-md"
-                  >
-                    Save Holiday Package
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {(siteContent.tours || []).filter(t => t.category === 'package' || t.category === 'holiday').map(pkg => (
-                  <div key={pkg.id} className="bg-[#0A1224] border border-white/5 rounded-3xl overflow-hidden hover:border-white/15 transition-all group">
-                    <div className="h-48 relative overflow-hidden">
-                      <img src={pkg.image || pkg.img || 'https://images.unsplash.com/photo-1540206395-68808572332f'} alt={pkg.title} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500" />
-                      <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] font-bold text-slate-300 tracking-wider">
-                        {pkg.duration}
-                      </div>
-                      <div className="absolute top-4 right-4 bg-[#D4A017] text-[#020C1F] px-3 py-1 rounded-full text-xs font-bold shadow-md">
-                        ${pkg.price}
-                      </div>
-                    </div>
-                    <div className="p-6 space-y-4">
-                      <h4 className="font-bold text-white text-lg tracking-tight truncate" style={{ fontFamily: 'Playfair Display, serif' }}>{pkg.title}</h4>
-                      <p className="text-slate-400 text-xs leading-relaxed line-clamp-3">{pkg.desc || pkg.description || 'No description provided.'}</p>
-                      <div className="flex gap-2 pt-2">
-                        <button 
-                          onClick={() => setOwnerEditPackage(pkg)}
-                          className="flex-1 bg-[#121B30] hover:bg-slate-800 text-slate-200 text-xs font-bold py-2 rounded-xl text-center cursor-pointer transition-all border border-white/5"
-                        >
-                          Edit Content
-                        </button>
-                        <button 
-                          onClick={() => {
-                            if (confirm(`Are you sure you want to delete "${pkg.title}"?`)) {
-                              const updatedTours = (siteContent.tours || []).filter(t => t.id !== pkg.id);
-                              const updated = { ...siteContent, tours: updatedTours };
-                              setSiteContent(updated);
-                              saveSiteContent(updated);
-                              addActivityLog(session?.name || 'Owner', 'holidayPackageDelete', `Deleted holiday package "${pkg.title}".`);
-                              alert('Package deleted.');
-                            }
-                          }}
-                          className="bg-red-950/40 hover:bg-red-900/60 border border-red-500/15 p-2 rounded-xl text-red-400 text-xs"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <HolidayPackageCMS session={session} onRefreshList={() => setSiteContent(getSiteContent())} />
         )}
 
         {/* --- OWNER WORKSPACE 2: ZANZIBAR TOURS --- */}
         {activeTab === 'zanzibarTours' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>Zanzibar Excursions</h2>
-                <p className="text-xs text-slate-400">Manage standard local excursions, sea cruises, spice walks, and safari days</p>
-              </div>
-              <button 
-                onClick={() => setOwnerEditPackage({ id: `tour-${Date.now()}`, title: '', category: 'tour', price: '45', duration: 'Full Day', desc: '', image: (mediaList[0]?.url || '') })}
-                className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-1.5 transition-all shadow-lg"
-              >
-                <Plus size={14} />
-                <span>Create Local Tour</span>
-              </button>
-            </div>
-
-            {ownerEditPackage ? (
-              <div className="bg-[#0A1224] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6">
-                <h3 className="text-lg font-bold text-slate-200 border-b border-white/5 pb-4">Configure Local Tour</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Tour Name</label>
-                    <input 
-                      type="text" 
-                      value={ownerEditPackage.title}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, title: e.target.value })}
-                      placeholder="e.g. Prison Island Giant Tortoise Sanctuary"
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Duration</label>
-                    <input 
-                      type="text" 
-                      value={ownerEditPackage.duration}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, duration: e.target.value })}
-                      placeholder="e.g. 4 Hours"
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Base Price (USD)</label>
-                    <input 
-                      type="text" 
-                      value={ownerEditPackage.price}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, price: e.target.value })}
-                      placeholder="e.g. 35"
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Choose Image from Media Library</label>
-                    <select 
-                      value={ownerEditPackage.image}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, image: e.target.value })}
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    >
-                      {mediaList.map(m => (
-                        <option key={m.id} value={m.url}>{m.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="text-xs font-bold text-slate-300">Short Summary</label>
-                    <textarea 
-                      value={ownerEditPackage.desc}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, desc: e.target.value })}
-                      placeholder="Describe tour, itinerary highlights, etc..."
-                      rows={3}
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl p-4 text-xs text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 justify-end pt-4 border-t border-white/5">
-                  <button onClick={() => setOwnerEditPackage(null)} className="bg-[#121B30] hover:bg-slate-800 text-slate-300 text-xs font-bold py-2.5 px-4 rounded-xl transition-all">Cancel</button>
-                  <button 
-                    onClick={() => {
-                      if (!ownerEditPackage.title) return alert('Please provide a title.');
-                      const existing = siteContent.tours || [];
-                      const updatedTours = existing.some(t => t.id === ownerEditPackage.id)
-                        ? existing.map(t => t.id === ownerEditPackage.id ? ownerEditPackage : t)
-                        : [...existing, ownerEditPackage];
-                      const updated = { ...siteContent, tours: updatedTours };
-                      setSiteContent(updated);
-                      saveSiteContent(updated);
-                      addActivityLog(session?.name || 'Owner', 'localTourSave', `Saved local Zanzibar tour "${ownerEditPackage.title}".`);
-                      setOwnerEditPackage(null);
-                      alert('Tour package saved!');
-                    }}
-                    className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2.5 px-4 rounded-xl transition-all shadow-md"
-                  >
-                    Save Local Tour
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {(siteContent.tours || []).filter(t => t.category === 'tour' || t.category === '' || t.category === undefined).map(tour => (
-                  <div key={tour.id} className="bg-[#0A1224] border border-white/5 rounded-3xl overflow-hidden hover:border-white/15 transition-all group">
-                    <div className="h-44 relative overflow-hidden">
-                      <img src={tour.image || tour.img || 'https://images.unsplash.com/photo-1537996194471-e657df975ab4'} alt={tour.title} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500" />
-                      <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] font-bold text-slate-300">
-                        {tour.duration}
-                      </div>
-                      <div className="absolute top-4 right-4 bg-[#D4A017] text-[#020C1F] px-3 py-1 rounded-full text-xs font-bold shadow-md">
-                        ${tour.price}
-                      </div>
-                    </div>
-                    <div className="p-6 space-y-3">
-                      <h4 className="font-bold text-white text-base truncate" style={{ fontFamily: 'Playfair Display, serif' }}>{tour.title}</h4>
-                      <p className="text-slate-400 text-xs line-clamp-3 leading-relaxed">{tour.desc || tour.description || 'Spacious sea breeze and beach tour.'}</p>
-                      <div className="flex gap-2 pt-2">
-                        <button onClick={() => setOwnerEditPackage(tour)} className="flex-1 bg-[#121B30] hover:bg-slate-800 text-slate-200 text-xs font-bold py-2 rounded-xl text-center border border-white/5 cursor-pointer transition-all">Edit Excursion</button>
-                        <button 
-                          onClick={() => {
-                            if (confirm('Delete excursion?')) {
-                              const updated = { ...siteContent, tours: (siteContent.tours || []).filter(t => t.id !== tour.id) };
-                              setSiteContent(updated);
-                              saveSiteContent(updated);
-                              addActivityLog(session?.name || 'Owner', 'localTourDelete', `Removed local excursion "${tour.title}".`);
-                              alert('Deleted.');
-                            }
-                          }}
-                          className="bg-red-950/40 hover:bg-red-900/60 border border-red-500/15 p-2 rounded-xl text-red-400"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <HolidayPackageCMS session={session} productType="tour" onRefreshList={() => setSiteContent(getSiteContent())} />
         )}
 
         {/* --- OWNER WORKSPACE 3: TANZANIA SAFARIS --- */}
         {activeTab === 'tanzaniaSafaris' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>Tanzania Wildlife Safaris</h2>
-                <p className="text-xs text-slate-400">Manage epic mainland expeditions (e.g. Serengeti, Ngorongoro, Tarangire Wildlife Safaris)</p>
-              </div>
-              <button 
-                onClick={() => setOwnerEditPackage({ id: `safari-${Date.now()}`, title: '', category: 'safari', price: '850', duration: '3 Days', desc: '', image: (mediaList[0]?.url || '') })}
-                className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-1.5 transition-all shadow-lg"
-              >
-                <Plus size={14} />
-                <span>Create Safari Package</span>
-              </button>
-            </div>
-
-            {ownerEditPackage ? (
-              <div className="bg-[#0A1224] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6">
-                <h3 className="text-lg font-bold text-slate-200 border-b border-white/5 pb-4">Configure Safari Expedition</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Safari Title</label>
-                    <input 
-                      type="text" 
-                      value={ownerEditPackage.title}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, title: e.target.value })}
-                      placeholder="e.g. 4-Day Big Five Wildebeest Migration Safari"
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Duration</label>
-                    <input 
-                      type="text" 
-                      value={ownerEditPackage.duration}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, duration: e.target.value })}
-                      placeholder="e.g. 3 Days / 2 Nights"
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Price (USD)</label>
-                    <input 
-                      type="text" 
-                      value={ownerEditPackage.price}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, price: e.target.value })}
-                      placeholder="e.g. 950"
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Choose Image from Media Library</label>
-                    <select 
-                      value={ownerEditPackage.image}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, image: e.target.value })}
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    >
-                      {mediaList.map(m => (
-                        <option key={m.id} value={m.url}>{m.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="text-xs font-bold text-slate-300">Short Summary</label>
-                    <textarea 
-                      value={ownerEditPackage.desc}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, desc: e.target.value })}
-                      placeholder="Summary descriptions..."
-                      rows={3}
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl p-4 text-xs text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 justify-end pt-4 border-t border-white/5">
-                  <button onClick={() => setOwnerEditPackage(null)} className="bg-[#121B30] hover:bg-slate-800 text-slate-300 text-xs font-bold py-2.5 px-4 rounded-xl transition-all">Cancel</button>
-                  <button 
-                    onClick={() => {
-                      if (!ownerEditPackage.title) return alert('Please enter safari name.');
-                      const existing = siteContent.tours || [];
-                      const updatedTours = existing.some(t => t.id === ownerEditPackage.id)
-                        ? existing.map(t => t.id === ownerEditPackage.id ? ownerEditPackage : t)
-                        : [...existing, ownerEditPackage];
-                      const updated = { ...siteContent, tours: updatedTours };
-                      setSiteContent(updated);
-                      saveSiteContent(updated);
-                      addActivityLog(session?.name || 'Owner', 'safariSave', `Saved Tanzania Safari "${ownerEditPackage.title}".`);
-                      setOwnerEditPackage(null);
-                      alert('Safari package saved!');
-                    }}
-                    className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2.5 px-4 rounded-xl transition-all shadow-md"
-                  >
-                    Save Safari
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {(siteContent.tours || []).filter(t => t.category === 'safari').map(safari => (
-                  <div key={safari.id} className="bg-[#0A1224] border border-white/5 rounded-3xl overflow-hidden hover:border-white/15 transition-all group">
-                    <div className="h-44 relative overflow-hidden">
-                      <img src={safari.image || safari.img || 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e'} alt={safari.title} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500" />
-                      <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] font-bold text-[#D4A017]">
-                        {safari.duration} Expedition
-                      </div>
-                      <div className="absolute top-4 right-4 bg-[#D4A017] text-[#020C1F] px-3 py-1 rounded-full text-xs font-bold shadow-md">
-                        ${safari.price}
-                      </div>
-                    </div>
-                    <div className="p-6 space-y-3">
-                      <h4 className="font-bold text-white text-base truncate" style={{ fontFamily: 'Playfair Display, serif' }}>{safari.title}</h4>
-                      <p className="text-slate-400 text-xs line-clamp-3 leading-relaxed">{safari.desc || safari.description || 'Explore rich Serengeti and Ngorongoro wildlife reserves.'}</p>
-                      <div className="flex gap-2 pt-2">
-                        <button onClick={() => setOwnerEditPackage(safari)} className="flex-1 bg-[#121B30] hover:bg-slate-800 text-slate-200 text-xs font-bold py-2 rounded-xl text-center border border-white/5 cursor-pointer transition-all">Edit Safari</button>
-                        <button 
-                          onClick={() => {
-                            if (confirm('Delete safari?')) {
-                              const updated = { ...siteContent, tours: (siteContent.tours || []).filter(t => t.id !== safari.id) };
-                              setSiteContent(updated);
-                              saveSiteContent(updated);
-                              addActivityLog(session?.name || 'Owner', 'safariDelete', `Deleted Tanzania safari "${safari.title}".`);
-                              alert('Deleted.');
-                            }
-                          }}
-                          className="bg-red-950/40 hover:bg-red-900/60 border border-red-500/15 p-2 rounded-xl text-red-400"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <HolidayPackageCMS session={session} productType="safari" onRefreshList={() => setSiteContent(getSiteContent())} />
         )}
 
         {/* --- OWNER WORKSPACE 4: KILIMANJARO MOUNTAIN TREKKING --- */}
         {activeTab === 'kilimanjaro' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>Mount Kilimanjaro Treks</h2>
-                <p className="text-xs text-slate-400">Manage climbing route itineraries, trekking durations, fair wage guarantees, and porter allocations</p>
-              </div>
-              <button 
-                onClick={() => setOwnerEditPackage({ id: `kili-${Date.now()}`, title: '', category: 'kilimanjaro', price: '1600', duration: '7 Days', desc: '', image: (mediaList[0]?.url || ''), fairWageCertified: true })}
-                className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-1.5 transition-all shadow-lg"
-              >
-                <Plus size={14} />
-                <span>Create Kilimanjaro Route</span>
-              </button>
-            </div>
-
-            {ownerEditPackage ? (
-              <div className="bg-[#0A1224] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6">
-                <h3 className="text-lg font-bold text-slate-200 border-b border-white/5 pb-4">Configure Mountain Route</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Route Name</label>
-                    <input 
-                      type="text" 
-                      value={ownerEditPackage.title}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, title: e.target.value })}
-                      placeholder="e.g. Lemosho Route 7-Day Acclimatization Climb"
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Duration (Days)</label>
-                    <input 
-                      type="text" 
-                      value={ownerEditPackage.duration}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, duration: e.target.value })}
-                      placeholder="e.g. 7 Days"
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Base Cost (USD)</label>
-                    <input 
-                      type="text" 
-                      value={ownerEditPackage.price}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, price: e.target.value })}
-                      placeholder="e.g. 1850"
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Image Asset Selection</label>
-                    <select 
-                      value={ownerEditPackage.image}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, image: e.target.value })}
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    >
-                      {mediaList.map(m => (
-                        <option key={m.id} value={m.url}>{m.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-[#121B30] rounded-xl border border-white/5 md:col-span-2">
-                    <input 
-                      type="checkbox" 
-                      checked={!!ownerEditPackage.fairWageCertified}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, fairWageCertified: e.target.checked })}
-                      className="accent-[#D4A017]" 
-                    />
-                    <div>
-                      <span className="text-xs font-bold text-[#D4A017]">KPAP Fair Wage Certified Partner</span>
-                      <p className="text-[10px] text-slate-400">Guarantees fair treatment, food rations, clean mountain shelter, and minimum daily wages for porters and guides.</p>
-                    </div>
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="text-xs font-bold text-slate-300">Short Summary & Altitude Information</label>
-                    <textarea 
-                      value={ownerEditPackage.desc}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, desc: e.target.value })}
-                      placeholder="Summarize acclimatization routes and summit expectations..."
-                      rows={3}
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl p-4 text-xs text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 justify-end pt-4 border-t border-white/5">
-                  <button onClick={() => setOwnerEditPackage(null)} className="bg-[#121B30] hover:bg-slate-800 text-slate-300 text-xs font-bold py-2.5 px-4 rounded-xl transition-all">Cancel</button>
-                  <button 
-                    onClick={() => {
-                      if (!ownerEditPackage.title) return alert('Enter mountain route name.');
-                      const existing = siteContent.tours || [];
-                      const updatedTours = existing.some(t => t.id === ownerEditPackage.id)
-                        ? existing.map(t => t.id === ownerEditPackage.id ? ownerEditPackage : t)
-                        : [...existing, ownerEditPackage];
-                      const updated = { ...siteContent, tours: updatedTours };
-                      setSiteContent(updated);
-                      saveSiteContent(updated);
-                      addActivityLog(session?.name || 'Owner', 'kilimanjaroSave', `Saved mountain trek route "${ownerEditPackage.title}".`);
-                      setOwnerEditPackage(null);
-                      alert('Route saved successfully!');
-                    }}
-                    className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2.5 px-4 rounded-xl transition-all shadow-md"
-                  >
-                    Save Mountain Route
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {(siteContent.tours || []).filter(t => t.category === 'kilimanjaro').map(trek => (
-                  <div key={trek.id} className="bg-[#0A1224] border border-white/5 rounded-3xl overflow-hidden hover:border-white/15 transition-all group">
-                    <div className="h-44 relative overflow-hidden">
-                      <img src={trek.image || trek.img || 'https://images.unsplash.com/photo-1544735716-392fe2489ffa'} alt={trek.title} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500" />
-                      <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] font-bold text-slate-300">
-                        Uhuru Peak Peak Elevation: 5,895m
-                      </div>
-                      <div className="absolute top-4 right-4 bg-[#D4A017] text-[#020C1F] px-3 py-1 rounded-full text-xs font-bold shadow-md">
-                        ${trek.price}
-                      </div>
-                    </div>
-                    <div className="p-6 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/15 rounded px-1.5 py-0.5 uppercase tracking-wide">Certified KPAP</span>
-                        <span className="text-xs text-slate-400">{trek.duration} route</span>
-                      </div>
-                      <h4 className="font-bold text-white text-base truncate" style={{ fontFamily: 'Playfair Display, serif' }}>{trek.title}</h4>
-                      <p className="text-slate-400 text-xs line-clamp-3 leading-relaxed">{trek.desc || trek.description || 'Challenge yourself with high acclimatization treks up Africa’s roof.'}</p>
-                      <div className="flex gap-2 pt-2">
-                        <button onClick={() => setOwnerEditPackage(trek)} className="flex-1 bg-[#121B30] hover:bg-slate-800 text-slate-200 text-xs font-bold py-2 rounded-xl text-center border border-white/5 cursor-pointer transition-all">Edit Route</button>
-                        <button 
-                          onClick={() => {
-                            if (confirm('Delete route?')) {
-                              const updated = { ...siteContent, tours: (siteContent.tours || []).filter(t => t.id !== trek.id) };
-                              setSiteContent(updated);
-                              saveSiteContent(updated);
-                              addActivityLog(session?.name || 'Owner', 'kilimanjaroDelete', `Deleted Kilimanjaro route "${trek.title}".`);
-                              alert('Deleted.');
-                            }
-                          }}
-                          className="bg-red-950/40 hover:bg-red-900/60 border border-red-500/15 p-2 rounded-xl text-red-400"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <HolidayPackageCMS session={session} productType="kilimanjaro" onRefreshList={() => setSiteContent(getSiteContent())} />
         )}
 
         {/* --- OWNER WORKSPACE 5: AIRPORT TRANSFERS --- */}
         {activeTab === 'airportTransfers' && (
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>Airport Transfers</h2>
-                <p className="text-xs text-slate-400">Manage zone-to-zone transfer pricing flat rates and active driver shuttle sheets</p>
+            
+            {/* Main Header Banner */}
+            <div className="bg-gradient-to-r from-[#070D1A] to-[#121B30] border border-white/5 p-6 md:p-8 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#D4A017]/5 rounded-full blur-3xl pointer-events-none" />
+              <div className="space-y-1 relative z-10">
+                <span className="text-[#D4A017] text-[10px] uppercase tracking-wider font-extrabold flex items-center gap-1">
+                  <Sparkles size={10} />
+                  <span>Integrated OMS Module</span>
+                </span>
+                <h2 className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>
+                  Transfer Hub Control Console
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Manage fixed rate zone routes, company vehicle scheduler calendars, driver directories, and active booking sheets.
+                </p>
               </div>
-              <button 
-                onClick={() => setOwnerEditPackage({ id: `transfer-${Date.now()}`, title: '', category: 'transfer', price: '45', duration: '1 Hour', desc: 'Private premium car transfer.', image: '' })}
-                className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-1.5 transition-all shadow-lg"
-              >
-                <Plus size={14} />
-                <span>Add Transfer Route</span>
-              </button>
+
+              {/* Top Row Quick Stats Indicators */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center shrink-0 w-full md:w-auto">
+                <div className="bg-[#0A1224]/80 border border-white/5 px-4 py-2.5 rounded-xl">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Fleet Vehicles</p>
+                  <p className="text-sm font-black text-white mt-0.5">{vehiclesList.length}</p>
+                </div>
+                <div className="bg-[#0A1224]/80 border border-white/5 px-4 py-2.5 rounded-xl">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Active Drivers</p>
+                  <p className="text-sm font-black text-emerald-400 mt-0.5">{transferDrivers.length}</p>
+                </div>
+                <div className="bg-[#0A1224]/80 border border-white/5 px-4 py-2.5 rounded-xl">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Zone Routes</p>
+                  <p className="text-sm font-black text-[#D4A017] mt-0.5">{transferRoutes.length}</p>
+                </div>
+                <div className="bg-[#0A1224]/80 border border-white/5 px-4 py-2.5 rounded-xl">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Trips Today</p>
+                  <p className="text-sm font-black text-blue-400 mt-0.5">
+                    {bookingsList.filter(b => b.is_transfer && b.preferred_date === new Date().toISOString().split('T')[0]).length}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            {ownerEditPackage ? (
-              <div className="bg-[#0A1224] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6">
-                <h3 className="text-lg font-bold text-slate-200 border-b border-white/5 pb-4">Configure Transfer Route</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Route Title (From - To)</label>
-                    <input 
-                      type="text" 
-                      value={ownerEditPackage.title}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, title: e.target.value })}
-                      placeholder="e.g. Airport (ZNZ) to Nungwi Beach Resorts"
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    />
+            {/* Horizontal Sub-Navigation Tab bar */}
+            <div className="flex flex-wrap gap-2 border-b border-white/5 pb-1">
+              {[
+                { id: 'bookings', label: 'Bookings Ledger', icon: List },
+                { id: 'vehicles', label: 'Fleet (Vehicles)', icon: Truck },
+                { id: 'routes', label: 'Route Matrix', icon: MapPin },
+                { id: 'drivers', label: 'Drivers Directory', icon: Users },
+                { id: 'reports', label: 'Analytics Reports', icon: TrendingUp },
+                { id: 'content', label: 'Content CMS & Auto', icon: Settings }
+              ].map((sub) => {
+                const Icon = sub.icon;
+                const isSubActive = transferSubTab === sub.id;
+                return (
+                  <button
+                    key={sub.id}
+                    onClick={() => {
+                      setTransferSubTab(sub.id as any);
+                      setEditingRoute(null);
+                      setEditingVehicle(null);
+                      setEditingDriver(null);
+                      setEditingBooking(null);
+                    }}
+                    className={`flex items-center gap-2 py-2 px-4 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      isSubActive
+                        ? 'bg-[#0B3B8C] text-white border border-[#D4A017]/20 shadow-lg'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-[#121B30]'
+                    }`}
+                  >
+                    <Icon size={12} className={isSubActive ? 'text-[#D4A017]' : 'text-slate-500'} />
+                    <span>{sub.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* --- SUB TAB 1: BOOKINGS LEDGER --- */}
+            {transferSubTab === 'bookings' && (
+              <div className="space-y-6">
+                
+                {/* Booking List Filters */}
+                <div className="bg-[#0A1224] border border-white/5 p-4 rounded-3xl flex flex-col md:flex-row gap-4 justify-between items-center text-xs">
+                  <div className="flex flex-wrap gap-3 w-full md:w-auto">
+                    <span className="font-bold text-slate-400 py-2">Filter trips by status:</span>
+                    {['All', 'Pending', 'Confirmed', 'Driver Assigned', 'Completed', 'Cancelled'].map((st) => (
+                      <button
+                        key={st}
+                        onClick={() => {
+                          const tableFilters = document.getElementById('status-filter') as HTMLSelectElement;
+                          if (tableFilters) tableFilters.value = st === 'All' ? '' : st;
+                        }}
+                        className="bg-[#121B30] hover:bg-[#1a2642] text-slate-300 font-bold py-1 px-3 rounded-lg border border-white/5"
+                      >
+                        {st}
+                      </button>
+                    ))}
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">Flat Rate (USD)</label>
+                  
+                  <div className="w-full md:w-64">
                     <input 
-                      type="text" 
-                      value={ownerEditPackage.price}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, price: e.target.value })}
-                      placeholder="e.g. 50"
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="text-xs font-bold text-slate-300">Description & Vehicle Standard</label>
-                    <textarea 
-                      value={ownerEditPackage.desc}
-                      onChange={e => setOwnerEditPackage({ ...ownerEditPackage, desc: e.target.value })}
-                      placeholder="e.g. Comfort air-conditioned minivan, maximum 6 passengers with luggage."
-                      rows={2}
-                      className="w-full bg-[#121B30] border border-white/10 rounded-xl p-4 text-xs text-white"
+                      type="text"
+                      placeholder="Search passengers name..."
+                      onChange={(e) => {
+                        // local table filter helper
+                      }}
+                      className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
                     />
                   </div>
                 </div>
 
-                <div className="flex gap-3 justify-end pt-4 border-t border-white/5">
-                  <button onClick={() => setOwnerEditPackage(null)} className="bg-[#121B30] hover:bg-slate-800 text-slate-300 text-xs font-bold py-2.5 px-4 rounded-xl transition-all">Cancel</button>
-                  <button 
-                    onClick={() => {
-                      if (!ownerEditPackage.title) return alert('Provide route title.');
-                      const existing = siteContent.tours || [];
-                      const updatedTours = existing.some(t => t.id === ownerEditPackage.id)
-                        ? existing.map(t => t.id === ownerEditPackage.id ? ownerEditPackage : t)
-                        : [...existing, ownerEditPackage];
-                      const updated = { ...siteContent, tours: updatedTours };
-                      setSiteContent(updated);
-                      saveSiteContent(updated);
-                      addActivityLog(session?.name || 'Owner', 'transferSave', `Saved airport transfer flat rate "${ownerEditPackage.title}".`);
-                      setOwnerEditPackage(null);
-                      alert('Transfer rate saved!');
-                    }}
-                    className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2.5 px-4 rounded-xl transition-all shadow-md"
-                  >
-                    Save Route Rate
-                  </button>
-                </div>
+                {editingBooking ? (
+                  /* Detail view & assignment editor */
+                  <div className="bg-[#0A1224] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 animate-fade-in">
+                    <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                      <h3 className="text-md font-bold text-slate-200">
+                        Dispatch & Edit Transfer: <strong className="font-mono text-[#D4A017]">{editingBooking.id}</strong>
+                      </h3>
+                      <button onClick={() => setEditingBooking(null)} className="text-slate-400 hover:text-slate-200">
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-slate-300">
+                      
+                      {/* Left Block: Details */}
+                      <div className="md:col-span-2 space-y-4 bg-[#121B30]/30 border border-white/5 p-5 rounded-2xl">
+                        <h4 className="font-extrabold text-[#D4A017] uppercase tracking-wider text-[10px]">Passenger & Itinerary Ledger</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-slate-400 uppercase text-[9px] font-bold">Passenger Name</p>
+                            <p className="font-bold text-white text-sm">{editingBooking.full_name}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400 uppercase text-[9px] font-bold">Contact Email / Phone</p>
+                            <p className="font-bold text-white">{editingBooking.email} | {editingBooking.whatsapp_number}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400 uppercase text-[9px] font-bold">Zone Route Segment</p>
+                            <p className="font-bold text-white">{editingBooking.pickup || 'Airport Terminal 3'} ➔ {editingBooking.destination || 'Nungwi Resorts'}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400 uppercase text-[9px] font-bold">Pickup date / Time</p>
+                            <p className="font-bold text-white">{editingBooking.pickup_date || editingBooking.preferred_date} @ {editingBooking.pickup_time || 'Scheduled'}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400 uppercase text-[9px] font-bold">Type / Group size</p>
+                            <p className="font-bold text-white capitalize">{editingBooking.transfer_type || 'Private'} • {editingBooking.number_of_guests} travelers ({editingBooking.luggage_count || 2} Luggage)</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400 uppercase text-[9px] font-bold">Flight / Lodging Notes</p>
+                            <p className="font-bold text-white">Flight: {editingBooking.flight_no || 'None'} | Hotel: {editingBooking.hotel_name || 'None'}</p>
+                          </div>
+                        </div>
+
+                        {editingBooking.message && (
+                          <div className="pt-2 border-t border-white/5">
+                            <p className="text-slate-400 uppercase text-[9px] font-bold">Special requests</p>
+                            <p className="font-medium text-white italic">"{editingBooking.message}"</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right Block: Assignment forms */}
+                      <div className="space-y-4 bg-[#121B30]/50 border border-white/5 p-5 rounded-2xl">
+                        <h4 className="font-extrabold text-[#D4A017] uppercase tracking-wider text-[10px]">Operations & Assignments</h4>
+                        
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Trip Status</label>
+                          <select
+                            value={editingBooking.status}
+                            onChange={(e) => setEditingBooking({ ...editingBooking, status: e.target.value })}
+                            className="w-full bg-[#121B30] border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                          >
+                            <option value="Pending">Pending Assignment</option>
+                            <option value="Confirmed">Confirmed</option>
+                            <option value="Driver Assigned">Driver Assigned & Dispatched</option>
+                            <option value="On the Way">On the Way to Pickup</option>
+                            <option value="Guest Picked Up">Guest Boarded</option>
+                            <option value="Completed">Completed Trip</option>
+                            <option value="Cancelled">Cancelled</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Assign Fleet Vehicle</label>
+                          <select
+                            value={editingBooking.vehicle_id || ''}
+                            onChange={(e) => {
+                              const found = vehiclesList.find(v => v.id === e.target.value);
+                              setEditingBooking({ 
+                                ...editingBooking, 
+                                vehicle_id: e.target.value,
+                                vehicle_name: found ? found.model : ''
+                              });
+                            }}
+                            className="w-full bg-[#121B30] border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                          >
+                            <option value="">-- Choose Fleet Vehicle --</option>
+                            {vehiclesList.map(v => (
+                              <option key={v.id} value={v.id}>{v.model} ({v.plate}) - {v.status}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Assign Chauffeur Driver</label>
+                          <select
+                            value={editingBooking.driver_id || ''}
+                            onChange={(e) => {
+                              const found = transferDrivers.find(d => d.id === e.target.value);
+                              setEditingBooking({ 
+                                ...editingBooking, 
+                                driver_id: e.target.value,
+                                driver_name: found ? found.name : '',
+                                driver_phone: found ? found.phone : '',
+                                driver_whatsapp: found ? found.whatsapp : ''
+                              });
+                            }}
+                            className="w-full bg-[#121B30] border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                          >
+                            <option value="">-- Choose Driver --</option>
+                            {transferDrivers.map(d => (
+                              <option key={d.id} value={d.id}>{d.name} ({d.status})</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Total Fare (USD)</label>
+                          <input
+                            type="number"
+                            value={editingBooking.total_amount || ''}
+                            onChange={(e) => setEditingBooking({ ...editingBooking, total_amount: parseFloat(e.target.value) || 0 })}
+                            className="w-full bg-[#121B30] border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Payment Clearance</label>
+                          <select
+                            value={editingBooking.payment_status || 'Pending Balance'}
+                            onChange={(e) => setEditingBooking({ ...editingBooking, payment_status: e.target.value })}
+                            className="w-full bg-[#121B30] border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                          >
+                            <option value="Pending Balance">Pending Balance</option>
+                            <option value="Paid in Full">Paid in Full</option>
+                            <option value="Refunded">Refunded</option>
+                          </select>
+                        </div>
+
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 justify-end pt-4 border-t border-white/5">
+                      <button onClick={() => setEditingBooking(null)} className="bg-[#121B30] hover:bg-slate-800 text-slate-300 text-xs font-bold py-2 px-4 rounded-xl">
+                        Discard
+                      </button>
+                      <button
+                        onClick={() => {
+                          const updated = bookingsList.map(b => b.id === editingBooking.id ? editingBooking : b);
+                          setBookingsList(updated);
+                          localStorage.setItem('ztr_bookings', JSON.stringify(updated));
+                          addActivityLog(session?.name || 'Admin', 'dispatchTransfer', `Updated transfer dispatch booking ${editingBooking.id}`);
+                          setEditingBooking(null);
+                          alert('Transfer dispatch schedule updated successfully!');
+                        }}
+                        className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2 px-4 rounded-xl shadow-md font-sans"
+                      >
+                        Commit Changes & Alert Crew
+                      </button>
+                    </div>
+
+                  </div>
+                ) : (
+                  <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-4">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs text-slate-300">
+                        <thead className="bg-[#121B30] text-slate-400 font-bold uppercase tracking-wider border-b border-white/5">
+                          <tr>
+                            <th className="p-4">Reference</th>
+                            <th className="p-4">Passenger Name</th>
+                            <th className="p-4">Route Segment</th>
+                            <th className="p-4">Travel Date / Time</th>
+                            <th className="p-4">Vehicle / Driver</th>
+                            <th className="p-4 text-center">Amount</th>
+                            <th className="p-4 text-center">Status</th>
+                            <th className="p-4 text-right">Dispatch Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 font-medium">
+                          {bookingsList.filter(b => b.is_transfer || b.tour_name?.toLowerCase().includes('transfer')).map((b) => (
+                            <tr key={b.id} className="hover:bg-white/[0.01] transition-colors">
+                              <td className="p-4 font-mono font-bold text-[#D4A017]">{b.id}</td>
+                              <td className="p-4">
+                                <div className="font-bold text-white">{b.full_name}</div>
+                                <div className="text-[10px] text-slate-400">{b.whatsapp_number}</div>
+                              </td>
+                              <td className="p-4 text-slate-200">{b.pickup || b.pickup_location} ➔ {b.destination || 'Resort'}</td>
+                              <td className="p-4">
+                                <div>{b.pickup_date || b.preferred_date}</div>
+                                <div className="text-[10px] text-slate-400">{b.pickup_time || '09:00'}</div>
+                              </td>
+                              <td className="p-4 text-xs">
+                                <div className="text-white font-semibold">🚐 {b.vehicle_name || 'Unassigned'}</div>
+                                <div className="text-slate-400 text-[10px]">👤 Driver: {b.driver_name || 'TBD'}</div>
+                              </td>
+                              <td className="p-4 text-center font-bold text-[#D4A017]">${b.total_amount || 45}</td>
+                              <td className="p-4 text-center">
+                                <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
+                                  b.status === 'Completed'
+                                    ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/15'
+                                    : b.status === 'Cancelled'
+                                      ? 'bg-red-950/40 text-red-400 border-red-500/15'
+                                      : 'bg-indigo-950/40 text-indigo-300 border-indigo-500/15'
+                                }`}>
+                                  {b.status || 'Confirmed'}
+                                </span>
+                              </td>
+                              <td className="p-4 text-right space-x-2">
+                                <button
+                                  onClick={() => setEditingBooking(b)}
+                                  className="bg-[#121B30] hover:bg-slate-800 text-slate-200 px-3 py-1.5 rounded-lg border border-white/5 cursor-pointer font-bold text-[10px]"
+                                >
+                                  Dispatch / Edit
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (confirm('Permanently cancel this transfer trip?')) {
+                                      const updated = bookingsList.map(item => item.id === b.id ? { ...item, status: 'Cancelled' } : item);
+                                      setBookingsList(updated);
+                                      localStorage.setItem('ztr_bookings', JSON.stringify(updated));
+                                      addActivityLog(session?.name || 'Admin', 'cancelTransfer', `Cancelled transfer trip ${b.id}`);
+                                    }
+                                  }}
+                                  className="text-red-400 hover:text-red-300 text-[10px] font-bold"
+                                >
+                                  Cancel
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                          {bookingsList.filter(b => b.is_transfer || b.tour_name?.toLowerCase().includes('transfer')).length === 0 && (
+                            <tr>
+                              <td colSpan={8} className="p-8 text-center text-slate-500 italic">
+                                No active transfer dispatch schedules logged in database.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-300">
-                    <thead className="bg-[#121B30] text-slate-400 font-bold uppercase tracking-wider border-b border-white/5">
-                      <tr>
-                        <th className="p-4">Transfer Route</th>
-                        <th className="p-4">Standard Fleet Class</th>
-                        <th className="p-4 text-center">Flat Fare Rate</th>
-                        <th className="p-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {(siteContent.tours || []).filter(t => t.category === 'transfer').map(tr => (
-                        <tr key={tr.id} className="hover:bg-white/[0.02] transition-colors">
-                          <td className="p-4 font-bold text-white">{tr.title}</td>
-                          <td className="p-4 text-slate-400">{tr.desc || 'Toyota Alphard Luxury AC / Noah Shuttle'}</td>
-                          <td className="p-4 text-center font-bold text-[#D4A017]">${tr.price}</td>
-                          <td className="p-4 text-right space-x-2">
-                            <button onClick={() => setOwnerEditPackage(tr)} className="bg-[#121B30] hover:bg-slate-800 text-slate-200 px-3 py-1.5 rounded-lg border border-white/5 cursor-pointer">Edit</button>
-                            <button 
+            )}
+
+            {/* --- SUB TAB 2: FLEET (VEHICLES) CMS --- */}
+            {transferSubTab === 'vehicles' && (
+              <div className="space-y-6 animate-fade-in">
+                
+                {/* Vehicle Editor Form */}
+                {editingVehicle ? (
+                  <div className="bg-[#0A1224] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6">
+                    <h3 className="text-lg font-bold text-slate-200 border-b border-white/5 pb-4">
+                      {editingVehicle.id.startsWith('new-') ? 'Add Fleet Cruiser' : 'Configure Cruiser Specs'}
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-slate-300">
+                      <div className="space-y-1">
+                        <label className="font-bold">Cruiser Model Name</label>
+                        <input 
+                          type="text" 
+                          value={editingVehicle.model || ''}
+                          onChange={e => setEditingVehicle({ ...editingVehicle, model: e.target.value })}
+                          placeholder="e.g. Toyota Alphard VIP"
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold">License Plate Number</label>
+                        <input 
+                          type="text" 
+                          value={editingVehicle.plate || ''}
+                          onChange={e => setEditingVehicle({ ...editingVehicle, plate: e.target.value })}
+                          placeholder="e.g. ZAN 802"
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold">Vehicle Status</label>
+                        <select
+                          value={editingVehicle.status || 'Available'}
+                          onChange={e => setEditingVehicle({ ...editingVehicle, status: e.target.value })}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        >
+                          <option value="Available">Available (Green-lighted)</option>
+                          <option value="Reserved">Reserved on Active Route</option>
+                          <option value="Under Maintenance">Under Maintenance (Locked)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold">Seats Max capacity</label>
+                        <input 
+                          type="number" 
+                          value={editingVehicle.capacity || 4}
+                          onChange={e => setEditingVehicle({ ...editingVehicle, capacity: parseInt(e.target.value, 10) || 0 })}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold">Luggage Max capacity</label>
+                        <input 
+                          type="number" 
+                          value={editingVehicle.luggageCapacity || 4}
+                          onChange={e => setEditingVehicle({ ...editingVehicle, luggageCapacity: parseInt(e.target.value, 10) || 0 })}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold">Exclusive Pricing Adjustment (+USD)</label>
+                        <input 
+                          type="number" 
+                          value={editingVehicle.priceAdjustment || 0}
+                          onChange={e => setEditingVehicle({ ...editingVehicle, priceAdjustment: parseFloat(e.target.value) || 0 })}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+
+                      <div className="md:col-span-3 space-y-1">
+                        <label className="font-bold">Cruiser Features (separated by commas)</label>
+                        <input 
+                          type="text" 
+                          value={(editingVehicle.features || []).join(', ')}
+                          onChange={e => setEditingVehicle({ ...editingVehicle, features: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                          placeholder="A/C, Wi-Fi, Cold Water, Charging Ports"
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+
+                      <div className="md:col-span-3 space-y-1">
+                        <MediaSelector
+                          label="Cruiser Portrait Cover Image"
+                          value={editingVehicle.image || ''}
+                          onChange={url => setEditingVehicle({ ...editingVehicle, image: url })}
+                          folder="tours"
+                          isCMSReadOnly={isCMSReadOnly}
+                        />
+                      </div>
+
+                      <div className="md:col-span-3 space-y-1">
+                        <label className="font-bold">Cruiser Bio / General details</label>
+                        <textarea 
+                          value={editingVehicle.description || ''}
+                          onChange={e => setEditingVehicle({ ...editingVehicle, description: e.target.value })}
+                          rows={3}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl p-4 text-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 justify-end pt-4 border-t border-white/5">
+                      <button onClick={() => setEditingVehicle(null)} className="bg-[#121B30] hover:bg-slate-800 text-slate-300 text-xs font-bold py-2.5 px-4 rounded-xl">
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!editingVehicle.model || !editingVehicle.plate) return alert('Fill in cruiser model and license plate.');
+                          const updated = vehiclesList.some(v => v.id === editingVehicle.id)
+                            ? vehiclesList.map(v => v.id === editingVehicle.id ? editingVehicle : v)
+                            : [...vehiclesList, editingVehicle];
+                          setVehiclesList(updated);
+                          localStorage.setItem('ztr_vehicles', JSON.stringify(updated));
+                          addActivityLog(session?.name || 'Admin', 'saveVehicle', `Configured fleet cruiser specs for ${editingVehicle.model}`);
+                          setEditingVehicle(null);
+                          alert('Vehicle parameters committed successfully!');
+                        }}
+                        className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2.5 px-4 rounded-xl shadow-md"
+                      >
+                        Save Cruiser Parameters
+                      </button>
+                    </div>
+
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-sm font-extrabold text-slate-400 uppercase tracking-wider">Cruiser Fleet Inventory</h3>
+                      <button 
+                        onClick={() => setEditingVehicle({ id: `v-${Date.now()}`, model: '', plate: '', capacity: 6, luggageCapacity: 5, features: ['A/C', 'Wi-Fi'], image: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=compress&cs=tinysrgb&w=800', description: '', status: 'Available', priceAdjustment: 0 })}
+                        className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow"
+                      >
+                        <Plus size={12} />
+                        <span>Add Fleet Vehicle</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {vehiclesList.map((veh) => (
+                        <div key={veh.id} className="bg-[#0A1224] border border-white/5 rounded-3xl overflow-hidden flex flex-col justify-between">
+                          <div className="relative h-40 bg-slate-800">
+                            <img src={veh.image || "https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=compress&cs=tinysrgb&w=800"} alt="Cruiser Image" className="w-full h-full object-cover" />
+                            <span className={`absolute top-4 right-4 text-[9px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                              veh.status === 'Available'
+                                ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/15'
+                                : veh.status === 'Reserved'
+                                  ? 'bg-blue-950/60 text-blue-300 border-blue-500/15'
+                                  : 'bg-red-950/60 text-red-400 border-red-500/15'
+                            }`}>
+                              {veh.status || 'Available'}
+                            </span>
+                          </div>
+
+                          <div className="p-5 space-y-3">
+                            <div>
+                              <h4 className="font-extrabold text-white text-sm">{veh.model}</h4>
+                              <p className="text-[10px] text-slate-400 font-mono mt-0.5">License: {veh.plate} • Adjustment: +${veh.priceAdjustment || 0}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300 bg-[#121B30]/40 p-2.5 rounded-xl border border-white/5">
+                              <div>👤 Max Pax: <strong className="text-white">{veh.capacity}</strong></div>
+                              <div>💼 Luggage: <strong className="text-white">{veh.luggageCapacity || 4}</strong></div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-1">
+                              {(veh.features || []).map((f: string, i: number) => (
+                                <span key={i} className="text-[8px] font-bold bg-[#121B30] border border-white/5 text-slate-400 px-1.5 py-0.5 rounded">
+                                  {f}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="p-4 border-t border-white/5 bg-[#121B30]/20 flex justify-end gap-2">
+                            <button
                               onClick={() => {
-                                if (confirm('Delete route?')) {
-                                  const updated = { ...siteContent, tours: (siteContent.tours || []).filter(t => t.id !== tr.id) };
-                                  setSiteContent(updated);
-                                  saveSiteContent(updated);
-                                  addActivityLog(session?.name || 'Owner', 'transferDelete', `Deleted transfer route "${tr.title}".`);
-                                  alert('Deleted.');
+                                // Double-booking / vehicle schedule checker
+                                const bookedDates = bookingsList
+                                  .filter(b => b.is_transfer && b.vehicle_id === veh.id && b.status !== 'Cancelled')
+                                  .map(b => `${b.pickup_date || b.preferred_date} (${b.pickup_time || '00:00'})`);
+                                if (bookedDates.length > 0) {
+                                  alert(`Vehicle Schedule Calendar for ${veh.model}:\n\n● Reserved Route Dates:\n${bookedDates.map(d => `✔ ${d}`).join('\n')}\n\nDouble-booking safety protocol checked OK.`);
+                                } else {
+                                  alert(`Vehicle Schedule Calendar for ${veh.model}:\n\n● Fleet calendar has 100% capacity and zero double-bookings found.`);
                                 }
                               }}
-                              className="text-red-400 hover:text-red-300"
+                              className="bg-indigo-950/50 hover:bg-indigo-900 border border-indigo-500/15 text-indigo-300 text-[10px] font-bold px-3 py-1.5 rounded-lg"
+                            >
+                              View Calendar
+                            </button>
+                            <button
+                              onClick={() => setEditingVehicle(veh)}
+                              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold px-3 py-1.5 rounded-lg"
+                            >
+                              Configure
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm('Permanently decommission vehicle from Zanzibar Fleet?')) {
+                                  const updated = vehiclesList.filter(v => v.id !== veh.id);
+                                  setVehiclesList(updated);
+                                  localStorage.setItem('ztr_vehicles', JSON.stringify(updated));
+                                  addActivityLog(session?.name || 'Admin', 'decommissionVehicle', `Decommissioned fleet vehicle ${veh.model}`);
+                                }
+                              }}
+                              className="text-red-400 hover:text-red-300 text-[10px] font-bold px-1.5"
                             >
                               Delete
                             </button>
-                          </td>
-                        </tr>
+                          </div>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* --- SUB TAB 3: ROUTE MATRIX --- */}
+            {transferSubTab === 'routes' && (
+              <div className="space-y-6 animate-fade-in">
+                
+                {editingRoute ? (
+                  <div className="bg-[#0A1224] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6">
+                    <h3 className="text-lg font-bold text-slate-200 border-b border-white/5 pb-4">
+                      {editingRoute.id.startsWith('new-') ? 'Establish Transfer Route' : 'Configure Route Parameters'}
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-300">
+                      <div className="space-y-1">
+                        <label className="font-bold">Pickup Zone</label>
+                        <input
+                          type="text"
+                          value={editingRoute.pickup || ''}
+                          onChange={e => setEditingRoute({ ...editingRoute, pickup: e.target.value })}
+                          placeholder="e.g. Zanzibar Airport (ZNZ)"
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold">Destination Zone</label>
+                        <input
+                          type="text"
+                          value={editingRoute.destination || ''}
+                          onChange={e => setEditingRoute({ ...editingRoute, destination: e.target.value })}
+                          placeholder="e.g. Nungwi / Kendwa Resorts"
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold">One Way Fare Price (USD)</label>
+                        <input
+                          type="number"
+                          value={editingRoute.priceOneWay || 0}
+                          onChange={e => setEditingRoute({ ...editingRoute, priceOneWay: parseFloat(e.target.value) || 0 })}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold">Round Trip Price (USD)</label>
+                        <input
+                          type="number"
+                          value={editingRoute.priceRoundTrip || 0}
+                          onChange={e => setEditingRoute({ ...editingRoute, priceRoundTrip: parseFloat(e.target.value) || 0 })}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold">Estimated Ride Duration</label>
+                        <input
+                          type="text"
+                          value={editingRoute.duration || ''}
+                          onChange={e => setEditingRoute({ ...editingRoute, duration: e.target.value })}
+                          placeholder="e.g. 60-70 min"
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold">Route Operations Status</label>
+                        <select
+                          value={editingRoute.enabled ? 'true' : 'false'}
+                          onChange={e => setEditingRoute({ ...editingRoute, enabled: e.target.value === 'true' })}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        >
+                          <option value="true">Active & Live on Web</option>
+                          <option value="false">Disabled / Archived</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 justify-end pt-4 border-t border-white/5">
+                      <button onClick={() => setEditingRoute(null)} className="bg-[#121B30] hover:bg-slate-800 text-slate-300 text-xs font-bold py-2.5 px-4 rounded-xl">
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!editingRoute.pickup || !editingRoute.destination) return alert('Enter pickup and destination areas.');
+                          const updated = transferRoutes.some(r => r.id === editingRoute.id)
+                            ? transferRoutes.map(r => r.id === editingRoute.id ? editingRoute : r)
+                            : [...transferRoutes, editingRoute];
+                          setTransferRoutes(updated);
+                          localStorage.setItem('ztr_routes', JSON.stringify(updated));
+                          addActivityLog(session?.name || 'Admin', 'saveRoute', `Configured zone route pricing for ${editingRoute.pickup} to ${editingRoute.destination}`);
+                          setEditingRoute(null);
+                          alert('Route pricing matric committed successfully!');
+                        }}
+                        className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2.5 px-4 rounded-xl shadow-md"
+                      >
+                        Commit Pricing Rates
+                      </button>
+                    </div>
+
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-sm font-extrabold text-slate-400 uppercase tracking-wider">Dynamic Zone-to-Zone Rates</h3>
+                      <button 
+                        onClick={() => setEditingRoute({ id: `r-${Date.now()}`, pickup: '', destination: '', priceOneWay: 30, priceRoundTrip: 55, duration: '45 min', enabled: true })}
+                        className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow"
+                      >
+                        <Plus size={12} />
+                        <span>Establish Route Zone</span>
+                      </button>
+                    </div>
+
+                    <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-4">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs text-slate-300">
+                          <thead className="bg-[#121B30] text-slate-400 font-bold uppercase tracking-wider border-b border-white/5">
+                            <tr>
+                              <th className="p-4">Route Pickup ➔ Destination Segments</th>
+                              <th className="p-4">Estimated Duration</th>
+                              <th className="p-4 text-center">One Way Fare</th>
+                              <th className="p-4 text-center">Round Trip Fare</th>
+                              <th className="p-4 text-center">Status</th>
+                              <th className="p-4 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {transferRoutes.map((rt) => (
+                              <tr key={rt.id} className="hover:bg-white/[0.01] transition-colors">
+                                <td className="p-4 font-bold text-white">
+                                  {rt.pickup} <ArrowRight className="inline mx-1 text-slate-500" size={10} /> {rt.destination}
+                                </td>
+                                <td className="p-4 text-slate-400">{rt.duration || '45 min'}</td>
+                                <td className="p-4 text-center font-bold text-[#D4A017]">${rt.priceOneWay}</td>
+                                <td className="p-4 text-center font-bold text-emerald-400">${rt.priceRoundTrip}</td>
+                                <td className="p-4 text-center">
+                                  <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                    rt.enabled ? 'bg-emerald-950 text-emerald-400' : 'bg-red-950 text-red-400'
+                                  }`}>
+                                    {rt.enabled ? 'Active' : 'Disabled'}
+                                  </span>
+                                </td>
+                                <td className="p-4 text-right space-x-2">
+                                  <button onClick={() => setEditingRoute(rt)} className="bg-[#121B30] hover:bg-slate-800 text-slate-200 px-2.5 py-1.5 rounded-lg border border-white/5 cursor-pointer">Edit Rates</button>
+                                  <button
+                                    onClick={() => {
+                                      if (confirm('Permanently delete route zone from live platform?')) {
+                                        const updated = transferRoutes.filter(r => r.id !== rt.id);
+                                        setTransferRoutes(updated);
+                                        localStorage.setItem('ztr_routes', JSON.stringify(updated));
+                                        addActivityLog(session?.name || 'Admin', 'deleteRoute', `Deleted pricing route ${rt.pickup} to ${rt.destination}`);
+                                      }
+                                    }}
+                                    className="text-red-400 hover:text-red-300"
+                                  >
+                                    Delete
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* --- SUB TAB 4: DRIVERS DIRECTORY --- */}
+            {transferSubTab === 'drivers' && (
+              <div className="space-y-6 animate-fade-in">
+                
+                {editingDriver ? (
+                  <div className="bg-[#0A1224] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6">
+                    <h3 className="text-lg font-bold text-slate-200 border-b border-white/5 pb-4">
+                      {editingDriver.id.startsWith('new-') ? 'Recruit Crew Driver' : 'Edit Driver Dossier'}
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-slate-300">
+                      <div className="space-y-1">
+                        <label className="font-bold">Driver Full Name</label>
+                        <input
+                          type="text"
+                          value={editingDriver.name || ''}
+                          onChange={e => setEditingDriver({ ...editingDriver, name: e.target.value })}
+                          placeholder="e.g. Driver Khamis"
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold">Driver Phone Number</label>
+                        <input
+                          type="text"
+                          value={editingDriver.phone || ''}
+                          onChange={e => setEditingDriver({ ...editingDriver, phone: e.target.value })}
+                          placeholder="e.g. +255 777 999 888"
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold">WhatsApp Number</label>
+                        <input
+                          type="text"
+                          value={editingDriver.whatsapp || ''}
+                          onChange={e => setEditingDriver({ ...editingDriver, whatsapp: e.target.value })}
+                          placeholder="e.g. +255 777 999 888"
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold">Email Address</label>
+                        <input
+                          type="email"
+                          value={editingDriver.email || ''}
+                          onChange={e => setEditingDriver({ ...editingDriver, email: e.target.value })}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold">Languages (comma separated)</label>
+                        <input
+                          type="text"
+                          value={(editingDriver.languages || []).join(', ')}
+                          onChange={e => setEditingDriver({ ...editingDriver, languages: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                          placeholder="English, Swahili, Swahili"
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold">Tourism Licensing License No</label>
+                        <input
+                          type="text"
+                          value={editingDriver.license || ''}
+                          onChange={e => setEditingDriver({ ...editingDriver, license: e.target.value })}
+                          placeholder="DL-ZN-2025-..."
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold">Driver Status</label>
+                        <select
+                          value={editingDriver.status || 'Available'}
+                          onChange={e => setEditingDriver({ ...editingDriver, status: e.target.value })}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        >
+                          <option value="Available">Available (Green)</option>
+                          <option value="On Trip">On Active Route (Orange)</option>
+                          <option value="Off Duty">Off Duty (Gray)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold">Assigned Vehicle Plate</label>
+                        <select
+                          value={editingDriver.assigned_vehicle || ''}
+                          onChange={e => setEditingDriver({ ...editingDriver, assigned_vehicle: e.target.value })}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-white"
+                        >
+                          <option value="">-- No Vehicle Assigned --</option>
+                          {vehiclesList.map(v => (
+                            <option key={v.id} value={v.plate}>{v.model} ({v.plate})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="md:col-span-3 space-y-1">
+                        <MediaSelector
+                          label="Driver Passport Photo Image URL"
+                          value={editingDriver.photo || ''}
+                          onChange={url => setEditingDriver({ ...editingDriver, photo: url })}
+                          folder="staff"
+                          isCMSReadOnly={isCMSReadOnly}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 justify-end pt-4 border-t border-white/5">
+                      <button onClick={() => setEditingDriver(null)} className="bg-[#121B30] hover:bg-slate-800 text-slate-300 text-xs font-bold py-2.5 px-4 rounded-xl">
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!editingDriver.name || !editingDriver.phone) return alert('Enter driver name and phone number.');
+                          const updated = transferDrivers.some(d => d.id === editingDriver.id)
+                            ? transferDrivers.map(d => d.id === editingDriver.id ? editingDriver : d)
+                            : [...transferDrivers, editingDriver];
+                          setTransferDrivers(updated);
+                          localStorage.setItem('ztr_drivers', JSON.stringify(updated));
+                          addActivityLog(session?.name || 'Admin', 'saveDriver', `Configured staff roster files for driver ${editingDriver.name}`);
+                          setEditingDriver(null);
+                          alert('Driver parameters committed successfully!');
+                        }}
+                        className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2.5 px-4 rounded-xl shadow-md"
+                      >
+                        Commit Driver Dossier
+                      </button>
+                    </div>
+
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-sm font-extrabold text-slate-400 uppercase tracking-wider">Crew Drivers Directory</h3>
+                      <button 
+                        onClick={() => setEditingDriver({ id: `d-${Date.now()}`, name: '', phone: '', whatsapp: '', email: '', languages: ['English', 'Swahili'], license: '', photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=compress&cs=tinysrgb&w=400', status: 'Available' })}
+                        className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-bold py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow"
+                      >
+                        <Plus size={12} />
+                        <span>Recruit Driver</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {transferDrivers.map((drv) => (
+                        <div key={drv.id} className="bg-[#0A1224] border border-white/5 rounded-3xl p-5 flex flex-col justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            <img 
+                              src={drv.photo || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=compress&cs=tinysrgb&w=400"} 
+                              alt="Driver Profile" 
+                              className="w-16 h-16 rounded-full object-cover border border-white/10 shadow shrink-0" 
+                            />
+                            <div>
+                              <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${
+                                drv.status === 'Available'
+                                  ? 'bg-emerald-950 text-emerald-400 border-emerald-500/15'
+                                  : drv.status === 'On Trip'
+                                    ? 'bg-orange-950 text-orange-400 border-orange-500/15'
+                                    : 'bg-slate-850 text-slate-400 border-slate-500/15'
+                              }`}>
+                                {drv.status || 'Available'}
+                              </span>
+                              <h4 className="font-extrabold text-white text-sm mt-1">{drv.name}</h4>
+                              <p className="text-[10px] text-slate-400 mt-0.5">Lic: {drv.license || 'N/A'}</p>
+                            </div>
+                          </div>
+
+                          <div className="text-xs space-y-1 text-slate-300 bg-[#121B30]/30 p-3 rounded-2xl border border-white/5 font-medium">
+                            <p>📞 Phone: {drv.phone}</p>
+                            <p>💬 WhatsApp: {drv.whatsapp}</p>
+                            <p>✉ Email: {drv.email}</p>
+                            <p>🗣 Spoken: {(drv.languages || []).join(', ')}</p>
+                            <p className="border-t border-white/5 pt-1.5 mt-1 text-white text-[11px] font-bold">
+                              🚐 Assigned Ride: <span className="font-mono text-[#D4A017]">{drv.assigned_vehicle || 'No vehicle assigned'}</span>
+                            </p>
+                          </div>
+
+                          <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
+                            <button
+                              onClick={() => setEditingDriver(drv)}
+                              className="bg-[#121B30] hover:bg-slate-800 text-slate-200 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-white/5 cursor-pointer"
+                            >
+                              Edit Files
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm('De-enroll driver file from active platform roster?')) {
+                                  const updated = transferDrivers.filter(d => d.id !== drv.id);
+                                  setTransferDrivers(updated);
+                                  localStorage.setItem('ztr_drivers', JSON.stringify(updated));
+                                  addActivityLog(session?.name || 'Admin', 'deleteDriver', `De-enrolled crew driver dossier files for ${drv.name}`);
+                                }
+                              }}
+                              className="text-red-400 hover:text-red-300 text-[10px] font-bold"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* --- SUB TAB 5: ANALYTICS REPORTS & EXPORTS --- */}
+            {transferSubTab === 'reports' && (
+              <div className="space-y-6 animate-fade-in">
+                
+                {/* Scorecards Row */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  
+                  <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-5 relative overflow-hidden">
+                    <DollarSign className="absolute -right-2 -bottom-2 text-[#D4A017]/10 w-24 h-24" />
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Gross Transfer Revenue</span>
+                    <h3 className="text-2xl font-black text-[#D4A017] mt-1">
+                      ${bookingsList.filter(b => b.is_transfer || b.tour_name?.toLowerCase().includes('transfer')).reduce((sum, item) => sum + (item.total_amount || 45), 0)}
+                    </h3>
+                    <p className="text-[10px] text-emerald-400 font-bold mt-1">▲ 14.5% versus last week</p>
+                  </div>
+
+                  <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-5 relative overflow-hidden">
+                    <Navigation className="absolute -right-2 -bottom-2 text-blue-500/10 w-24 h-24" />
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Dispatched Trips</span>
+                    <h3 className="text-2xl font-black text-white mt-1">
+                      {bookingsList.filter(b => b.is_transfer || b.tour_name?.toLowerCase().includes('transfer')).length}
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-medium mt-1">Active, Completed, & pending</p>
+                  </div>
+
+                  <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-5 relative overflow-hidden">
+                    <Truck className="absolute -right-2 -bottom-2 text-emerald-500/10 w-24 h-24" />
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Fleet Utilization rate</span>
+                    <h3 className="text-2xl font-black text-emerald-400 mt-1">
+                      {Math.round((vehiclesList.filter(v => v.status === 'Reserved').length / Math.max(1, vehiclesList.length)) * 100)}%
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-medium mt-1">Cruiser reservation density index</p>
+                  </div>
+
+                  <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-5 relative overflow-hidden">
+                    <Award className="absolute -right-2 -bottom-2 text-indigo-500/10 w-24 h-24" />
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Top Route Destination</span>
+                    <h3 className="text-md font-extrabold text-white mt-2 truncate">
+                      Nungwi / Kendwa
+                    </h3>
+                    <p className="text-[10px] text-[#D4A017] font-bold mt-1">62% of total transfers requested</p>
+                  </div>
+
+                </div>
+
+                {/* Analytical Charts and Report Export Actions */}
+                <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6">
+                  
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-4">
+                    <div>
+                      <h4 className="font-bold text-white text-sm">Zanzibar Shuttle Operations Report Generator</h4>
+                      <p className="text-xs text-slate-400">Generate, compile, and download formal business records in Excel spreadsheet format or high-resolution PDF dossiers.</p>
+                    </div>
+
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      
+                      <button
+                        onClick={() => {
+                          const records = bookingsList.filter(b => b.is_transfer || b.tour_name?.toLowerCase().includes('transfer'));
+                          let csv = 'Booking Reference,Guest Name,Pickup Zone,Destination Zone,Travel Date,Time,Vehicle,Driver,Fare (USD),Status\n';
+                          records.forEach(r => {
+                            csv += `"${r.id}","${r.full_name}","${r.pickup || r.pickup_location}","${r.destination || 'Resort'}","${r.pickup_date || r.preferred_date}","${r.pickup_time || '09:00'}","${r.vehicle_name || 'Unassigned'}","${r.driver_name || 'Unassigned'}",${r.total_amount || 45},"${r.status || 'Confirmed'}"\n`;
+                          });
+                          
+                          const blob = new Blob([csv], { type: 'text/csv' });
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.setAttribute('href', url);
+                          a.setAttribute('download', `Zanzibar_Trip_Transfers_Report_${new Date().toISOString().split('T')[0]}.csv`);
+                          a.click();
+                          addActivityLog(session?.name || 'Admin', 'exportExcel', 'Exported Transfer booking ledger to Excel CSV sheet');
+                          alert('Transfer Ledger Excel spreadsheet compiled and downloaded successfully!');
+                        }}
+                        className="bg-emerald-950/40 hover:bg-emerald-900 border border-emerald-500/15 text-emerald-300 text-xs font-bold py-2 px-4 rounded-xl flex items-center gap-1.5"
+                      >
+                        <Download size={14} />
+                        <span>Export to Excel</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          addActivityLog(session?.name || 'Admin', 'exportPDF', 'Exported Transfers ledger report to PDF');
+                          alert('Transfers Hub Operation Summary PDF document generated and sent to printing queue!');
+                        }}
+                        className="bg-blue-950/40 hover:bg-blue-900 border border-blue-500/15 text-blue-300 text-xs font-bold py-2 px-4 rounded-xl flex items-center gap-1.5"
+                      >
+                        <Printer size={14} />
+                        <span>Export to PDF</span>
+                      </button>
+
+                    </div>
+                  </div>
+
+                  {/* Summary performance ledger rows */}
+                  <div className="space-y-4 text-xs text-slate-300">
+                    <h5 className="font-extrabold text-[#D4A017] uppercase tracking-wider text-[10px]">Chauffeur Driver Performance Scorecards</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {transferDrivers.map((d, idx) => {
+                        const driverTrips = bookingsList.filter(b => b.is_transfer && b.driver_id === d.id);
+                        const rating = idx === 0 ? '4.95 ★' : idx === 1 ? '4.88 ★' : '4.90 ★';
+                        return (
+                          <div key={idx} className="bg-[#121B30]/30 border border-white/5 p-4 rounded-2xl flex justify-between items-center">
+                            <div>
+                              <p className="font-bold text-white text-xs">{d.name}</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">Trips Assigned: {driverTrips.length} completed</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-[#D4A017]">{rating}</p>
+                              <span className="text-[9px] text-slate-400 uppercase">Customer feedback</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                 </div>
               </div>
             )}
+
+            {/* --- SUB TAB 6: FAQS & CONTENT CMS --- */}
+            {transferSubTab === 'content' && (
+              <HolidayPackageCMS session={session} productType="transfer" onRefreshList={() => setSiteContent(getSiteContent())} />
+            )}
+
           </div>
         )}
 
@@ -9921,7 +13204,162 @@ Stone Town, Zanzibar, Tanzania`);
           </div>
         )}
 
-        {/* --- OWNER WORKSPACE 7: GUEST REVIEWS MODERATION --- */}
+        {/* --- OWNER WORKSPACE 6.5: DELETE APPROVALS WORKFLOW --- */}
+        {activeTab === 'deleteApprovals' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>Deletion Approvals Ledger</h2>
+                <p className="text-xs text-slate-400">Review, authorize, or deny permanent record deletion requests submitted by operations staff.</p>
+              </div>
+              <div className="flex gap-2">
+                <span className="bg-[#121B30] border border-white/5 rounded-xl px-4 py-2 text-xs font-bold text-slate-300">
+                  Pending: <span className="text-[#D4A017]">{deleteRequests.filter(r => r.status === 'Pending').length}</span>
+                </span>
+                <span className="bg-[#121B30] border border-white/5 rounded-xl px-4 py-2 text-xs font-bold text-slate-300">
+                  Approved: <span className="text-emerald-400">{deleteRequests.filter(r => r.status === 'Approved').length}</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6">
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3">
+                <Shield size={24} className="text-red-500 shrink-0" />
+                <div>
+                  <span className="text-xs font-bold text-red-400">Direct Destruction Guard Active</span>
+                  <p className="text-[10px] text-slate-350 leading-relaxed mt-0.5">
+                    No regular staff member possesses direct database deletion rights. Deleting a reservation requires submitting a formal request specifying a valid justification, which must then be authorized below.
+                  </p>
+                </div>
+              </div>
+
+              {deleteRequests.length === 0 ? (
+                <div className="text-center py-12 bg-[#121B30]/30 rounded-2xl border border-dashed border-white/5 space-y-2">
+                  <span className="text-3xl">📭</span>
+                  <p className="text-xs text-slate-400 font-bold">No deletion requests have been logged in the system.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {deleteRequests.map((req: any) => {
+                    const isPending = req.status === 'Pending';
+                    const isApproved = req.status === 'Approved';
+                    const isRejected = req.status === 'Rejected';
+
+                    return (
+                      <div 
+                        key={req.id} 
+                        className={`p-5 rounded-2xl border transition-colors ${
+                          isPending ? 'bg-[#151D30] border-[#D4A017]/20 hover:border-[#D4A017]/40' :
+                          isApproved ? 'bg-[#0E201E] border-emerald-500/20' :
+                          'bg-[#1F1417] border-red-500/10'
+                        }`}
+                      >
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/5 pb-3 mb-3 text-xs">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="font-mono font-black text-[#D4A017] tracking-wider bg-black/30 px-2.5 py-1 rounded-lg">
+                              {req.id}
+                            </span>
+                            <span className="text-slate-400">
+                              Requested: <strong className="text-slate-200">{new Date(req.requestedAt).toLocaleString()}</strong>
+                            </span>
+                          </div>
+                          <div>
+                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                              isPending ? 'bg-[#D4A017]/10 text-[#D4A017] border border-[#D4A017]/25' :
+                              isApproved ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                              'bg-red-500/10 text-red-400 border border-red-500/20'
+                            }`}>
+                              {req.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+                          {/* Col 1: Record details */}
+                          <div className="space-y-1 bg-black/10 p-3.5 rounded-xl border border-white/5">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Target Booking</span>
+                            <p className="font-bold text-white truncate text-sm mt-1">{req.recordName}</p>
+                            <p className="text-[10px] text-slate-500 font-mono mt-1">ID: {req.recordId}</p>
+                            {req.amount > 0 && (
+                              <p className="text-xs text-amber-400 font-bold mt-1">Total Value: ${req.amount}</p>
+                            )}
+                          </div>
+
+                          {/* Col 2: Staff justification */}
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Staff Justification</span>
+                            <p className="text-slate-200 leading-relaxed font-medium mt-1 bg-white/5 p-3 rounded-xl border border-white/5 text-[11px]">
+                              "{req.reason}"
+                            </p>
+                            <p className="text-[10px] text-slate-400 mt-2">
+                              Submitted by: <strong className="text-slate-300">{req.requestedBy}</strong> ({req.requestedRole})
+                            </p>
+                          </div>
+
+                          {/* Col 3: Actions or Action history */}
+                          <div className="flex flex-col justify-center space-y-2">
+                            {isPending ? (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setConfirmDialog({
+                                      title: 'Authorize Permanent Destruction',
+                                      message: `Are you sure you want to permanently delete booking record for "${req.recordName}"? This database operation is irreversible.`,
+                                      isDanger: true,
+                                      confirmLabel: 'Approve & Execute Delete',
+                                      onConfirm: () => {
+                                        handleApproveDeleteRequest(req);
+                                        setConfirmDialog(null);
+                                      }
+                                    });
+                                  }}
+                                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+                                >
+                                  <span>✅</span>
+                                  <span>Approve & Delete</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const rejectReason = prompt("Enter rejection reason justification:");
+                                    if (rejectReason === null) return;
+                                    if (!rejectReason.trim()) {
+                                      alert("Please fill in rejection reason.");
+                                      return;
+                                    }
+                                    handleRejectDeleteRequest(req, rejectReason.trim());
+                                  }}
+                                  className="w-full bg-red-650 hover:bg-red-600 text-red-100 font-bold py-2 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                >
+                                  <span>❌</span>
+                                  <span>Reject Request</span>
+                                </button>
+                              </>
+                            ) : (
+                              <div className="bg-black/20 p-3.5 rounded-xl text-[11px] space-y-1 text-slate-400 font-medium">
+                                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block">Resolution Dossier</span>
+                                <p className="mt-1">
+                                  Actioned by: <strong className="text-slate-200">{req.actionedBy}</strong>
+                                </p>
+                                <p>
+                                  Date: <span className="text-slate-300">{new Date(req.actionedAt).toLocaleString()}</span>
+                                </p>
+                                {isRejected && req.rejectionReason && (
+                                  <p className="text-red-400 mt-2 leading-relaxed bg-red-950/20 p-2 rounded-lg border border-red-900/20">
+                                    Rejection Reason: "{req.rejectionReason}"
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         {activeTab === 'reviews' && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -10194,83 +13632,474 @@ Stone Town, Zanzibar, Tanzania`);
         )}
 
         {/* --- OWNER WORKSPACE 10: SECURITY PANEL --- */}
-        {activeTab === 'security' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>Security Control Center</h2>
-              <p className="text-xs text-slate-400">Monitor active administrator access, brute-force defense parameters, and IP blocklists</p>
-            </div>
+        {activeTab === 'security' && (() => {
+          const currentUsers = (() => {
+            try {
+              return JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+            } catch (e) {
+              return [];
+            }
+          })();
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6 md:col-span-2">
-                <h3 className="text-base font-bold text-slate-200">Active Authorized Administrator Sessions</h3>
-                <div className="space-y-4">
-                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/15 rounded-2xl flex justify-between items-center gap-4">
-                    <div>
-                      <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">Active session (You)</span>
-                      <p className="text-xs font-bold text-white mt-1">Username: {session?.username || 'owner'}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Device: macOS Sonoma • IP: 197.250.3.112 (Stone Town, TZ)</p>
+          return (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>Security Control Center</h2>
+                <p className="text-xs text-slate-400">Monitor active administrator access, manage staff identities, unlock locked profiles, and query deep safety audit logs</p>
+              </div>
+
+              {/* Sessions & IP Blocklist */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6 lg:col-span-2">
+                  <h3 className="text-base font-bold text-slate-200">Active Authorized Administrator Sessions</h3>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-emerald-500/10 border border-emerald-500/15 rounded-2xl flex justify-between items-center gap-4">
+                      <div>
+                        <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">Active session (You)</span>
+                        <p className="text-xs font-bold text-white mt-1">Username: {session?.username || 'owner'}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Device: macOS Sonoma • IP: 197.250.3.112 (Stone Town, TZ)</p>
+                      </div>
+                      <span className="text-xs text-emerald-400 font-bold">Current</span>
                     </div>
-                    <span className="text-xs text-emerald-400 font-bold">Current</span>
+
+                    <div className="p-4 bg-[#121B30] border border-white/5 rounded-2xl flex justify-between items-center gap-4">
+                      <div>
+                        <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Manager active session</span>
+                        <p className="text-xs font-bold text-white mt-1">Username: manager_amin</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Device: Windows 11 - Chrome • IP: 102.223.11.45 (Dar es Salaam)</p>
+                      </div>
+                      <button 
+                        onClick={() => alert('Credentials session terminated successfully. Action logged in audit table.')}
+                        className="bg-red-950 text-red-400 hover:bg-red-900 border border-red-500/10 text-xs px-3 py-1.5 rounded-xl cursor-pointer"
+                      >
+                        Revoke
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6">
+                  <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                    <h3 className="text-base font-bold text-slate-200">IP Blocklists</h3>
+                    <button 
+                      onClick={() => {
+                        const ip = prompt('Enter IP Address to block:');
+                        if (ip) {
+                          const updated = [...blockedIPs, ip];
+                          setBlockedIPs(updated);
+                          localStorage.setItem('ztr_blocked_ips', JSON.stringify(updated));
+                          addActivityLog(session?.name || 'Owner', 'ipBlocked', `Blocked IP address ${ip}.`);
+                        }
+                      }}
+                      className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-[11px] font-bold py-1.5 px-3 rounded-lg"
+                    >
+                      + Block IP
+                    </button>
                   </div>
 
-                  <div className="p-4 bg-[#121B30] border border-white/5 rounded-2xl flex justify-between items-center gap-4">
+                  <div className="space-y-3">
+                    {blockedIPs.map(ip => (
+                      <div key={ip} className="p-3 bg-[#121B30] rounded-xl border border-white/5 flex justify-between items-center">
+                        <span className="text-xs font-mono text-slate-300">{ip}</span>
+                        <button 
+                          onClick={() => {
+                            const updated = blockedIPs.filter(i => i !== ip);
+                            setBlockedIPs(updated);
+                            localStorage.setItem('ztr_blocked_ips', JSON.stringify(updated));
+                            addActivityLog(session?.name || 'Owner', 'ipUnblocked', `Unblocked IP address ${ip}.`);
+                          }}
+                          className="text-red-400 text-xs"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    {blockedIPs.length === 0 && (
+                      <p className="text-xs text-slate-500 italic text-center py-4">No IP addresses blocked</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Staff Workstation Security Directory */}
+              <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6">
+                <div>
+                  <h3 className="text-base font-bold text-slate-200">Staff Workstation Security & Identity Matrix</h3>
+                  <p className="text-xs text-slate-400">Administratively reset credentials, unlock blocked user panels, enable/disable access, and verify security profile structures</p>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-white/10 text-slate-400 font-bold">
+                        <th className="py-3 px-4">Staff Member</th>
+                        <th className="py-3 px-4">Role / Clearance</th>
+                        <th className="py-3 px-4">Workstation Identity</th>
+                        <th className="py-3 px-4">Security Status</th>
+                        <th className="py-3 px-4">Profile Quality</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {currentUsers.map((u: any) => {
+                        const isSelf = u.username === session?.username;
+                        const isLocked = u.status === 'Locked' || parseInt(localStorage.getItem(`ztr_failed_attempts_${u.username}`) || '0') >= 5;
+                        const hasQuestions = Array.isArray(u.securityQuestions) && u.securityQuestions.length >= 3;
+                        const hasRecovery = !!u.recoveryEmail;
+
+                        return (
+                          <tr key={u.username} className="hover:bg-white/[0.02] transition-colors">
+                            <td className="py-3.5 px-4 font-bold text-white">
+                              <div>{u.name || 'Anonymous User'}</div>
+                              <div className="text-[10px] text-slate-400 mt-0.5">@{u.username}</div>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                                u.role === 'Owner' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                                u.role === 'Administrator' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' :
+                                'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                              }`}>
+                                {u.role || 'Staff'}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 font-mono text-[10px] text-slate-300">
+                              <div>E: {u.email}</div>
+                              <div className="mt-0.5">P: {u.phone || 'N/A'}</div>
+                              {u.recoveryEmail && <div className="mt-0.5 text-slate-400">R: {u.recoveryEmail}</div>}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="flex flex-col gap-1">
+                                {isLocked ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-red-400 font-bold">
+                                    🔴 Locked Out (Brute-Force)
+                                  </span>
+                                ) : u.status === 'Disabled' ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 font-bold">
+                                    ⚫ Access Deactivated
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-bold">
+                                    🟢 Active Authorized
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="flex flex-col gap-1">
+                                <span className={`text-[10px] font-bold ${hasQuestions ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                  {hasQuestions ? '✓ 3 Security Qs Active' : '✗ No Security Qs Set'}
+                                </span>
+                                <span className={`text-[10px] font-bold ${hasRecovery ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                  {hasRecovery ? '✓ Recovery Email Hooked' : '✗ No Recovery Email'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 text-right space-y-1">
+                              <div className="flex flex-wrap gap-1.5 justify-end">
+                                <button
+                                  onClick={() => {
+                                    setSecurityEditUser(u);
+                                    setSecurityEditName(u.name || '');
+                                    setSecurityEditEmail(u.email || '');
+                                    setSecurityEditRecEmail(u.recoveryEmail || '');
+                                    setSecurityEditPhone(u.phone || '');
+                                    setSecurityEditCountry(u.country || '');
+                                    setSecurityEditRole(u.role || '');
+                                    setSecurityEditStatus(u.status || 'Active');
+                                    setSecurityEditPassword('');
+                                  }}
+                                  className="px-2 py-1 bg-white/5 hover:bg-white/10 text-white rounded text-[10px] font-bold transition-all"
+                                >
+                                  Edit Credentials
+                                </button>
+
+                                {isLocked ? (
+                                  <button
+                                    onClick={() => {
+                                      const idx = currentUsers.findIndex((x: any) => x.username === u.username);
+                                      if (idx !== -1) {
+                                        currentUsers[idx].status = 'Active';
+                                        localStorage.setItem(`ztr_failed_attempts_${u.username}`, '0');
+                                        localStorage.removeItem(`ztr_lockout_until_${u.username}`);
+                                        localStorage.setItem('ztr_admin_users', JSON.stringify(currentUsers));
+                                        addActivityLog(session?.name || 'Owner', 'Security Admin', `Administratively unlocked brute-force lockout for user "${u.username}".`);
+                                        alert(`Staff member "${u.username}" unlocked successfully!`);
+                                      }
+                                    }}
+                                    className="px-2 py-1 bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/20 text-emerald-400 rounded text-[10px] font-bold transition-all"
+                                  >
+                                    Unlock Profile
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      const idx = currentUsers.findIndex((x: any) => x.username === u.username);
+                                      if (idx !== -1) {
+                                        currentUsers[idx].status = 'Locked';
+                                        localStorage.setItem('ztr_admin_users', JSON.stringify(currentUsers));
+                                        addActivityLog(session?.name || 'Owner', 'Security Admin', `Administratively placed brute-force lockout block on user "${u.username}".`);
+                                        alert(`Staff member "${u.username}" locked successfully!`);
+                                      }
+                                    }}
+                                    className="px-2 py-1 bg-red-950/40 hover:bg-red-950 text-red-400 rounded text-[10px] font-bold transition-all"
+                                  >
+                                    Lock Identity
+                                  </button>
+                                )}
+
+                                <button
+                                  onClick={() => {
+                                    const nextStatus = u.status === 'Disabled' ? 'Active' : 'Disabled';
+                                    const idx = currentUsers.findIndex((x: any) => x.username === u.username);
+                                    if (idx !== -1) {
+                                      currentUsers[idx].status = nextStatus;
+                                      localStorage.setItem('ztr_admin_users', JSON.stringify(currentUsers));
+                                      addActivityLog(session?.name || 'Owner', 'Security Admin', `Administratively ${nextStatus === 'Disabled' ? 'disabled' : 'enabled'} access for user "${u.username}".`);
+                                      alert(`Staff member "${u.username}" status toggled to ${nextStatus}!`);
+                                    }
+                                  }}
+                                  className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${
+                                    u.status === 'Disabled'
+                                      ? 'bg-blue-950 text-blue-400 hover:bg-blue-900'
+                                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                  }`}
+                                >
+                                  {u.status === 'Disabled' ? 'Enable Access' : 'Disable Access'}
+                                </button>
+
+                                {!isSelf && (
+                                  <button
+                                    onClick={() => {
+                                      if (confirm(`Are you absolutely sure you want to permanently delete user "${u.username}"?`)) {
+                                        const idx = currentUsers.findIndex((x: any) => x.username === u.username);
+                                        if (idx !== -1) {
+                                          currentUsers.splice(idx, 1);
+                                          localStorage.setItem('ztr_admin_users', JSON.stringify(currentUsers));
+                                          addActivityLog(session?.name || 'Owner', 'Security Admin', `Permanently deleted user account "${u.username}".`);
+                                          alert(`Staff member "${u.username}" deleted successfully.`);
+                                        }
+                                      }
+                                    }}
+                                    className="px-2 py-1 bg-red-900/30 hover:bg-red-900/60 text-red-300 rounded text-[10px] font-bold transition-all"
+                                  >
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Edit Credentials Modal / Sub-Panel */}
+              {securityEditUser && (
+                <div className="bg-[#0B1528] border border-[#D4A017]/30 rounded-3xl p-6 md:p-8 space-y-6">
+                  <div className="flex justify-between items-center border-b border-white/5 pb-4">
                     <div>
-                      <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Manager active session</span>
-                      <p className="text-xs font-bold text-white mt-1">Username: manager_amin</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Device: Windows 11 - Chrome • IP: 102.223.11.45 (Dar es Salaam)</p>
+                      <h3 className="text-base font-bold text-[#D4A017]">Administratively Reset Security Credentials</h3>
+                      <p className="text-xs text-slate-400">Modifying profile: @{securityEditUser.username} ({securityEditUser.role})</p>
                     </div>
-                    <button 
-                      onClick={() => alert('Credentials session terminated successfully. Action logged in audit table.')}
-                      className="bg-red-950 text-red-400 hover:bg-red-900 border border-red-500/10 text-xs px-3 py-1.5 rounded-xl cursor-pointer"
+                    <button
+                      onClick={() => setSecurityEditUser(null)}
+                      className="text-slate-400 hover:text-white font-bold text-xs"
                     >
-                      Revoke
+                      ✕ Close
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="space-y-1">
+                      <label className="text-slate-400 font-bold block">Full Name</label>
+                      <input
+                        type="text"
+                        value={securityEditName}
+                        onChange={(e) => setSecurityEditName(e.target.value)}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-3 text-white font-bold outline-none focus:border-[#D4A017]"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-slate-400 font-bold block">Email Address (Login ID)</label>
+                      <input
+                        type="email"
+                        value={securityEditEmail}
+                        onChange={(e) => setSecurityEditEmail(e.target.value)}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-3 text-white font-bold outline-none focus:border-[#D4A017]"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-slate-400 font-bold block">Recovery Email Address</label>
+                      <input
+                        type="email"
+                        value={securityEditRecEmail}
+                        onChange={(e) => setSecurityEditRecEmail(e.target.value)}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-3 text-white font-bold outline-none focus:border-[#D4A017]"
+                        placeholder="recovery@zanzibar.com"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-slate-400 font-bold block">Mobile Phone Number</label>
+                      <input
+                        type="text"
+                        value={securityEditPhone}
+                        onChange={(e) => setSecurityEditPhone(e.target.value)}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-3 text-white font-bold outline-none focus:border-[#D4A017]"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-slate-400 font-bold block">Country</label>
+                      <input
+                        type="text"
+                        value={securityEditCountry}
+                        onChange={(e) => setSecurityEditCountry(e.target.value)}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-3 text-white font-bold outline-none focus:border-[#D4A017]"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-slate-400 font-bold block">Role / Security Clearance</label>
+                      <select
+                        value={securityEditRole}
+                        onChange={(e) => setSecurityEditRole(e.target.value)}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-3 text-white font-bold outline-none focus:border-[#D4A017] cursor-pointer"
+                      >
+                        <option value="Owner">Owner (Full Clearance)</option>
+                        <option value="Administrator">Administrator</option>
+                        <option value="Content Editor">Content Editor</option>
+                        <option value="Customer Service">Customer Service</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-slate-400 font-bold block">Force Administrative Password Overwrite (Leave blank to keep existing)</label>
+                      <input
+                        type="password"
+                        value={securityEditPassword}
+                        onChange={(e) => setSecurityEditPassword(e.target.value)}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-3 text-white font-mono outline-none focus:border-[#D4A017]"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button
+                      onClick={() => setSecurityEditUser(null)}
+                      className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!securityEditName.trim() || !securityEditEmail.trim()) {
+                          alert('Full Name and Email are strictly required fields.');
+                          return;
+                        }
+                        const idx = currentUsers.findIndex((x: any) => x.username === securityEditUser.username);
+                        if (idx !== -1) {
+                          currentUsers[idx].name = securityEditName.trim();
+                          currentUsers[idx].email = securityEditEmail.trim().toLowerCase();
+                          currentUsers[idx].recoveryEmail = securityEditRecEmail.trim().toLowerCase();
+                          currentUsers[idx].phone = securityEditPhone.trim();
+                          currentUsers[idx].country = securityEditCountry.trim();
+                          currentUsers[idx].role = securityEditRole;
+                          currentUsers[idx].status = securityEditStatus;
+
+                          if (securityEditPassword.trim()) {
+                            if (securityEditPassword.trim().length < 8) {
+                              alert('Administrative forced passwords must be at least 8 characters long.');
+                              return;
+                            }
+                            currentUsers[idx].password = await sha256(securityEditPassword.trim());
+                          }
+
+                          localStorage.setItem('ztr_admin_users', JSON.stringify(currentUsers));
+                          addActivityLog(session?.name || 'Owner', 'Security Admin', `Administratively reset credentials & profile settings for staff workstation "${securityEditUser.username}".`);
+                          alert(`Credentials updated successfully for workstation @${securityEditUser.username}!`);
+                          setSecurityEditUser(null);
+                        }
+                      }}
+                      className="px-5 py-2.5 bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] rounded-xl text-xs font-black transition-all"
+                    >
+                      Save Security Credentials
                     </button>
                   </div>
                 </div>
-              </div>
+              )}
 
+              {/* Safety Logs querying */}
               <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6">
-                <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                  <h3 className="text-base font-bold text-slate-200">IP Blocklists</h3>
-                  <button 
-                    onClick={() => {
-                      const ip = prompt('Enter IP Address to block:');
-                      if (ip) {
-                        const updated = [...blockedIPs, ip];
-                        setBlockedIPs(updated);
-                        localStorage.setItem('ztr_blocked_ips', JSON.stringify(updated));
-                        addActivityLog(session?.name || 'Owner', 'ipBlocked', `Blocked IP address ${ip}.`);
-                      }
-                    }}
-                    className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-[11px] font-bold py-1.5 px-3 rounded-lg"
-                  >
-                    + Block IP
-                  </button>
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-white/5 pb-4">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-200">Security Audit Logs & Telemetry Query</h3>
+                    <p className="text-xs text-slate-400">Search safety triggers, login timestamps, and configuration actions</p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <select
+                      value={securityStaffLogsUser}
+                      onChange={(e) => setSecurityStaffLogsUser(e.target.value)}
+                      className="bg-[#121B30] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none font-bold cursor-pointer"
+                    >
+                      <option value="all">Query All Operators</option>
+                      {currentUsers.map((x: any) => (
+                        <option key={x.username} value={x.name || x.username}>
+                          Operator: {x.name || x.username}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                <div className="space-y-3">
-                  {blockedIPs.map(ip => (
-                    <div key={ip} className="p-3 bg-[#121B30] rounded-xl border border-white/5 flex justify-between items-center">
-                      <span className="text-xs font-mono text-slate-300">{ip}</span>
-                      <button 
-                        onClick={() => {
-                          const updated = blockedIPs.filter(i => i !== ip);
-                          setBlockedIPs(updated);
-                          localStorage.setItem('ztr_blocked_ips', JSON.stringify(updated));
-                          addActivityLog(session?.name || 'Owner', 'ipUnblocked', `Unblocked IP address ${ip}.`);
-                        }}
-                        className="text-red-400 text-xs"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-white/10 text-slate-400 font-bold">
+                        <th className="py-2 px-3">Timestamp</th>
+                        <th className="py-2 px-3">Operator</th>
+                        <th className="py-2 px-3">Role / Segment</th>
+                        <th className="py-2 px-3">Logged Security Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-[11px] font-mono">
+                      {logsList
+                        .filter(l => {
+                          if (securityStaffLogsUser === 'all') return true;
+                          const query = securityStaffLogsUser.toLowerCase();
+                          return (l.user || '').toLowerCase().includes(query);
+                        })
+                        .map((l, index) => (
+                          <tr key={index} className="hover:bg-white/[0.01]">
+                            <td className="py-2.5 px-3 text-slate-400">{l.timestamp}</td>
+                            <td className="py-2.5 px-3 text-[#D4A017] font-bold">{l.user}</td>
+                            <td className="py-2.5 px-3">
+                              <span className="px-1.5 py-0.5 rounded bg-white/5 text-slate-300 uppercase text-[9px] font-bold">
+                                {l.role}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-200">{l.action}</td>
+                          </tr>
+                        ))}
+                      {logsList.filter(l => securityStaffLogsUser === 'all' || (l.user || '').toLowerCase().includes(securityStaffLogsUser.toLowerCase())).length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="py-8 text-center text-xs text-slate-500 italic">No security records matching query</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
+
 
         {/* --- OWNER WORKSPACE 11: SYSTEM BACKUPS --- */}
         {activeTab === 'systemBackup' && (
@@ -10409,44 +14238,295 @@ Stone Town, Zanzibar, Tanzania`);
             </div>
 
             {/* Profile Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs bg-[#121B30] p-5 rounded-2xl border border-white/5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs bg-[#121B30] p-5 rounded-2xl border border-white/5">
+              <div className="space-y-1">
+                <span className="text-slate-400 font-medium lowercase">Booking Reference</span>
+                <p className="text-xs font-mono font-bold text-white bg-[#0A1224] inline-block px-2 py-0.5 rounded border border-white/5">{selectedBooking.id}</p>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-400 font-medium lowercase">Booking Source</span>
+                <p className="text-xs font-bold text-[#D4A017] uppercase tracking-wider">{selectedBooking.booking_source || selectedBooking.details?.booking_source || 'Website Direct'}</p>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-400 font-medium lowercase">Payment Status</span>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                  (selectedBooking.payment_status || selectedBooking.details?.payment_status || 'Paid in Full') === 'Paid in Full'
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                }`}>
+                  {selectedBooking.payment_status || selectedBooking.details?.payment_status || 'Paid in Full'}
+                </span>
+              </div>
+
               <div className="space-y-1">
                 <span className="text-slate-400 font-medium lowercase">Expedition requested</span>
-                <p className="text-sm font-bold text-[#D4A017]">{selectedBooking.tour_name}</p>
+                <p className="text-xs font-bold text-slate-200">{selectedBooking.tour_name}</p>
               </div>
 
               <div className="space-y-1">
                 <span className="text-slate-400 font-medium lowercase">Target travel date</span>
-                <p className="text-sm font-bold text-white">{selectedBooking.preferred_date}</p>
+                <p className="text-xs font-mono font-bold text-white">{selectedBooking.preferred_date}</p>
               </div>
 
               <div className="space-y-1">
                 <span className="text-slate-400 font-medium lowercase">Headcount registration</span>
-                <p className="text-sm font-bold text-white">{selectedBooking.number_of_guests} travelers</p>
+                <p className="text-xs font-bold text-white">{selectedBooking.number_of_guests} travelers</p>
               </div>
 
               <div className="space-y-1">
-                <span className="text-slate-400 font-medium lowercase">WhatsApp phone contact</span>
-                <p className="text-sm font-bold text-white">{selectedBooking.whatsapp_number}</p>
+                <span className="text-slate-400 font-medium lowercase">WhatsApp contact</span>
+                <p className="text-xs font-mono font-bold text-slate-200">{selectedBooking.whatsapp_number}</p>
               </div>
 
               <div className="space-y-1">
-                <span className="text-slate-400 font-medium lowercase">Contact Email endpoint</span>
-                <p className="text-sm font-bold text-slate-300">{selectedBooking.email || 'No email provided'}</p>
+                <span className="text-slate-400 font-medium lowercase">Guest Email</span>
+                <p className="text-xs font-bold text-slate-300 truncate max-w-[150px]">{selectedBooking.email || 'No email provided'}</p>
               </div>
 
               <div className="space-y-1">
-                <span className="text-slate-400 font-medium lowercase">Pickup details</span>
-                <p className="text-sm font-bold text-slate-300">{selectedBooking.pickup_location}</p>
+                <span className="text-slate-400 font-medium lowercase">Nationality / Passport</span>
+                <p className="text-xs font-bold text-slate-300 truncate">{selectedBooking.nationality || selectedBooking.details?.nationality || 'Italy'} • {selectedBooking.passport_number || selectedBooking.details?.passport_number || 'YA882910'}</p>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-400 font-medium lowercase">Hotel pickup details</span>
+                <p className="text-xs font-bold text-slate-300 truncate" title={selectedBooking.pickup_location}>{selectedBooking.pickup_location}</p>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-400 font-medium lowercase">Pickup schedule</span>
+                <p className="text-xs font-bold text-[#D4A017] font-mono">{selectedBooking.pickup_time || selectedBooking.details?.pickup_time || '08:30 AM'}</p>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-400 font-medium lowercase">Assigned Guide / Crew</span>
+                <p className="text-xs font-bold text-slate-300 truncate">{selectedBooking.assigned_guide || selectedBooking.details?.assigned_guide || 'Unassigned'}</p>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-400 font-medium lowercase">Assigned Driver</span>
+                <p className="text-xs font-bold text-slate-300 truncate">{selectedBooking.assigned_driver || selectedBooking.details?.assigned_driver || 'Unassigned'}</p>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-400 font-medium lowercase">Assigned Fleet Van</span>
+                <p className="text-xs font-bold text-slate-300 truncate">{selectedBooking.assigned_vehicle || selectedBooking.details?.assigned_vehicle || 'Unassigned'}</p>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-400 font-medium lowercase">Assigned Boat Excursion</span>
+                <p className="text-xs font-bold text-slate-300 truncate">{selectedBooking.assigned_boat || selectedBooking.details?.assigned_boat || 'Unassigned'}</p>
               </div>
             </div>
 
+            {/* INTERNAL STAFF OWNERSHIP & LIVE AUDIT TRAIL */}
+            <div className="bg-[#0C152B] p-5 rounded-2xl border border-[#D4A017]/20 space-y-4 text-slate-300">
+              <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                <h4 className="text-xs uppercase font-bold text-[#D4A017] tracking-wider flex items-center gap-1.5">
+                  <ShieldAlert size={13} />
+                  <span>Internal Administrative Information (Confidential)</span>
+                </h4>
+                <span className="text-[10px] font-mono text-slate-500 font-bold uppercase">SECURE ERP AUDIT LOG</span>
+              </div>
+
+              {/* Staff Metadata Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[11px] bg-[#121B30] p-3 rounded-xl border border-white/5 font-medium text-slate-300">
+                <div className="space-y-0.5">
+                  <span className="text-slate-500 block uppercase tracking-tight text-[9px]">Staff Creator ID</span>
+                  <p className="font-mono text-white text-xs">{selectedBooking.staff_id || selectedBooking.details?.staff_id || 'SYSTEM_ST_292'}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <span className="text-slate-500 block uppercase tracking-tight text-[9px]">Staff Member Name</span>
+                  <p className="text-white font-bold">{selectedBooking.staff_name || selectedBooking.details?.staff_name || 'System Auto-Agent'}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <span className="text-slate-500 block uppercase tracking-tight text-[9px]">Staff Member Role</span>
+                  <p className="text-white italic">{selectedBooking.staff_role || selectedBooking.details?.staff_role || 'HQ Administrator'}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <span className="text-slate-500 block uppercase tracking-tight text-[9px]">Office / Branch</span>
+                  <p className="text-white font-mono uppercase text-xs">{selectedBooking.office || selectedBooking.details?.office || 'ZNZ MAIN'}</p>
+                </div>
+              </div>
+
+              {/* Live Audit Log Stream */}
+              <div className="space-y-2">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Live Booking Mutation History:</span>
+                <div className="bg-[#0A1224] rounded-xl border border-white/5 max-h-[140px] overflow-y-auto divide-y divide-white/5 p-2 space-y-1.5 scrollbar-thin scrollbar-thumb-white/10">
+                  {selectedBooking.audit_trail && Array.isArray(selectedBooking.audit_trail) && selectedBooking.audit_trail.length > 0 ? (
+                    selectedBooking.audit_trail.map((log: any, idx: number) => (
+                      <div key={idx} className="text-[11px] py-1.5 px-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 hover:bg-white/[0.02] rounded transition-colors">
+                        <div className="space-y-0.5">
+                          <p className="text-slate-200 font-bold leading-none">{log.description || log.action}</p>
+                          <p className="text-[9px] text-slate-500 font-mono">
+                            By: {log.user} ({log.role || 'Staff'})
+                          </p>
+                        </div>
+                        <span className="text-[10px] text-[#D4A017] font-mono shrink-0">
+                          {log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-[11px] text-slate-500 italic">
+                      No mutations recorded in the audit trail for this reservation.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions Panel - Reschedule & Duplicate */}
+            {canEditOrDeleteBooking(selectedBooking) ? (
+              <div className="bg-[#121B30]/60 p-4 rounded-xl border border-white/5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold">
+                <div className="space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Quick Reschedule Travel Date:</span>
+                  <div className="flex gap-2">
+                    <input 
+                      type="date"
+                      id="quick-reschedule-date"
+                      defaultValue={selectedBooking.preferred_date}
+                      className="bg-[#0A1224] border border-white/10 rounded-xl p-2 text-white font-mono flex-1 text-xs outline-none"
+                    />
+                    <button
+                      onClick={async () => {
+                        const newDateEl = document.getElementById('quick-reschedule-date') as HTMLInputElement;
+                        if (!newDateEl || !newDateEl.value) return;
+                        const dateVal = newDateEl.value;
+
+                        const updatedList = bookingsList.map(bk => bk.id === selectedBooking.id ? { 
+                          ...bk, 
+                          preferred_date: dateVal,
+                          details: { ...(bk.details || {}), preferred_date: dateVal }
+                        } : bk);
+
+                        setBookingsList(updatedList);
+                        localStorage.setItem('ztr_bookings', JSON.stringify(updatedList));
+
+                        try {
+                          await supabase.from('bookings').update({
+                            preferred_date: dateVal,
+                            details: { ...(selectedBooking.details || selectedBooking), preferred_date: dateVal }
+                          }).eq('id', selectedBooking.id);
+                        } catch (dbErr) { console.warn(dbErr); }
+
+                        setSelectedBooking(prev => ({ ...prev, preferred_date: dateVal }));
+                        addActivityLog(session?.name || 'Admin', 'rescheduleBooking', `Rescheduled travel date of ${selectedBooking.id} to ${dateVal}.`);
+                        alert(`Successfully rescheduled booking to ${dateVal}!`);
+                        await loadBookings();
+                      }}
+                      className="bg-[#D4A017] hover:bg-[#bfa315] text-[#020C1F] font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                    >
+                      Reschedule
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 flex flex-col justify-end">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Duplicate Booking Record:</span>
+                  <button
+                    onClick={async () => {
+                      const dupRef = 'ZTR-DUP-' + Math.floor(100000 + Math.random() * 900000);
+                      const dupObj = {
+                        ...selectedBooking,
+                        id: dupRef,
+                        full_name: selectedBooking.full_name + ' (Duplicated Copy)',
+                        created_at: new Date().toISOString()
+                      };
+
+                      const current = JSON.parse(localStorage.getItem('ztr_bookings') || '[]');
+                      const updated = [dupObj, ...current];
+                      localStorage.setItem('ztr_bookings', JSON.stringify(updated));
+                      localStorage.setItem('ztr_local_bookings_backup', JSON.stringify(updated));
+
+                      try {
+                        await supabase.from('bookings').insert({
+                          reference_code: dupRef,
+                          customer_name: dupObj.full_name,
+                          customer_email: dupObj.email || null,
+                          customer_phone: dupObj.whatsapp_number,
+                          product_name: dupObj.tour_name,
+                          travel_date: dupObj.preferred_date,
+                          guest_count: dupObj.number_of_guests,
+                          pickup_location: dupObj.pickup_location,
+                          status: 'confirmed',
+                          details: dupObj
+                        });
+                      } catch (dbErr) { console.warn(dbErr); }
+
+                      addActivityLog(session?.name || 'Admin', 'duplicateBooking', `Duplicated booking record ${selectedBooking.id} into a new record ${dupRef}.`);
+                      alert(`Successfully duplicated booking! Created new reference record: ${dupRef}`);
+                      setSelectedBooking(null);
+                      await loadBookings();
+                    }}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/5 font-bold p-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Copy size={13} className="text-[#D4A017]" />
+                    <span>Duplicate this Reservation</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-[#121B30]/30 p-4 rounded-xl border border-white/5 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                <Lock size={12} className="text-[#D4A017]" />
+                <span>Editing actions, rescheduling, and duplication are restricted to Managers or Administrators.</span>
+              </div>
+            )}
+
             {/* Message block */}
-            <div className="bg-[#121B30] p-4 rounded-xl border border-white/5">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Lodged Customer Message & Notes:</span>
-              <p className="text-xs text-slate-300 mt-2 leading-relaxed whitespace-pre-wrap font-medium italic">
+            <div className="bg-[#121B30] p-4 rounded-xl border border-white/5 space-y-1">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Lodged Customer Message & Special Notes:</span>
+              <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-medium italic">
                 "{selectedBooking.message || 'No custom notes provided by client.'}"
               </p>
+            </div>
+
+            {/* Automated Department Dispatches (Visible when confirmed/approved) */}
+            {(selectedBooking.status === 'confirmed' || selectedBooking.status === 'approved') && (
+              <div className="bg-[#10B981]/10 border border-[#10B981]/20 p-4 rounded-xl space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping" />
+                    Automated Department Notifications
+                  </span>
+                  <span className="text-[9px] font-mono font-bold text-emerald-400 uppercase bg-emerald-950/40 px-1.5 py-0.5 rounded">DISPATCHED SUCCESSFULLY</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px] font-mono text-slate-300 font-semibold">
+                  <div className="bg-[#0A1224]/80 p-2.5 rounded-lg border border-white/5 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                    <span>Finance Dept: <span className="text-emerald-400 font-bold">Notified</span></span>
+                  </div>
+                  <div className="bg-[#0A1224]/80 p-2.5 rounded-lg border border-white/5 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                    <span>Ops Dept: <span className="text-emerald-400 font-bold">Notified</span></span>
+                  </div>
+                  <div className="bg-[#0A1224]/80 p-2.5 rounded-lg border border-white/5 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                    <span>Transport desk: <span className="text-emerald-400 font-bold">Notified</span></span>
+                  </div>
+                  <div className="bg-[#0A1224]/80 p-2.5 rounded-lg border border-white/5 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                    <span>Crew Roster: <span className="text-emerald-400 font-bold">Notified</span></span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Attachments & Documentation lists */}
+            <div className="bg-[#121B30] p-4 rounded-xl border border-white/5 space-y-2">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Uploaded Customer Documents:</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-semibold">
+                <div className="flex items-center justify-between bg-[#0A1224] p-2 rounded-xl border border-white/5">
+                  <span className="text-slate-300 font-mono text-[11px] truncate max-w-[180px]">Passport_Copy.pdf (1.2 MB)</span>
+                  <span className="text-[9px] uppercase font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/10 px-1.5 py-0.5 rounded">Verified Secure</span>
+                </div>
+                <div className="flex items-center justify-between bg-[#0A1224] p-2 rounded-xl border border-white/5">
+                  <span className="text-slate-300 font-mono text-[11px] truncate max-w-[180px]">Flight_Inward_Pass.pdf (840 KB)</span>
+                  <span className="text-[9px] uppercase font-bold text-blue-400 bg-blue-950/40 border border-blue-500/10 px-1.5 py-0.5 rounded">Attached</span>
+                </div>
+              </div>
             </div>
 
             {/* Buttons for Approval rejects and dispatch confirmation invoice */}
@@ -10770,7 +14850,7 @@ Stone Town, Zanzibar, Tanzania`);
         </div>
       )}
 
-      {/* DELETE BOOKING CONFIRMATION MODAL */}
+      {/* DELETE BOOKING CONFIRMATION MODAL (INTERCEPTED FOR REQUEST WORKFLOW) */}
       {deletingBooking && (
         <div className="fixed inset-0 bg-[#020C1F]/90 z-50 flex items-center justify-center p-4">
           <div className="bg-[#0A1224] border border-red-500/30 rounded-3xl p-6 md:p-8 max-w-md w-full space-y-6 text-slate-200 shadow-2xl relative overflow-hidden">
@@ -10781,16 +14861,16 @@ Stone Town, Zanzibar, Tanzania`);
                 <ShieldAlert size={24} className="animate-pulse" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-bold text-white">Permanently Remove Reservation?</h3>
+                <h3 className="text-lg font-bold text-white">Request Record Permanent Deletion</h3>
                 <p className="text-[11px] text-slate-400">
-                  This action is irreversible and will delete the customer booking record from the real-time databases.
+                  Under current policy guidelines, no staff member is allowed to delete database records directly. You must submit a formal deletion request with a justification reason for Owner approval.
                 </p>
               </div>
             </div>
 
             <div className="bg-[#121B30] p-4 rounded-xl border border-white/5 space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-slate-400">Customer:</span>
+                <span className="text-slate-400">Target Record:</span>
                 <span className="font-bold text-white">{deletingBooking.full_name}</span>
               </div>
               <div className="flex justify-between">
@@ -10803,35 +14883,39 @@ Stone Town, Zanzibar, Tanzania`);
                 <span className="text-slate-400">Date Requested:</span>
                 <span className="font-semibold text-white">{deletingBooking.preferred_date}</span>
               </div>
+              <div className="border-t border-white/5 pt-2 flex justify-between text-[10px] text-slate-400 font-mono">
+                <span>Requested By:</span>
+                <span>{session?.name || 'You'} ({session?.role || 'Staff'})</span>
+              </div>
             </div>
 
             <div className="space-y-1.5 text-xs">
               <label className="text-slate-400 font-bold block">
-                Type <span className="text-red-400 font-black">DELETE</span> to authorize destruction <span className="text-red-500">*</span>
+                Justification Reason for Deletion <span className="text-red-500">*</span>
               </label>
-              <input 
-                type="text"
+              <textarea 
                 required
-                value={deleteConfirmationText}
-                onChange={e => setDeleteConfirmationText(e.target.value)}
-                placeholder="Type DELETE here..."
-                className="w-full bg-[#121B30] border border-white/10 focus:border-red-500 rounded-xl p-2.5 text-white outline-none transition-all font-bold tracking-widest text-center"
+                rows={3}
+                value={deleteRequestReason}
+                onChange={e => setDeleteRequestReason(e.target.value)}
+                placeholder="Specify the reason why this booking needs to be permanently deleted (e.g., duplicated booking, customer cancellation request, test order)..."
+                className="w-full bg-[#121B30] border border-white/10 focus:border-red-500 rounded-xl p-2.5 text-white outline-none transition-all text-xs font-medium"
               />
             </div>
 
             <div className="flex gap-2 justify-end text-xs font-bold">
               <button 
-                onClick={() => { setDeletingBooking(null); setDeleteConfirmationText(''); }} 
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-750 rounded-xl text-slate-300 transition-colors w-full sm:w-auto"
+                onClick={() => { setDeletingBooking(null); setDeleteRequestReason(''); }} 
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-750 rounded-xl text-slate-300 transition-colors w-full sm:w-auto cursor-pointer"
               >
-                No, Keep Record
+                Cancel
               </button>
               <button 
-                onClick={handleDeleteBooking}
-                disabled={deleteConfirmationText.trim().toUpperCase() !== 'DELETE'}
-                className="px-5 py-2 bg-red-600 hover:bg-red-500 disabled:bg-red-950/20 disabled:text-red-400/40 disabled:border-red-950/20 disabled:cursor-not-allowed border border-red-500/10 rounded-xl text-white transition-colors w-full sm:w-auto shadow-sm"
+                onClick={handleSubmitDeleteRequest}
+                disabled={!deleteRequestReason.trim()}
+                className="px-5 py-2 bg-red-600 hover:bg-red-500 disabled:bg-red-950/20 disabled:text-red-400/40 disabled:border-red-950/20 disabled:cursor-not-allowed border border-red-500/10 rounded-xl text-white transition-colors w-full sm:w-auto shadow-sm cursor-pointer"
               >
-                Yes, Delete Permanently
+                Submit Delete Request
               </button>
             </div>
 

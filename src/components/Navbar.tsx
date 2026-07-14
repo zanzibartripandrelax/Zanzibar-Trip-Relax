@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Menu, X, Phone, ChevronDown, MessageCircle, Compass, Mail, Shield, Search } from 'lucide-react';
+import { Menu, X, Phone, ChevronDown, MessageCircle, Mail, Shield, Search, ArrowRight, User } from 'lucide-react';
 import { Page } from '../hooks/useHashRouter';
 import { useLanguage } from '../context/LanguageContext';
 import { ProgressiveImage } from './ProgressiveImage';
@@ -16,14 +16,8 @@ interface NavbarProps {
 interface MenuItem {
   label: string;
   swLabel: string;
-  page?: Page;
-  type: 'link' | 'dropdown';
-  items?: {
-    label: string;
-    swLabel: string;
-    page: Page;
-    id?: string;
-  }[];
+  page: Page;
+  type: 'link';
 }
 
 const navigationMenu: MenuItem[] = [
@@ -34,40 +28,27 @@ const navigationMenu: MenuItem[] = [
     type: 'link'
   },
   {
-    label: 'Zanzibar Tours',
+    label: 'Tours',
     swLabel: 'Ziara za Zanzibar',
     page: 'tours',
     type: 'link'
   },
   {
-    label: 'Tanzania Safaris',
+    label: 'Safaris',
     swLabel: 'Safari za Tanzania',
     page: 'safaris',
     type: 'link'
   },
   {
-    label: 'Kilimanjaro',
-    swLabel: 'Kupanda Kilimanjaro',
-    page: 'kilimanjaro',
+    label: 'Transfers',
+    swLabel: 'Marekebisho ya Uwanja',
+    page: 'transfers',
     type: 'link'
   },
   {
-    label: 'Experiences',
-    swLabel: 'Uzoefu',
-    type: 'dropdown',
-    items: [
-      { label: 'Tour Packages', swLabel: 'Vifurushi vya Ziara', page: 'tours' },
-      { label: 'Private Tours', swLabel: 'Ziara za Kibinafsi', page: 'tours', id: 'search=private' },
-      { label: 'Cultural Experiences', swLabel: 'Uzoefu wa Kiutamaduni', page: 'tours', id: 'category=Culture' },
-      { label: 'Snorkeling & Diving', swLabel: 'Kupiga Mbizi & Nyambizi', page: 'tours', id: 'search=snorkeling' },
-      { label: 'Sunset Cruises', swLabel: 'Safari za Jua Linalozama', page: 'tours', id: 'search=sunset' },
-      { label: 'Luxury Experiences', swLabel: 'Uzoefu wa Kifahari', page: 'tours', id: 'search=luxury' }
-    ]
-  },
-  {
-    label: 'Gallery',
-    swLabel: 'Picha zetu',
-    page: 'gallery',
+    label: 'Holiday Packages',
+    swLabel: 'Vifurushi vya Likizo',
+    page: 'packages',
     type: 'link'
   },
   {
@@ -87,18 +68,40 @@ const navigationMenu: MenuItem[] = [
 export default function Navbar({ currentPage, navigate }: NavbarProps) {
   const { trackBookingInitiate, trackWhatsAppClick } = useAnalytics();
   const [isOpen, setIsOpen] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isPortalOpen, setIsPortalOpen] = useState(false);
-  const [mobileExpanded, setMobileExpanded] = useState<Record<string, boolean>>({});
   const headerRef = useRef<HTMLDivElement>(null);
   const portalRef = useRef<HTMLDivElement>(null);
-  const { language, setLanguage, t } = useLanguage();
-  const { currency, setCurrency } = usePreferences();
+  const { language, t } = useLanguage();
+  const [session, setSession] = useState<any>(null);
+
+  const syncSession = () => {
+    const activeSesObj = localStorage.getItem('ztr_customer_session');
+    if (activeSesObj) {
+      try {
+        const parsed = JSON.parse(activeSesObj);
+        setSession(parsed.user || null);
+      } catch (e) {
+        setSession(null);
+      }
+    } else {
+      setSession(null);
+    }
+  };
+
+  useEffect(() => {
+    syncSession();
+    const handleStorageChange = () => syncSession();
+    window.addEventListener('storage', handleStorageChange);
+    const interval = setInterval(syncSession, 1000);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [currentPage]);
 
   useEffect(() => {
     setIsOpen(false);
-    setActiveDropdown(null);
     setIsPortalOpen(false);
   }, [currentPage]);
 
@@ -118,9 +121,6 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
   // Handle click outside to close desktop dropdowns
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
-        setActiveDropdown(null);
-      }
       if (portalRef.current && !portalRef.current.contains(e.target as Node)) {
         setIsPortalOpen(false);
       }
@@ -129,44 +129,47 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const toggleMobileDropdown = (label: string) => {
-    setMobileExpanded(prev => ({
-      ...prev,
-      [label]: !prev[label]
-    }));
+  const isItemActive = (item: MenuItem): boolean => {
+    return currentPage === item.page;
   };
 
-  const isItemActive = (item: MenuItem): boolean => {
-    if (item.type === 'link') {
-      return currentPage === item.page;
-    }
-    if (item.items) {
-      return item.items.some(sub => {
-        if (sub.page === currentPage) {
-          // Check if custom ID also matches
-          if (sub.id) {
-            return window.location.hash.includes(sub.id);
-          }
-          return true;
-        }
-        return false;
-      });
-    }
-    return false;
-  };
+  const mobileMenuItems = [
+    { label: 'Home', swLabel: 'Nyumbani', page: 'home' as Page },
+    { label: 'Tours', swLabel: 'Ziara za Zanzibar', page: 'tours' as Page },
+    { label: 'Safaris', swLabel: 'Safari za Tanzania', page: 'safaris' as Page },
+    { label: 'Transfers', swLabel: 'Marekebisho ya Uwanja', page: 'transfers' as Page },
+    { label: 'Holiday Packages', swLabel: 'Vifurushi vya Likizo', page: 'packages' as Page },
+    {
+      label: 'Destinations',
+      swLabel: 'Vituo Maarufu',
+      page: 'home' as Page,
+      action: () => {
+        navigate('home');
+        setTimeout(() => {
+          const el = document.getElementById('destinations-showcase');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+      }
+    },
+    { label: 'About Us', swLabel: 'Kuhusu Sisi', page: 'about' as Page },
+    { label: 'Sustainability', swLabel: 'Uendelevu', page: 'sustainability' as Page },
+    { label: 'Careers', swLabel: 'Ajira zetu', page: 'careers' as Page },
+    { label: 'Contact', swLabel: 'Mawasiliano', page: 'contact' as Page },
+    { label: 'FAQs', swLabel: 'Maswali ya Kawaida', page: 'faq' as Page }
+  ];
 
   return (
     <header ref={headerRef} className="sticky top-0 z-50 w-full bg-[#0A1224]/95 backdrop-blur-md border-b border-b-white/10 shadow-lg select-none">
-      {/* Dynamic Top Announcement / Utility Row */}
-      <div className="w-full bg-[#080F1D] border-b border-white/5 py-2 px-4 sm:px-6 lg:px-8">
+      {/* Dynamic Top Announcement / Utility Row - Hidden on mobile/tablet for target header height */}
+      <div className="hidden lg:block w-full bg-[#080F1D] border-b border-white/5 py-2 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between text-[11px] font-medium tracking-wide">
           {/* Company Brand Tag / Badge on the Left */}
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#D4A017]/10 text-[#D4A017] text-[9px] font-black uppercase tracking-widest border border-[#D4A017]/20">
-              👑 Certified Local Operator
+              👑 Certified Local Tour Operator
             </span>
             <span className="hidden xl:inline text-white/50 text-[10px] uppercase tracking-wider font-semibold">
-              {language === 'en' ? 'Bespoke Zanzibar Excursions & Mainland Safaris' : 'Ziara Zilizobinafsishwa Zanzibar na Safari za Tanzania'}
+              {language === 'en' ? 'Bespoke Zanzibar Excursions & Mainland Wildlife Safaris' : 'Ziara za Kibinafsi Zanzibar na Safari za Tanzania'}
             </span>
           </div>
 
@@ -182,149 +185,105 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
               <span>info@zanzibartripandrelax.com</span>
             </span>
             <span className="hidden md:inline text-white/20 select-none">|</span>
-            {/* License */}
             <div className="hidden sm:block text-[10px] text-white/40 truncate">
               {t('nav.license')}
             </div>
-            {/* Language & Currency Switchers Removed */}
           </div>
         </div>
       </div>
 
-      {/* Main Single Row Navbar on Desktop */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 md:h-22 flex items-center justify-between gap-4">
+      {/* Main Navbar Row */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-17 lg:h-20 flex items-center justify-between gap-3 lg:gap-4">
         {/* Left side: Premium High-Quality Logo & Brand Title */}
         <button 
           onClick={() => navigate('home')} 
-          className="flex items-center gap-3 group shrink-0 select-none cursor-pointer text-left"
+          className="flex items-center gap-2.5 sm:gap-3 group shrink-0 select-none cursor-pointer text-left font-sans bg-transparent border-none p-0 outline-none"
         >
-          <ProgressiveImage
-            src="/src/assets/images/logo.jpg"
-            alt="Zanzibar Trip and Relax Logo"
-            className="h-13 w-13 sm:h-16 sm:w-16 md:h-18 md:w-18 object-cover rounded-full bg-white/10 p-1 border border-white/10 shadow-md group-hover:scale-105 transition-all duration-300"
-          />
-          <div className="flex flex-col leading-tight select-none">
-            <span className="text-white font-black text-xs sm:text-sm md:text-base tracking-[0.18em] uppercase group-hover:text-[#D4A017] transition-colors font-sans">
+          <div className="h-[42px] w-[42px] relative flex-shrink-0">
+            <ProgressiveImage
+              src="/src/assets/images/logo.jpg"
+              alt="Zanzibar Trip and Relax Logo"
+              className="h-full w-full object-cover rounded-full bg-white/10 p-0.5 border border-white/10 shadow-md group-hover:scale-105 transition-all duration-300 aspect-square"
+            />
+          </div>
+          <div className="hidden sm:flex flex-col leading-tight select-none">
+            <span className="text-white font-black text-xs lg:text-sm tracking-[0.14em] lg:tracking-[0.18em] uppercase group-hover:text-[#D4A017] transition-colors">
               ZANZIBAR
             </span>
-            <span className="text-[#D4A017] text-[10px] sm:text-xs font-bold uppercase tracking-[0.22em] font-sans mt-0.5">
+            <span className="text-[#D4A017] text-[8px] lg:text-xs font-bold uppercase tracking-[0.18em] lg:tracking-[0.22em] mt-0.5">
               TRIP & RELAX
             </span>
           </div>
         </button>
 
-        {/* Center/Desktop Menu - Reorganized and Simplified */}
+        {/* Center/Desktop Menu */}
         <div className="hidden lg:flex items-center justify-center flex-grow">
-          <nav className="flex items-center gap-2.5 xl:gap-4.5">
+          <nav className="flex items-center gap-1 xl:gap-2.5">
             {navigationMenu.map((item) => {
               const labelText = language === 'en' ? item.label : item.swLabel;
               const isActive = isItemActive(item);
 
-              if (item.type === 'link') {
-                return (
-                  <button
-                    key={item.label}
-                    onClick={() => navigate(item.page!)}
-                    className={`px-3 py-2 text-[11px] xl:text-xs font-extrabold uppercase tracking-widest cursor-pointer transition-colors relative ${
-                      isActive ? 'text-[#D4A017]' : 'text-white/80 hover:text-[#D4A017]'
-                    }`}
-                  >
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => navigate(item.page)}
+                  className={`px-2 xl:px-3 py-2 text-[10px] xl:text-xs font-extrabold uppercase tracking-wider xl:tracking-widest cursor-pointer transition-colors relative bg-transparent border-none outline-none ${
+                    isActive ? 'text-[#D4A017]' : 'text-white/80 hover:text-[#D4A017]'
+                  }`}
+                >
                   <span>{labelText}</span>
                   {isActive && (
                     <motion.div
                       layoutId="activeIndicator"
-                      className="absolute bottom-0 left-3 right-3 h-0.5 bg-[#D4A017]"
+                      className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#D4A017]"
                       transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
                   )}
                 </button>
               );
-            }
+            })}
+          </nav>
+        </div>
 
-            // Dropdown Menu Item
-            const isOpen = activeDropdown === item.label;
-
-            return (
-              <div
-                key={item.label}
-                className="relative"
-                onMouseEnter={() => setActiveDropdown(item.label)}
-                onMouseLeave={() => setActiveDropdown(null)}
-              >
-                <button
-                  onClick={() => setActiveDropdown(isOpen ? null : item.label)}
-                  className={`flex items-center gap-1 px-3 py-2 text-[11px] xl:text-xs font-extrabold uppercase tracking-widest cursor-pointer transition-colors ${
-                    isActive || isOpen ? 'text-[#D4A017]' : 'text-white/80 hover:text-[#D4A017]'
-                  }`}
-                >
-                  <span>{labelText}</span>
-                  <ChevronDown size={11} className={`transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#D4A017]' : 'text-white/40'}`} />
-                </button>
-
-                {/* Desktop Dropdown Card */}
-                <AnimatePresence>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-64 bg-[#0A1224] border border-white/15 rounded-2xl shadow-2xl overflow-hidden z-50 p-1"
-                    >
-                      {item.items?.map((sub) => {
-                        const subLabelText = language === 'en' ? sub.label : sub.swLabel;
-                        const isSubActive = currentPage === sub.page && (sub.id ? window.location.hash.includes(sub.id) : true);
-
-                        return (
-                          <button
-                            key={sub.label}
-                            onClick={() => {
-                              navigate(sub.page, sub.id);
-                              setActiveDropdown(null);
-                            }}
-                            className={`w-full text-left px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-xs font-bold flex items-center justify-between ${
-                              isSubActive ? 'text-[#D4A017] bg-white/5' : 'text-white/80 hover:text-white'
-                            }`}
-                          >
-                            <span>{subLabelText}</span>
-                            {isSubActive && <span className="w-1.5 h-1.5 rounded-full bg-[#D4A017]" />}
-                          </button>
-                        );
-                      })}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Desktop / Mobile Common Right Action Panel */}
-        <div className="flex items-center gap-3">
-          {/* Search Icon Trigger only */}
+        {/* Right Action Panel */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Search Trigger */}
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="text-white p-2.5 rounded-full bg-white/5 hover:bg-white/10 hover:text-[#D4A017] transition-all cursor-pointer border border-white/10"
+            className="text-white p-2.5 rounded-full bg-white/5 hover:bg-white/10 hover:text-[#D4A017] transition-all cursor-pointer border border-white/10 shrink-0 shadow-sm"
             aria-label="Search Excursions"
             title="Search (Ctrl+K)"
           >
             <Search size={16} />
           </button>
 
-          {/* Elegant "My Account" Menu */}
+          {/* User Account Icon Dropdown */}
           <div className="relative" ref={portalRef}>
             <button
               onClick={() => setIsPortalOpen(!isPortalOpen)}
-              className="text-white hover:text-[#D4A017] px-3.5 py-2 text-[10px] sm:text-xs font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 rounded-full border border-white/10 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm select-none animate-pulse-gentle"
+              className="text-white hover:text-[#D4A017] p-2.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all cursor-pointer shadow-sm select-none shrink-0"
               title="Access your customer account"
               id="portal-dropdown-btn"
             >
-              <span>My Account</span>
-              <ChevronDown size={11} className={`transition-transform duration-200 ${isPortalOpen ? 'rotate-180 text-[#D4A017]' : 'text-white/40'}`} />
+              {session ? (
+                session.avatar || session.photoURL ? (
+                  <img
+                    src={session.avatar || session.photoURL}
+                    alt={session.name}
+                    className="w-5 h-5 rounded-full object-cover aspect-square border border-white/20"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-[#D4A017] text-[#0A1224] flex items-center justify-center text-[10px] font-black uppercase">
+                    {session.name ? session.name.substring(0, 1) : 'U'}
+                  </div>
+                )
+              ) : (
+                <User size={16} />
+              )}
             </button>
 
-            {/* My Account Dropdown Menu */}
+            {/* Account Portal Dropdown panel */}
             <AnimatePresence>
               {isPortalOpen && (
                 <motion.div
@@ -332,49 +291,107 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 mt-2 w-48 bg-[#0A1224] border border-white/15 rounded-2xl shadow-2xl overflow-hidden z-50 p-1"
+                  className="absolute right-0 mt-2 w-52 bg-[#0A1224] border border-white/15 rounded-2xl shadow-2xl overflow-hidden z-50 p-1.5 space-y-1"
                 >
-                  <button
-                    onClick={() => {
-                      navigate('my-account');
-                      setIsPortalOpen(false);
-                    }}
-                    className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-white/5 text-white/90 hover:text-white transition-all text-xs font-semibold flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="text-[#D4A017] text-xs font-mono">👤</span>
-                    <span>My Dashboard</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      navigate('my-account');
-                      setIsPortalOpen(false);
-                    }}
-                    className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-white/5 text-white/90 hover:text-white transition-all text-xs font-semibold flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="text-[#D4A017] text-xs font-mono">🔑</span>
-                    <span>Reset Credentials</span>
-                  </button>
+                  {session ? (
+                    <>
+                      <div className="px-3.5 py-2 border-b border-white/5 mb-1 text-left">
+                        <p className="text-[9px] text-white/40 uppercase tracking-wider">Signed in as</p>
+                        <p className="text-xs font-bold text-white truncate max-w-full">{session.name}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          localStorage.setItem('ztr_customer_tab', 'bookings');
+                          navigate('my-account');
+                          setIsPortalOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 text-white/90 hover:text-white transition-all text-xs font-bold flex items-center gap-2 cursor-pointer bg-transparent border-none outline-none"
+                      >
+                        <span className="text-[#D4A017]">📋</span>
+                        <span>My Bookings</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          localStorage.setItem('ztr_customer_tab', 'wishlist');
+                          navigate('my-account');
+                          setIsPortalOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 text-white/90 hover:text-white transition-all text-xs font-bold flex items-center gap-2 cursor-pointer bg-transparent border-none outline-none"
+                      >
+                        <span className="text-[#D4A017]">❤️</span>
+                        <span>Wishlist</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          localStorage.setItem('ztr_customer_tab', 'profile');
+                          navigate('my-account');
+                          setIsPortalOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 text-white/90 hover:text-white transition-all text-xs font-bold flex items-center gap-2 cursor-pointer bg-transparent border-none outline-none"
+                      >
+                        <span className="text-[#D4A017]">👤</span>
+                        <span>Profile Settings</span>
+                      </button>
+                      <div className="h-px bg-white/5 my-1" />
+                      <button
+                        onClick={() => {
+                          localStorage.removeItem('ztr_customer_session');
+                          setSession(null);
+                          setIsPortalOpen(false);
+                          navigate('home');
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-all text-xs font-bold flex items-center gap-2 cursor-pointer bg-transparent border-none outline-none"
+                      >
+                        <span>🚪</span>
+                        <span>Logout</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          localStorage.setItem('ztr_auth_view', 'login');
+                          navigate('my-account');
+                          setIsPortalOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 text-white/90 hover:text-white transition-all text-xs font-bold flex items-center gap-2 cursor-pointer bg-transparent border-none outline-none"
+                      >
+                        <span className="text-[#D4A017]">🔑</span>
+                        <span>Login</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          localStorage.setItem('ztr_auth_view', 'register');
+                          navigate('my-account');
+                          setIsPortalOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 text-white/90 hover:text-white transition-all text-xs font-bold flex items-center gap-2 cursor-pointer bg-transparent border-none outline-none"
+                      >
+                        <span className="text-[#D4A017]">✨</span>
+                        <span>Register</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          localStorage.setItem('ztr_auth_view', 'forgot');
+                          navigate('my-account');
+                          setIsPortalOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 text-white/60 hover:text-white transition-all text-xs font-bold flex items-center gap-2 cursor-pointer bg-transparent border-none outline-none"
+                      >
+                        <span className="text-white/40">❓</span>
+                        <span>Forgot Password</span>
+                      </button>
+                    </>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Secure Reservations Prominent CTA Button */}
-          <button
-            onClick={() => {
-              trackBookingInitiate('general', 'Navbar Desktop Button');
-              navigate('booking');
-            }}
-            className="bg-[#D4A017] text-[#0A1224] text-[11px] font-black px-4 sm:px-5 py-2.5 rounded-full hover:bg-white hover:text-[#0A1224] transition-all duration-300 shadow-md outline-none uppercase tracking-widest flex items-center gap-1.5 border border-[#D4A017]/20 relative overflow-hidden group select-none cursor-pointer"
-          >
-            <Shield size={12} className="text-[#0A1224] animate-pulse" />
-            <span>Secure Reservations</span>
-          </button>
-
-          {/* Mobile Menu Toggle button */}
+          {/* Mobile Menu Toggle (Hamburger) */}
           <button
             onClick={() => setIsOpen(prev => !prev)}
-            className="lg:hidden text-white p-2.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10 cursor-pointer"
+            className="lg:hidden text-white p-2.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10 cursor-pointer shrink-0"
             aria-label="Toggle Navigation Menu"
           >
             {isOpen ? <X size={18} /> : <Menu size={18} />}
@@ -382,148 +399,125 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
         </div>
       </div>
 
-      {/* MOBILE FULL-SCREEN OVERLAY DRAWER */}
+      {/* Slide-out Overlay */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="lg:hidden w-full bg-[#0A1224] border-t border-white/10 overflow-hidden z-40 max-h-[calc(100vh-80px)] flex flex-col"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-45 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* MOBILE FULL SCREEN SLIDE-OUT MENU */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, x: '100%' }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+            className="fixed inset-y-0 right-0 w-full bg-[#0A1224] z-50 flex flex-col md:max-w-md shadow-2xl h-screen"
           >
-            <div className="px-4 py-6 space-y-6 overflow-y-auto flex-grow max-h-[70vh] pb-24 scrollbar-thin">
-              <div className="space-y-1">
-                {navigationMenu.map((item) => {
-                  const labelText = language === 'en' ? item.label : item.swLabel;
-                  const isActive = isItemActive(item);
+            {/* Slide-out Menu Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="h-[42px] w-[42px] relative flex-shrink-0">
+                  <ProgressiveImage
+                    src="/src/assets/images/logo.jpg"
+                    alt="Zanzibar Trip and Relax Logo"
+                    className="h-full w-full object-cover rounded-full bg-white/10 p-0.5 border border-white/10 aspect-square"
+                  />
+                </div>
+                <div className="flex flex-col leading-tight">
+                  <span className="text-white font-black text-xs tracking-wider uppercase">ZANZIBAR</span>
+                  <span className="text-[#D4A017] text-[9px] font-bold uppercase tracking-widest mt-0.5">TRIP & RELAX</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-white p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10 cursor-pointer"
+                aria-label="Close Menu"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
-                  if (item.type === 'link') {
-                    return (
-                      <button
-                        key={item.label}
-                        onClick={() => {
-                          navigate(item.page!);
-                          setIsOpen(false);
-                        }}
-                        className={`w-full text-left px-4 py-3.5 rounded-xl text-sm uppercase tracking-widest font-black flex items-center justify-between ${
-                          isActive ? 'text-[#D4A017] bg-white/5 border border-white/10' : 'text-white/85 hover:bg-white/5'
-                        }`}
-                      >
-                        <span>{labelText}</span>
-                        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-[#D4A017]" />}
-                      </button>
-                    );
-                  }
-
-                  // Dropdown/Accordion Menu Item for Mobile
-                  const isExpanded = !!mobileExpanded[item.label];
-
+            {/* Menu Content */}
+            <div className="flex-grow overflow-y-auto px-6 py-6 flex flex-col justify-between gap-8">
+              {/* Primary Navigation Links with Clean Separator */}
+              <nav className="flex flex-col divide-y divide-white/10">
+                {mobileMenuItems.map((item) => {
+                  const isActive = currentPage === item.page;
                   return (
-                    <div key={item.label} className="border border-white/5 rounded-2xl overflow-hidden bg-white/2 mb-2">
-                      <button
-                        onClick={() => toggleMobileDropdown(item.label)}
-                        className={`w-full text-left px-4 py-3.5 text-sm uppercase tracking-widest font-black flex items-center justify-between transition-colors ${
-                          isActive ? 'text-[#D4A017] bg-white/5' : 'text-white/85 hover:bg-white/5'
-                        }`}
-                      >
-                        <span>{labelText}</span>
-                        <ChevronDown size={14} className={`transition-transform duration-200 text-[#D4A017] ${isExpanded ? 'rotate-180' : ''}`} />
-                      </button>
-
-                      <AnimatePresence>
-                        {isExpanded && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="bg-black/25 px-2 py-2.5 space-y-1"
-                          >
-                            {item.items?.map((sub) => {
-                              const subLabelText = language === 'en' ? sub.label : sub.swLabel;
-                              const isSubActive = currentPage === sub.page && (sub.id ? window.location.hash.includes(sub.id) : true);
-
-                              return (
-                                <button
-                                  key={sub.label}
-                                  onClick={() => {
-                                    navigate(sub.page, sub.id);
-                                    setIsOpen(false);
-                                  }}
-                                  className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-between ${
-                                    isSubActive ? 'text-[#D4A017] bg-white/5' : 'text-white/70 hover:text-white hover:bg-white/5'
-                                  }`}
-                                >
-                                  <span>{subLabelText}</span>
-                                  {isSubActive && <div className="w-1 h-1 rounded-full bg-[#D4A017]" />}
-                                </button>
-                              );
-                            })}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                    <button
+                      key={item.label}
+                      onClick={() => {
+                        setIsOpen(false);
+                        if (item.action) {
+                          item.action();
+                        } else if (item.page) {
+                          navigate(item.page);
+                        }
+                      }}
+                      className="w-full text-left py-4 text-sm uppercase tracking-widest font-black flex items-center justify-between transition-all bg-transparent border-none outline-none group cursor-pointer"
+                    >
+                      <span className={isActive ? 'text-[#D4A017]' : 'text-white/90 group-hover:text-[#D4A017]'}>
+                        {language === 'en' ? item.label : item.swLabel}
+                      </span>
+                      <ArrowRight size={14} className={`transition-transform duration-300 ${isActive ? 'text-[#D4A017] translate-x-1' : 'text-white/20 group-hover:text-[#D4A017] group-hover:translate-x-1'}`} />
+                    </button>
                   );
                 })}
-              </div>
+              </nav>
 
-              {/* Quick Contacts and Help Desk inside Mobile Menu */}
-              <div className="pt-6 border-t border-white/10 space-y-4">
-                {/* My Account Links for Mobile */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-3 space-y-2">
-                  <p className="text-[10px] font-bold text-[#D4A017] uppercase tracking-widest text-center">My Account</p>
-                  <div className="text-center">
-                    <button
-                      onClick={() => {
-                        navigate('my-account');
-                        setIsOpen(false);
-                      }}
-                      className="w-full bg-[#D4A017]/20 hover:bg-[#D4A017]/30 border border-[#D4A017]/30 rounded-xl py-2.5 px-3 text-center text-xs font-bold text-[#D4A017] transition-all cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      <span>👤</span>
-                      <span>Access My Account / Register</span>
-                    </button>
-                  </div>
-                </div>
+              {/* Portal & Help Desk Actions */}
+              <div className="space-y-4 shrink-0">
+                {!session && (
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('ztr_auth_view', 'login');
+                      navigate('my-account');
+                      setIsOpen(false);
+                    }}
+                    className="w-full bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] rounded-2xl py-4 text-center text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    👤 Access Customer Portal
+                  </button>
+                )}
 
-                <a
-                  href="https://wa.me/255629506063"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => trackWhatsAppClick('Navbar Mobile Menu Link', 'General')}
-                  className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebd5a] text-white text-xs font-black py-3.5 rounded-full transition-all uppercase tracking-wider"
+                <button
+                  onClick={() => {
+                    navigate('manage-booking');
+                    setIsOpen(false);
+                  }}
+                  className="w-full bg-white/10 hover:bg-white/15 border border-white/20 hover:border-white/30 rounded-2xl py-4 text-center text-xs font-bold text-white uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <MessageCircle size={15} fill="white" />
-                  <span>WhatsApp Concierge</span>
-                </a>
-
-                <div className="flex flex-col gap-1 text-center text-[10px] text-white/50 leading-relaxed font-mono">
-                  <p>Email: info@zanzibartripandrelax.com</p>
-                  <p>Direct Hot-Line: +255 629 506 063</p>
-                  <p>{t('nav.license')}</p>
-                </div>
+                  📋 Look Up Reservations
+                </button>
               </div>
             </div>
 
-            {/* Sticky/Fixed Mobile Bottom Bar for always prominent Secure Reservations */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-[#0A1224] border-t border-white/15 flex gap-2">
-              <button
-                onClick={() => {
-                  trackBookingInitiate('general', 'Navbar Mobile Menu Bottom Button');
-                  navigate('booking');
-                  setIsOpen(false);
-                }}
-                className="w-full bg-[#D4A017] hover:bg-white text-[#0A1224] text-xs font-black py-4 rounded-full transition-all uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-lg border border-[#D4A017]"
+            {/* Sticky bottom WhatsApp Concierge */}
+            <div className="p-6 border-t border-white/10 bg-[#080F1D] shrink-0">
+              <a
+                href="https://wa.me/255629506063?text=Hello%20Zanzibar%20Trip%20and%20Relax%2C%20I%20would%20like%20to%20inquire%20about%20booking%20a%20private%20excursion%21"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => trackWhatsAppClick('Navbar Mobile Menu Link', 'General')}
+                className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebd5a] text-white text-xs font-black py-4 rounded-full transition-all uppercase tracking-wider cursor-pointer shadow-md"
               >
-                <Shield size={14} className="text-[#0A1224]" />
-                <span>Secure Reservations</span>
-              </button>
+                <MessageCircle size={15} fill="white" />
+                <span>WhatsApp Concierge</span>
+              </a>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Global Search Overlay with AnimatePresence */}
       <AnimatePresence>
         <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} navigate={navigate} />
       </AnimatePresence>

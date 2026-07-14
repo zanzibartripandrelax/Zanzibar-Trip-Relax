@@ -1,14 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Page } from '../hooks/useHashRouter';
-import { Calendar, Clock, MapPin, Check, ChevronDown, ChevronUp, Compass, ArrowRight, X, List, HelpCircle, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { 
+  Calendar, Clock, MapPin, Check, ChevronDown, ChevronUp, Compass, ArrowRight, X, List, HelpCircle, Image as ImageIcon, Sparkles,
+  Map, Star, Hotel, Utensils, ShieldAlert, ArrowLeft, Heart, Plane, Activity, CheckCircle, XCircle, ShieldCheck
+} from 'lucide-react';
 import { getSiteContent } from '../lib/cmsStore';
 import { ProgressiveImage } from '../components/ProgressiveImage';
 import ShareButtons from '../components/ShareButtons';
 import GuestReviews from '../components/GuestReviews';
 import { useScrollY } from '../hooks/useScrollY';
+import Breadcrumbs from '../components/Breadcrumbs';
+import { useWishlist } from '../hooks/useWishlist';
 
 interface PackagesProps {
   navigate: (page: Page, id?: string) => void;
+  queryParams?: Record<string, string>;
 }
 
 export const packagesData = [
@@ -202,9 +208,11 @@ export const packagesData = [
   }
 ];
 
-export default function Packages({ navigate }: PackagesProps) {
+export default function Packages({ navigate, queryParams }: PackagesProps) {
+  const { toggleWishlist, isInWishlist } = useWishlist();
   const scrollY = useScrollY();
   const [openItinerary, setOpenItinerary] = useState<string | null>(null);
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
 
   const [searchParams, setSearchParams] = useState(() => {
     const dest = localStorage.getItem('ztr_search_destination') || '';
@@ -256,6 +264,25 @@ export default function Packages({ navigate }: PackagesProps) {
     }));
 
   const combinedPackages = [...packagesData, ...dynamicPackages];
+
+  // Sync selected package from query parameter
+  useEffect(() => {
+    if (queryParams?.package) {
+      const decoded = decodeURIComponent(queryParams.package);
+      const matched = combinedPackages.find(p => p.id === decoded || p.title === decoded);
+      if (matched) {
+        setSelectedPackageId(matched.id);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } else if (queryParams?.id) {
+      const decoded = decodeURIComponent(queryParams.id);
+      const matched = combinedPackages.find(p => p.id === decoded);
+      if (matched) {
+        setSelectedPackageId(matched.id);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  }, [queryParams, combinedPackages.length]);
 
   const toggleItinerary = (id: string) => {
     setOpenItinerary(openItinerary === id ? null : id);
@@ -359,6 +386,8 @@ export default function Packages({ navigate }: PackagesProps) {
         </div>
       </section>
 
+      <Breadcrumbs items={[{ label: 'Holiday Packages' }]} navigate={navigate} />
+
       {/* Search Filter Alert Banner */}
       {searchParams && (
         <div className="max-w-6xl mx-auto px-4 mt-8">
@@ -415,6 +444,29 @@ export default function Packages({ navigate }: PackagesProps) {
                         </span>
                       ))}
                     </div>
+
+                    {/* Wishlist Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleWishlist({
+                          id: pkg.id,
+                          name: pkg.title,
+                          price: pkg.price,
+                          duration: pkg.duration,
+                          image: pkg.image,
+                          type: 'package'
+                        });
+                      }}
+                      className={`absolute top-4 right-4 p-2.5 rounded-full z-10 transition-all ${
+                        isInWishlist(pkg.id)
+                          ? 'bg-[#D4A017] text-white shadow-lg'
+                          : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-500'
+                      }`}
+                    >
+                      <Heart size={18} fill={isInWishlist(pkg.id) ? "currentColor" : "none"} />
+                    </button>
                   </div>
 
                   {/* Body textual details */}

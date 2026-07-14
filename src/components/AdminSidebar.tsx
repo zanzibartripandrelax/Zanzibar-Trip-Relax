@@ -3,7 +3,7 @@ import { Page } from '../hooks/useHashRouter';
 import { 
   Layout, Calendar, Users, MapPin, TrendingUp, Activity, 
   User, Sparkles, Clock, FileText, Shield, Layers, Image, 
-  BookOpen, Briefcase, Leaf, Settings, LogOut, Compass
+  BookOpen, Briefcase, Leaf, Settings, LogOut, Compass, Mail, PlusCircle
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -115,12 +115,42 @@ export default function AdminSidebar({
         isActive: activeTab === 'bookings'
       },
       { 
+        id: 'walkin', 
+        label: 'Walk-In Booking', 
+        icon: PlusCircle,
+        action: () => setActiveTab('walkin'),
+        isActive: activeTab === 'walkin'
+      },
+      { 
+        id: 'tourops', 
+        label: 'Tour Operations', 
+        icon: Shield,
+        action: () => setActiveTab('tourops'),
+        isActive: activeTab === 'tourops'
+      },
+      { 
         id: 'customers', 
         label: 'Customers', 
         icon: Users,
         badge: subscribersCount > 0 ? subscribersCount : undefined,
         action: () => setActiveTab('customers'),
         isActive: activeTab === 'customers'
+      },
+      { 
+        id: 'subscriptions', 
+        label: 'Newsletter Subscriptions', 
+        icon: Mail,
+        badge: subscribersCount > 0 ? subscribersCount : undefined,
+        action: () => setActiveTab('subscriptions'),
+        isActive: activeTab === 'subscriptions'
+      },
+      { 
+        id: 'careers', 
+        label: 'Careers / Jobs', 
+        icon: Briefcase,
+        badge: jobsCount > 0 ? jobsCount : undefined,
+        action: () => setActiveTab('careers'),
+        isActive: activeTab === 'careers'
       },
       { 
         id: 'holidayPackages', 
@@ -192,6 +222,13 @@ export default function AdminSidebar({
         icon: Settings,
         action: () => setActiveTab('rolesPermissions'),
         isActive: activeTab === 'rolesPermissions'
+      },
+      { 
+        id: 'deleteApprovals', 
+        label: 'Delete Approvals', 
+        icon: Shield,
+        action: () => setActiveTab('deleteApprovals'),
+        isActive: activeTab === 'deleteApprovals'
       },
       { 
         id: 'content-management', 
@@ -291,29 +328,29 @@ export default function AdminSidebar({
     // Allowed module IDs mapped per authorized role
     const permissions: Record<string, string[]> = {
       'owner': [
-        'dashboard', 'bookings', 'customers', 'holidayPackages', 'zanzibarTours', 
+        'dashboard', 'bookings', 'walkin', 'tourops', 'customers', 'subscriptions', 'careers', 'holidayPackages', 'zanzibarTours', 
         'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'calendar', 'payments', 
         'reports', 'staff', 'rolesPermissions', 'content-management', 'gallery', 
         'blog', 'reviews', 'sustainability', 'emailCentre', 'whatsappCentre', 
         'settings', 'security', 'systemBackup', 'auditLogs', 'logout'
       ],
       'super admin': [
-        'dashboard', 'bookings', 'customers', 'holidayPackages', 'zanzibarTours', 
+        'dashboard', 'bookings', 'walkin', 'tourops', 'customers', 'subscriptions', 'careers', 'holidayPackages', 'zanzibarTours', 
         'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'calendar', 'payments', 
         'reports', 'staff', 'rolesPermissions', 'content-management', 'gallery', 
         'blog', 'reviews', 'sustainability', 'emailCentre', 'whatsappCentre', 
         'settings', 'security', 'systemBackup', 'auditLogs', 'logout'
       ],
       'manager': [
-        'dashboard', 'bookings', 'customers', 'holidayPackages', 'zanzibarTours', 
+        'dashboard', 'bookings', 'walkin', 'tourops', 'customers', 'subscriptions', 'careers', 'holidayPackages', 'zanzibarTours', 
         'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'calendar', 'payments', 
         'reports', 'content-management', 'gallery', 'blog', 'reviews', 'sustainability', 
         'settings', 'logout'
       ],
-      'reservation officer': ['dashboard', 'bookings', 'customers', 'calendar', 'logout'],
-      'sales': ['dashboard', 'bookings', 'customers', 'logout'],
+      'reservation officer': ['dashboard', 'bookings', 'walkin', 'tourops', 'customers', 'subscriptions', 'calendar', 'logout'],
+      'sales': ['dashboard', 'bookings', 'walkin', 'customers', 'logout'],
       'accountant': ['dashboard', 'payments', 'reports', 'settings', 'logout'],
-      'marketing': ['dashboard', 'customers', 'gallery', 'blog', 'reviews', 'sustainability', 'logout'],
+      'marketing': ['dashboard', 'customers', 'subscriptions', 'careers', 'gallery', 'blog', 'reviews', 'sustainability', 'logout'],
       'customer support': ['dashboard', 'customers', 'logout']
     };
 
@@ -356,44 +393,129 @@ export default function AdminSidebar({
       </div>
 
       {/* Scrollable Navigation Area */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-none">
-        {sidebarItems.map((item) => {
-          const Icon = item.icon;
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6 scrollbar-none">
+        {/* OPERATIONS SECTION */}
+        {(() => {
+          const operationsIds = [
+            'dashboard', 'bookings', 'walkin', 'tourops', 'customers', 'subscriptions', 'careers',
+            'holidayPackages', 'zanzibarTours', 'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers',
+            'calendar', 'finances', 'logs', 'cms', 'media', 'blog', 'reviews', 'sustainability',
+            'emailCentre', 'whatsappCentre'
+          ];
+          const items = sidebarItems.filter(item => operationsIds.includes(item.id));
+          if (items.length === 0) return null;
           return (
-            <button
-              key={item.id}
-              onClick={item.action}
-              className={`w-full text-left py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer group ${
-                item.isActive 
-                  ? 'bg-[#0B3B8C] text-white shadow-lg shadow-[#0B3B8C]/15 border border-[#D4A017]/20' 
-                  : item.isDanger
-                    ? 'text-red-400 hover:bg-red-950/20 hover:text-red-300 border border-transparent'
-                    : 'text-slate-400 hover:bg-[#121B30] hover:text-slate-200 border border-transparent'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Icon 
-                  size={14} 
-                  className={
-                    item.isActive 
-                      ? 'text-[#D4A017]' 
-                      : item.isDanger 
-                        ? 'text-red-400 group-hover:text-red-300' 
-                        : 'text-slate-500 group-hover:text-slate-300'
-                  } 
-                />
-                <span>{item.label}</span>
-              </div>
-              {item.badge !== undefined && (
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                  item.isActive ? 'bg-[#D4A017] text-[#020C1F]' : 'bg-[#121B30] text-slate-400 border border-white/5'
-                }`}>
-                  {item.badge}
-                </span>
-              )}
-            </button>
+            <div className="space-y-1">
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-3 mb-2">Operations (Daily Work)</p>
+              {items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={item.action}
+                    className={`w-full text-left py-1.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer group ${
+                      item.isActive 
+                        ? 'bg-[#0B3B8C] text-white shadow-lg shadow-[#0B3B8C]/15 border border-[#D4A017]/20' 
+                        : 'text-slate-400 hover:bg-[#121B30] hover:text-slate-200 border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon 
+                        size={13} 
+                        className={
+                          item.isActive 
+                            ? 'text-[#D4A017]' 
+                            : 'text-slate-500 group-hover:text-slate-300'
+                        } 
+                      />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge !== undefined && (
+                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
+                        item.isActive ? 'bg-[#D4A017] text-[#020C1F]' : 'bg-[#121B30] text-slate-400 border border-white/5'
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           );
-        })}
+        })()}
+
+        {/* SETTINGS SECTION */}
+        {(() => {
+          const settingsIds = [
+            'settings', 'users', 'rolesPermissions', 'policies', 'transportZones', 'seo', 'security',
+            'systemBackup', 'auditLogs'
+          ];
+          const items = sidebarItems.filter(item => settingsIds.includes(item.id));
+          if (items.length === 0) return null;
+          return (
+            <div className="space-y-1">
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-3 mb-2">Settings (Configuration)</p>
+              {items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={item.action}
+                    className={`w-full text-left py-1.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer group ${
+                      item.isActive 
+                        ? 'bg-[#0B3B8C] text-white shadow-lg shadow-[#0B3B8C]/15 border border-[#D4A017]/20' 
+                        : 'text-slate-400 hover:bg-[#121B30] hover:text-slate-200 border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon 
+                        size={13} 
+                        className={
+                          item.isActive 
+                            ? 'text-[#D4A017]' 
+                            : 'text-slate-500 group-hover:text-slate-300'
+                        } 
+                      />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge !== undefined && (
+                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
+                        item.isActive ? 'bg-[#D4A017] text-[#020C1F]' : 'bg-[#121B30] text-slate-400 border border-white/5'
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {/* DANGER / LOGOUT SECTION */}
+        {(() => {
+          const items = sidebarItems.filter(item => item.isDanger || item.id === 'logout');
+          if (items.length === 0) return null;
+          return (
+            <div className="space-y-1 pt-2 border-t border-white/5">
+              {items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={item.action}
+                    className="w-full text-left py-1.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer group text-red-400 hover:bg-red-950/20 hover:text-red-300 border border-transparent"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon size={13} className="text-red-400 group-hover:text-red-300" />
+                      <span>{item.label}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
       </nav>
 
       {/* Bottom Sticky Action Panel */}

@@ -18,7 +18,7 @@ export interface EmailLog {
   toEmail: string;
   subject: string;
   bodyHtml: string;
-  type: 'verification' | 'welcome' | 'reset' | 'booking_confirm' | 'payment_confirm' | 'booking_cancel' | 'staff_created' | 'two_factor_auth' | 'password_reset' | 'sms_dispatch_log' | 'security_alert';
+  type: 'verification' | 'welcome' | 'reset' | 'booking_confirm' | 'payment_confirm' | 'booking_cancel' | 'staff_created' | 'two_factor_auth' | 'password_reset' | 'sms_dispatch_log' | 'security_alert' | 'custom_inquiry';
   status: 'Delivered' | 'Pending' | 'Failed';
   smtpUsed: string;
 }
@@ -343,6 +343,42 @@ export function generateEmailTemplate(
         </div>
       `;
       break;
+
+    case 'custom_inquiry':
+      subject = `Custom Zanzibar Itinerary Requested [Ref: ${data.reference || 'N/A'}] 🌴`;
+      contentHtml = `
+        <div style="padding: 30px 25px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #334155;">
+          <p style="font-size: 16px; font-weight: bold; color: ${secondaryColor};">Karibu, ${toName}!</p>
+          <p>Thank you for submitting your custom holiday plan to Zanzibar Trip & Relax. We are excited to design your dream tropical getaway! Below are the details of your inquiry:</p>
+          
+          <div style="background-color: #f8fafc; border-left: 4px solid ${brandColor}; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+            <p style="margin: 0 0 8px 0; font-weight: bold; font-size: 15px; color: #0f172a;">Custom Itinerary Particulars</p>
+            <p style="margin: 0 0 5px 0;"><strong>Reference ID:</strong> ${data.reference}</p>
+            <p style="margin: 0 0 5px 0;"><strong>Selected Destination:</strong> ${data.destination || 'Zanzibar Excursion Archipelago'}</p>
+            <p style="margin: 0 0 5px 0;"><strong>Experience Vibe:</strong> ${data.experience || 'Not Specified'}</p>
+            <p style="margin: 0 0 5px 0;"><strong>Travel Window:</strong> ${data.arrival || 'Flexible'} to ${data.departure || 'Flexible'} (${data.nights || 'Flexible'} nights)</p>
+            <p style="margin: 0 0 5px 0;"><strong>Group Size:</strong> ${data.adults || 2} Adults ${data.children ? `, ${data.children} Children` : ''}</p>
+            <p style="margin: 0 0 5px 0;"><strong>Budget Range:</strong> ${data.budget || 'Standard / Mid-Range'}</p>
+            <p style="margin: 0 0 5px 0;"><strong>Hotel Standard:</strong> <span style="text-transform: capitalize;">${data.hotelCategory || 'Comfort'}</span></p>
+            ${data.specialRequests ? `<p style="margin: 8px 0 0 0; font-size: 13px; color: #475569;"><strong>Special Requests:</strong> ${data.specialRequests}</p>` : ''}
+          </div>
+
+          <div style="background-color: ${secondaryColor}; color: #ffffff; padding: 15px; border-radius: 8px; margin: 25px 0; text-align: center;">
+            <p style="margin: 0 font-weight: bold; font-size: 15px;">Estimated Total Quote: $${data.estimatedTotal || '0'}</p>
+            <p style="margin: 5px 0 0 0; font-size: 11px; opacity: 0.85;">Our Swahili travel architects are already reviewing this itinerary to curate specific villa contracts, flight schedules, and custom guides for your journey.</p>
+          </div>
+
+          <p><strong>Next Steps:</strong> We have saved your custom trip parameters. One of our destination specialists will contact you directly via <strong>WhatsApp</strong> (${data.whatsapp}) or <strong>Email</strong> to finalize a refined day-by-day quotation sheet.</p>
+          
+          <div style="text-align: center; margin: 25px 0;">
+            <a href="https://wa.me/255629506063?text=Hello%20Zanzibar%20Trip%20%26%20Relax!%20My%20name%20is%20${encodeURIComponent(toName)}.%20My%20itinerary%20reference%20is%20${data.reference}.%20I%20would%20like%20to%20discuss%20my%20custom%20trip." style="background-color: #25D366; color: #ffffff; padding: 11px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Message Us on WhatsApp Now</a>
+          </div>
+
+          <p>We are dedicated to crafting your ultimate Swahili coastline experience.</p>
+          <p style="margin-top: 25px;">Warmest regards,<br>Bespoke Reservations Office</p>
+        </div>
+      `;
+      break;
   }
 
   const completeHtml = `
@@ -365,7 +401,12 @@ export function generateEmailTemplate(
   return { subject, bodyHtml: completeHtml };
 }
 
-// Trigger automatic sending of emails (adds log, raises toast, behaves realistically)
+// Expose template generator globally for other components
+if (typeof window !== 'undefined') {
+  (window as any).generateEmailTemplate = generateEmailTemplate;
+}
+
+// Trigger automatic sending of emails (adds log, behaves realistically, and calls backend)
 export function dispatchAutomatedEmail(
   type: EmailLog['type'],
   toEmail: string,
@@ -375,6 +416,30 @@ export function dispatchAutomatedEmail(
   const config = getSmtpConfig();
   const { subject, bodyHtml } = generateEmailTemplate(type, toName, data);
   
+  // Real SMTP Send (dispatches to real server SMTP API in background)
+  fetch('/api/notification/send-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type,
+      toEmail,
+      toName,
+      data: {
+        subject,
+        bodyHtml
+      }
+    })
+  })
+  .then(res => res.json())
+  .then(resData => {
+    if (!resData.success) {
+      console.warn('[SMTP] Transactional dispatch failed:', resData.error);
+    }
+  })
+  .catch(err => {
+    console.warn('[SMTP] Server endpoint unreachable for transactional mail:', err.message);
+  });
+
   // Real SMTP Send Simulation (Simulates active SMTP transport logs)
   const log = addEmailLog({
     toEmail,

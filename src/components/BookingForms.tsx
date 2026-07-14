@@ -50,14 +50,25 @@ export function HolidayPackageForm({
           <Calendar size={14} className="text-[#D4A017]" />
           <span>1. Preferred Travel Dates & Room Preference</span>
         </h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Travel Start Date *</label>
+            <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Arrival Date *</label>
             <input
               type="date"
               required
               value={arrivalDate}
               onChange={(e) => setArrivalDate(e.target.value)}
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#0B3B8C]/20 focus:border-[#0B3B8C] outline-none text-slate-800 font-medium"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Departure Date *</label>
+            <input
+              type="date"
+              required
+              name="departureDate"
+              value={formData.departureDate || ''}
+              onChange={handleTextChange}
               className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#0B3B8C]/20 focus:border-[#0B3B8C] outline-none text-slate-800 font-medium"
             />
           </div>
@@ -182,7 +193,7 @@ export function HolidayPackageForm({
           <User size={14} className="text-[#D4A017]" />
           <span>4. Lead Traveler Details & Special Requests</span>
         </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div>
             <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">First Name *</label>
             <input
@@ -207,9 +218,21 @@ export function HolidayPackageForm({
               className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#0B3B8C]/20 focus:border-[#0B3B8C] outline-none text-slate-800"
             />
           </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Nationality *</label>
+            <input
+              type="text"
+              required
+              name="nationality"
+              value={formData.nationality || ''}
+              onChange={handleTextChange}
+              placeholder="e.g. British, American"
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#0B3B8C]/20 focus:border-[#0B3B8C] outline-none text-slate-800"
+            />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div>
             <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Email Address *</label>
             <div className="relative">
@@ -226,19 +249,58 @@ export function HolidayPackageForm({
             </div>
           </div>
           <div>
-            <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">WhatsApp / Phone *</label>
+            <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">WhatsApp Number *</label>
             <div className="relative">
               <Phone size={12} className="absolute left-3.5 top-3.5 text-slate-400" />
               <input
                 type="tel"
                 required
-                name="phone"
-                value={formData.phone}
+                name="whatsapp"
+                value={formData.whatsapp || ''}
                 onChange={handleTextChange}
                 placeholder="e.g. +44 7911 123456"
                 className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#0B3B8C]/20 focus:border-[#0B3B8C] outline-none text-slate-800"
               />
             </div>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Phone Number (Alternative)</label>
+            <div className="relative">
+              <Phone size={12} className="absolute left-3.5 top-3.5 text-slate-400" />
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleTextChange}
+                placeholder="e.g. +44 20 7946 0958"
+                className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#0B3B8C]/20 focus:border-[#0B3B8C] outline-none text-slate-800"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 bg-slate-100/50 p-4 rounded-xl border border-slate-200/50">
+          <div>
+            <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Arrival Flight Details (Optional)</label>
+            <input
+              type="text"
+              name="arrivalFlight"
+              value={formData.arrivalFlight || ''}
+              onChange={handleTextChange}
+              placeholder="e.g. QR1487 @ 14:20"
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#0B3B8C]/20 focus:border-[#0B3B8C] outline-none text-slate-800"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Departure Flight Details (Optional)</label>
+            <input
+              type="text"
+              name="departureFlight"
+              value={formData.departureFlight || ''}
+              onChange={handleTextChange}
+              placeholder="e.g. ET815 @ 16:45"
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#0B3B8C]/20 focus:border-[#0B3B8C] outline-none text-slate-800"
+            />
           </div>
         </div>
 

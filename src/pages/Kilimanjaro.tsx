@@ -6,6 +6,7 @@ import { useScrollY } from '../hooks/useScrollY';
 import { ProgressiveImage } from '../components/ProgressiveImage';
 import GuestReviews from '../components/GuestReviews';
 import { useAnalytics } from '../context/AnalyticsContext';
+import Breadcrumbs from '../components/Breadcrumbs';
 
 interface KilimanjaroProps {
   navigate: (page: Page, id?: string) => void;
@@ -265,6 +266,8 @@ export default function Kilimanjaro({ navigate }: KilimanjaroProps) {
           </p>
         </div>
       </section>
+
+      <Breadcrumbs items={[{ label: 'Kilimanjaro Treks' }]} navigate={navigate} />
 
       {/* Safety standards */}
       <section className="bg-white py-12 border-b border-gray-100">

@@ -50,6 +50,11 @@ export interface MediaFile {
   url: string;
   size: string;
   dimensions: string;
+  filePath?: string;
+  uploadedAt?: string;
+  altText?: string;
+  focalPoint?: { x: number; y: number };
+  originalUrl?: string;
 }
 
 export interface ActivityLog {
@@ -241,11 +246,61 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
 };
 
 export const DEFAULT_MEDIA: MediaFile[] = [
-  { id: 'm1', name: 'Zanzibar_Paradise_Hero.jpeg', folder: 'banners', url: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200', size: '245 KB', dimensions: '1920x1080' },
-  { id: 'm2', name: 'Nakupenda_Sandbank.jpeg', folder: 'banners', url: 'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=1200', size: '184 KB', dimensions: '1920x1080' },
-  { id: 'm3', name: 'Stone_Town_Street.jpeg', folder: 'tours', url: 'https://images.pexels.com/photos/2161467/pexels-photo-2161467.jpeg?auto=compress&cs=tinysrgb&w=1200', size: '312 KB', dimensions: '1600x1200' },
-  { id: 'm4', name: 'Owner_Nassor.jpeg', folder: 'avatars', url: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=300', size: '42 KB', dimensions: '300x300' },
-  { id: 'm5', name: 'Serengeti_Jeep_Safari.jpeg', folder: 'safaris', url: 'https://images.pexels.com/photos/247502/pexels-photo-247502.jpeg?auto=compress&cs=tinysrgb&w=1200', size: '260 KB', dimensions: '1920x1080' },
+  { 
+    id: 'm1', 
+    name: 'Zanzibar_Paradise_Hero.jpeg', 
+    folder: 'banners', 
+    url: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200', 
+    size: '245 KB', 
+    dimensions: '1920x1080',
+    filePath: 'banners/Zanzibar_Paradise_Hero.jpeg',
+    uploadedAt: '2026-07-01T12:00:00Z',
+    altText: 'Scenic view of Zanzibar paradise beach with turquoise water'
+  },
+  { 
+    id: 'm2', 
+    name: 'Nakupenda_Sandbank.jpeg', 
+    folder: 'banners', 
+    url: 'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=1200', 
+    size: '184 KB', 
+    dimensions: '1920x1080',
+    filePath: 'banners/Nakupenda_Sandbank.jpeg',
+    uploadedAt: '2026-07-02T12:00:00Z',
+    altText: 'Nakupenda sandbank island in Zanzibar under blue sky'
+  },
+  { 
+    id: 'm3', 
+    name: 'Stone_Town_Street.jpeg', 
+    folder: 'tours', 
+    url: 'https://images.pexels.com/photos/2161467/pexels-photo-2161467.jpeg?auto=compress&cs=tinysrgb&w=1200', 
+    size: '312 KB', 
+    dimensions: '1600x1200',
+    filePath: 'tours/Stone_Town_Street.jpeg',
+    uploadedAt: '2026-07-03T12:00:00Z',
+    altText: 'A historic street alleyway in Stone Town, Zanzibar'
+  },
+  { 
+    id: 'm4', 
+    name: 'Owner_Nassor.jpeg', 
+    folder: 'avatars', 
+    url: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=300', 
+    size: '42 KB', 
+    dimensions: '300x300',
+    filePath: 'avatars/Owner_Nassor.jpeg',
+    uploadedAt: '2026-07-04T12:00:00Z',
+    altText: 'Nassor, the owner and founder of Zanzibar Trip & Relax'
+  },
+  { 
+    id: 'm5', 
+    name: 'Serengeti_Jeep_Safari.jpeg', 
+    folder: 'safaris', 
+    url: 'https://images.pexels.com/photos/247502/pexels-photo-247502.jpeg?auto=compress&cs=tinysrgb&w=1200', 
+    size: '260 KB', 
+    dimensions: '1920x1080',
+    filePath: 'safaris/Serengeti_Jeep_Safari.jpeg',
+    uploadedAt: '2026-07-05T12:00:00Z',
+    altText: 'A safari jeep parked near a magnificent lion in the Serengeti savanna'
+  },
 ];
 
 export function getSiteContent(): SiteContent {
@@ -343,8 +398,70 @@ export function getMediaLibrary(): MediaFile[] {
   return DEFAULT_MEDIA;
 }
 
+export async function syncMediaLibraryFromDb(): Promise<MediaFile[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from('site_config')
+      .select('data')
+      .eq('id', 'site_media_library_state')
+      .maybeSingle();
+      
+    if (!error && data && data.data) {
+      const dbMedia = data.data as MediaFile[];
+      localStorage.setItem('site_media_library', JSON.stringify(dbMedia));
+      return dbMedia;
+    }
+  } catch (err) {
+    console.warn('Could not sync media library from Supabase:', err);
+  }
+  return null;
+}
+
 export function saveMediaLibrary(media: MediaFile[]): void {
   localStorage.setItem('site_media_library', JSON.stringify(media));
+  
+  // Sync metadata and image references to Supabase table site_config
+  supabase.from('site_config').upsert([{ id: 'site_media_library_state', data: media }])
+    .then(({ error }) => {
+      if (error) console.log('Supabase media sync info:', error.message);
+    });
+}
+
+export function getMediaItem(id: string): MediaFile | undefined {
+  const media = getMediaLibrary();
+  return media.find(m => m.id === id);
+}
+
+export function updateMediaItem(id: string, updates: Partial<MediaFile>): void {
+  const media = getMediaLibrary();
+  const updated = media.map(item => {
+    if (item.id === id) {
+      return {
+        ...item,
+        ...updates
+      };
+    }
+    return item;
+  });
+  saveMediaLibrary(updated);
+}
+
+export function addMediaItem(item: Omit<MediaFile, 'id' | 'uploadedAt'> & { id?: string; uploadedAt?: string }): MediaFile {
+  const media = getMediaLibrary();
+  const newItem: MediaFile = {
+    ...item,
+    id: item.id || `m_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    uploadedAt: item.uploadedAt || new Date().toISOString()
+  };
+  const updated = [newItem, ...media];
+  saveMediaLibrary(updated);
+  return newItem;
+}
+
+export function deleteMediaItem(id: string): void {
+  const media = getMediaLibrary();
+  const updated = media.filter(m => m.id !== id);
+  saveMediaLibrary(updated);
 }
 
 export function getActivities(): ActivityLog[] {

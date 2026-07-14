@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useHashRouter } from './hooks/useHashRouter';
 import { motion, AnimatePresence } from 'motion/react';
 import Navbar from './components/Navbar';
@@ -10,33 +10,37 @@ import { ToastContainer } from './components/ToastNotification';
 import CookieConsent from './components/CookieConsent';
 import { useAnalytics } from './context/AnalyticsContext';
 import BackToTopButton from './components/BackToTopButton';
+import PageLoader from './components/PageLoader';
 
-// Pages
+// Pages - Static (Small/Initial)
 import Home from './pages/Home';
 import About from './pages/About';
-import Tours from './pages/Tours';
-import Booking from './pages/Booking';
-import Gallery from './pages/Gallery';
 import Contact from './pages/Contact';
-import Packages from './pages/Packages';
-import Safaris from './pages/Safaris';
-import Transfers from './pages/Transfers';
-import Blog from './pages/Blog';
-import Reviews from './pages/Reviews';
-import TripBuilder from './pages/TripBuilder';
-import BlogDetail from './pages/BlogDetail';
-import Kilimanjaro from './pages/Kilimanjaro';
-import FAQ from './pages/FAQ';
-import TourDetail from './pages/TourDetail';
-import Policies from './pages/Policies';
-import Admin from './pages/Admin';
-import AdminLogin from './pages/AdminLogin';
-import OwnerLogin from './pages/OwnerLogin';
-import MyAccount from './pages/MyAccount';
+
+// Pages - Lazy Loaded (Heavy/Secondary)
+const Gallery = lazy(() => import('./pages/Gallery'));
+const TripBuilder = lazy(() => import('./pages/TripBuilder'));
+const Tours = lazy(() => import('./pages/Tours'));
+const Booking = lazy(() => import('./pages/Booking'));
+const Packages = lazy(() => import('./pages/Packages'));
+const Safaris = lazy(() => import('./pages/Safaris'));
+const Transfers = lazy(() => import('./pages/Transfers'));
+const Blog = lazy(() => import('./pages/Blog'));
+const Reviews = lazy(() => import('./pages/Reviews'));
+const BlogDetail = lazy(() => import('./pages/BlogDetail'));
+const Kilimanjaro = lazy(() => import('./pages/Kilimanjaro'));
+const FAQ = lazy(() => import('./pages/FAQ'));
+const TourDetail = lazy(() => import('./pages/TourDetail'));
+const Policies = lazy(() => import('./pages/Policies'));
+const Admin = lazy(() => import('./pages/Admin'));
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+const OwnerLogin = lazy(() => import('./pages/OwnerLogin'));
+const MyAccount = lazy(() => import('./pages/MyAccount'));
+const ManageBooking = lazy(() => import('./pages/ManageBooking'));
+const Careers = lazy(() => import('./pages/Careers'));
+const Sustainability = lazy(() => import('./pages/Sustainability'));
+
 import AuthGuard from './components/AuthGuard';
-import ManageBooking from './pages/ManageBooking';
-import Careers from './pages/Careers';
-import Sustainability from './pages/Sustainability';
 
 // Check if this window is an OAuth redirect popup
 if (typeof window !== 'undefined' && window.opener && (window.location.hash.includes('access_token') || window.location.hash.includes('token'))) {
@@ -98,7 +102,7 @@ export default function App() {
       case 'contact':
         return <Contact navigate={navigate} />;
       case 'packages':
-        return <Packages navigate={navigate} />;
+        return <Packages navigate={navigate} queryParams={queryParams} />;
       case 'safaris':
         return <Safaris navigate={navigate} />;
       case 'transfers':
@@ -164,7 +168,9 @@ export default function App() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
           >
-            {renderPage()}
+            <Suspense fallback={<PageLoader />}>
+              {renderPage()}
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </main>

@@ -141,7 +141,7 @@ export default function Gallery({ navigate }: GalleryProps) {
       </section>
 
       {/* Sticky Categories */}
-      <section className="bg-white sticky top-20 z-30 shadow-sm border-b">
+      <section className="bg-white sticky top-[68px] lg:top-[80px] z-30 shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
             {categories.map(cat => (

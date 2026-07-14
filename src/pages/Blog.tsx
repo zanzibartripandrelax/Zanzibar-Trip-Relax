@@ -41,7 +41,7 @@ export default function Blog({ navigate }: BlogProps) {
       </section>
 
       {/* Search & Category Filter bar */}
-      <section className="bg-white border-b border-gray-100 sticky top-20 z-40 shadow-sm py-4 px-4">
+      <section className="bg-white border-b border-gray-100 sticky top-[68px] lg:top-[80px] z-40 shadow-sm py-4 px-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full md:w-auto">
             {blogCategories.map(cat => (

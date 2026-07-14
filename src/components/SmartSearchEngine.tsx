@@ -235,6 +235,7 @@ export default function SmartSearchEngine({ navigate }: SmartSearchEngineProps) 
 
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
+  const [infants, setInfants] = useState(0);
   const [childAges, setChildAges] = useState<number[]>([]);
 
   // Popover controls
@@ -250,6 +251,7 @@ export default function SmartSearchEngine({ navigate }: SmartSearchEngineProps) 
     const savedDeparture = localStorage.getItem('ztr_search_departure');
     const savedAdults = localStorage.getItem('ztr_search_adults');
     const savedChildren = localStorage.getItem('ztr_search_children');
+    const savedInfants = localStorage.getItem('ztr_search_infants');
     const savedChildAges = localStorage.getItem('ztr_search_child_ages');
 
     if (savedDest) {
@@ -267,6 +269,7 @@ export default function SmartSearchEngine({ navigate }: SmartSearchEngineProps) 
       }
     }
     if (savedAdults) setAdults(Number(savedAdults));
+    if (savedInfants) setInfants(Number(savedInfants));
     if (savedChildren) {
       const parsedChildren = Number(savedChildren);
       setChildren(parsedChildren);
@@ -367,8 +370,11 @@ export default function SmartSearchEngine({ navigate }: SmartSearchEngineProps) 
     if (children > 0) {
       parts.push(`${children} Child${children !== 1 ? 'ren' : ''}`);
     }
+    if (infants > 0) {
+      parts.push(`${infants} Infant${infants !== 1 ? 's' : ''}`);
+    }
     return parts.join(', ');
-  }, [adults, children]);
+  }, [adults, children, infants]);
 
   // --- Save Search Info ---
   const saveSearchState = () => {
@@ -377,6 +383,7 @@ export default function SmartSearchEngine({ navigate }: SmartSearchEngineProps) 
     localStorage.setItem('ztr_search_departure', departure);
     localStorage.setItem('ztr_search_adults', String(adults));
     localStorage.setItem('ztr_search_children', String(children));
+    localStorage.setItem('ztr_search_infants', String(infants));
     localStorage.setItem('ztr_search_child_ages', JSON.stringify(childAges));
   };
 
@@ -573,10 +580,8 @@ export default function SmartSearchEngine({ navigate }: SmartSearchEngineProps) 
     // Deterministic state based on item index
     if (index % 3 === 0) {
       return { text: 'Available - Instant Confirmation ✅', type: 'success', icon: CheckCircle2 };
-    } else if (index % 3 === 1) {
-      return { text: 'Best Price Guaranteed for this stay.', type: 'guarantee', icon: Award };
     } else {
-      return { text: 'Almost Sold Out! 3 boats left.', type: 'danger', icon: Clock };
+      return { text: 'Best Price Guaranteed for this stay.', type: 'guarantee', icon: Award };
     }
   };
 
@@ -604,34 +609,6 @@ export default function SmartSearchEngine({ navigate }: SmartSearchEngineProps) 
       {/* --- 1. SEARCH WIDGET CARD --- */}
       <div className="bg-[#0A1224]/95 backdrop-blur-md rounded-2xl border-2 border-white/10 shadow-2xl p-5 md:p-6 relative z-50">
         
-        {/* Top Header Row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-white/5">
-          <div className="flex items-center gap-2.5">
-            <span className="p-1.5 rounded-lg bg-[#D4A017]/10 text-[#D4A017] flex items-center justify-center shrink-0">
-              <Compass size={18} className="animate-spin-slow" />
-            </span>
-            <div>
-              <h3 className="text-xs md:text-sm font-black uppercase text-white tracking-[0.2em] font-mono">
-                Booking.com Style Smart Search
-              </h3>
-              <p className="text-[10px] text-slate-400 font-semibold mt-0.5 leading-none">
-                Real-Time Availability • Automated Pricing • Customized Matches
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 text-[10px] text-slate-300 font-mono">
-            <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#D4A017] animate-ping" />
-              Real-Time Inventory
-            </span>
-            <span className="hidden md:flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Direct Wholesaler Rates
-            </span>
-          </div>
-        </div>
-
         {/* PRIMARY SEARCH BOX INPUT GRID */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-[#121B30] p-3 rounded-2xl border border-white/5 relative items-center shadow-lg">
           
@@ -919,7 +896,7 @@ export default function SmartSearchEngine({ navigate }: SmartSearchEngineProps) 
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="block text-xs font-black text-white">Children</span>
-                      <span className="block text-[9px] text-slate-400 font-semibold">Ages 0 to 11 (Optional)</span>
+                      <span className="block text-[9px] text-slate-400 font-semibold">Ages 2 to 11 (Optional)</span>
                     </div>
                     <div className="flex items-center gap-2 bg-[#121B30] rounded-lg border border-white/5 px-2 py-1 shrink-0">
                       <button
@@ -934,6 +911,32 @@ export default function SmartSearchEngine({ navigate }: SmartSearchEngineProps) 
                       <button
                         type="button"
                         onClick={handleAddChild}
+                        className="h-6 w-6 rounded bg-white/5 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                      >
+                        <Plus size={11} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Infants */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="block text-xs font-black text-white">Infants</span>
+                      <span className="block text-[9px] text-slate-400 font-semibold">Under 2 years (Free)</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-[#121B30] rounded-lg border border-white/5 px-2 py-1 shrink-0">
+                      <button
+                        type="button"
+                        disabled={infants <= 0}
+                        onClick={() => setInfants(prev => Math.max(0, prev - 1))}
+                        className="h-6 w-6 rounded bg-white/5 text-slate-300 hover:text-white flex items-center justify-center disabled:opacity-20 transition-colors cursor-pointer"
+                      >
+                        <Minus size={11} />
+                      </button>
+                      <span className="text-xs font-bold text-white min-w-[14px] text-center">{infants}</span>
+                      <button
+                        type="button"
+                        onClick={() => setInfants(prev => prev + 1)}
                         className="h-6 w-6 rounded bg-white/5 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                       >
                         <Plus size={11} />

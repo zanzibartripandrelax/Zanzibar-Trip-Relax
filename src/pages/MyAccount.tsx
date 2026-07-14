@@ -5,16 +5,19 @@ import {
   User, Lock, Mail, Phone, Globe, ShieldAlert, CheckCircle2, 
   Sparkles, KeyRound, Compass, CreditCard, Calendar, LogOut,
   MapPin, Heart, HelpCircle, Bell, ArrowRight, Eye, EyeOff,
-  Cloud, Sun, Download, FileText, Send, Check
+  Cloud, Sun, Download, FileText, Send, Check, Star
 } from 'lucide-react';
 import { addActivityLog } from '../lib/cmsStore';
 import { getSmtpConfig, dispatchAutomatedEmail, getEmailLogs } from '../lib/emailService';
+import { useWishlist } from '../hooks/useWishlist';
+import TourReviewWidget from '../components/TourReviewWidget';
 
 interface MyAccountProps {
   navigate: (page: Page, params?: string) => void;
 }
 
 export default function MyAccount({ navigate }: MyAccountProps) {
+  const { wishlist, removeFromWishlist } = useWishlist();
   // Query parameter hooks
   const [queryToken, setQueryToken] = useState<string | null>(null);
   const [queryEmail, setQueryEmail] = useState<string | null>(null);
@@ -63,6 +66,7 @@ export default function MyAccount({ navigate }: MyAccountProps) {
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [regError, setRegError] = useState('');
   const [regSuccess, setRegSuccess] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
 
   // Forgot Password State
   const [forgotEmail, setForgotEmail] = useState('');
@@ -77,7 +81,6 @@ export default function MyAccount({ navigate }: MyAccountProps) {
 
   // Local state datasets
   const [bookings, setBookings] = useState<any[]>([]);
-  const [wishlist, setWishlist] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [emailLogs, setEmailLogs] = useState<any[]>([]);
 
@@ -92,6 +95,7 @@ export default function MyAccount({ navigate }: MyAccountProps) {
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [passChangeError, setPassChangeError] = useState('');
   const [passChangeSuccess, setPassChangeSuccess] = useState('');
+  const [reviewingBooking, setReviewingBooking] = useState<any | null>(null);
 
   // Support State
   const [supportSubject, setSupportSubject] = useState('Booking Inquiry');
@@ -111,6 +115,20 @@ export default function MyAccount({ navigate }: MyAccountProps) {
 
   // Seed default items and check session
   useEffect(() => {
+    // Check for custom view mode request (login, register, forgot)
+    const reqView = localStorage.getItem('ztr_auth_view');
+    if (reqView) {
+      setViewMode(reqView as any);
+      localStorage.removeItem('ztr_auth_view');
+    }
+
+    // Check for custom tab request (dashboard, bookings, wishlist, etc.)
+    const reqTab = localStorage.getItem('ztr_customer_tab');
+    if (reqTab) {
+      setActiveTab(reqTab as any);
+      localStorage.removeItem('ztr_customer_tab');
+    }
+
     // 1. Check Session
     const activeSesObj = localStorage.getItem('ztr_customer_session');
     if (activeSesObj) {
@@ -138,19 +156,7 @@ export default function MyAccount({ navigate }: MyAccountProps) {
       setBookings(mocks);
     }
 
-    // 3. Load Wishlist
-    const storedWish = localStorage.getItem('ztr_wishlist');
-    if (storedWish) {
-      try {
-        setWishlist(JSON.parse(storedWish));
-      } catch (e) {
-        setWishlist(getMockWishlist());
-      }
-    } else {
-      const mocks = getMockWishlist();
-      localStorage.setItem('ztr_wishlist', JSON.stringify(mocks));
-      setWishlist(mocks);
-    }
+    // 3. (Wishlist is now handled by useWishlist hook)
 
     // 4. Load Notifications
     const storedNotifs = localStorage.getItem('ztr_customer_notifications');
@@ -368,15 +374,36 @@ export default function MyAccount({ navigate }: MyAccountProps) {
       const updatedUsers = [...users, newCustomer];
       localStorage.setItem('ztr_admin_users', JSON.stringify(updatedUsers));
 
-      // Trigger verification email
-      dispatchAutomatedEmail('verification', newCustomer.email, fullName, {
+      setAuthLoading(true);
+      // Trigger verification email via backend
+      const { subject, bodyHtml } = (window as any).generateEmailTemplate('verification', fullName, {
         token: verificationToken,
         email: newCustomer.email
       });
 
-      addActivityLog(fullName, 'customerRegistered', `Registered new guest profile. Dispatched verification email to [${newCustomer.email}].`);
-
-      setRegSuccess(`Registration approved! An automated verification email has been sent to ${regEmail}. Please verify before logging in.`);
+      try {
+        const res = await fetch('/api/notification/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'verification',
+            toEmail: newCustomer.email,
+            toName: fullName,
+            data: { subject, bodyHtml }
+          })
+        });
+        const resData = await res.json();
+        if (resData.success) {
+          setRegSuccess(`Registration approved! An automated verification email has been sent to ${regEmail}. Please verify before logging in.`);
+          addActivityLog(fullName, 'customerRegistered', `Registered new guest profile. Dispatched verification email to [${newCustomer.email}].`);
+        } else {
+          setRegError(`Profile created, but failed to dispatch verification email: ${resData.error}. Please contact support.`);
+        }
+      } catch (err) {
+        setRegError('Profile created, but connection failed during email dispatch. Please try logging in later.');
+      } finally {
+        setAuthLoading(false);
+      }
       
       // Reset inputs
       setRegFirstName('');
@@ -418,16 +445,37 @@ export default function MyAccount({ navigate }: MyAccountProps) {
     matched.resetToken = resetToken;
     localStorage.setItem('ztr_admin_users', JSON.stringify(users));
 
-    // Send reset link email
-    dispatchAutomatedEmail('reset', matched.email, matched.name, {
+    setAuthLoading(true);
+    // Send reset link email via backend
+    const { subject, bodyHtml } = (window as any).generateEmailTemplate('reset', matched.name, {
       token: resetToken,
       email: matched.email
     });
 
-    addActivityLog(matched.name, 'customerForgotPass', `Dispatched secure password reset link to [${matched.email}].`);
-
-    setForgotSuccess(`Secure link dispatched! Please check ${forgotEmail} to reset your password.`);
-    setForgotEmail('');
+    try {
+      const res = await fetch('/api/notification/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'reset',
+          toEmail: matched.email,
+          toName: matched.name,
+          data: { subject, bodyHtml }
+        })
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        setForgotSuccess(`Secure link dispatched! Please check ${forgotEmail} to reset your password.`);
+        addActivityLog(matched.name, 'customerForgotPass', `Dispatched secure password reset link to [${matched.email}].`);
+      } else {
+        setForgotError(`Failed to dispatch reset email: ${resData.error}`);
+      }
+    } catch (err) {
+      setForgotError('Connection error during email dispatch.');
+    } finally {
+      setAuthLoading(false);
+      setForgotEmail('');
+    }
   };
 
   // Reset Password (Applying new password)
@@ -553,12 +601,23 @@ export default function MyAccount({ navigate }: MyAccountProps) {
     setBookings(updatedBookings);
     localStorage.setItem('ztr_bookings', JSON.stringify(updatedBookings));
 
-    // Send payment confirmation email
-    dispatchAutomatedEmail('payment_confirm', session.email, session.name, {
+    // Send payment confirmation email via backend
+    const { subject, bodyHtml } = (window as any).generateEmailTemplate('payment_confirm', session.name, {
       tour_name: booking.tour_name,
       preferred_date: booking.preferred_date,
       total_price: booking.total_price,
       paid_amount: booking.total_price
+    });
+
+    fetch('/api/notification/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'payment_confirm',
+        toEmail: session.email,
+        toName: session.name,
+        data: { subject, bodyHtml }
+      })
     });
 
     // Alert
@@ -597,11 +656,22 @@ export default function MyAccount({ navigate }: MyAccountProps) {
       setBookings(updatedBookings);
       localStorage.setItem('ztr_bookings', JSON.stringify(updatedBookings));
 
-      // Trigger cancel automated email
-      dispatchAutomatedEmail('booking_cancel', session.email, session.name, {
+      // Trigger cancel automated email via backend
+      const { subject, bodyHtml } = (window as any).generateEmailTemplate('booking_cancel', session.name, {
         tour_name: booking.tour_name,
         preferred_date: booking.preferred_date,
         id: booking.id
+      });
+
+      fetch('/api/notification/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'booking_cancel',
+          toEmail: session.email,
+          toName: session.name,
+          data: { subject, bodyHtml }
+        })
       });
 
       alert('Your booking cancellation request has been processed. Vouchers cancelled.');
@@ -670,13 +740,6 @@ export default function MyAccount({ navigate }: MyAccountProps) {
         paid_amount: 90,
         message: ''
       }
-    ];
-  }
-
-  function getMockWishlist() {
-    return [
-      { id: 't-1', name: 'Mnemba Island Snorkeling Excursion', price: 65, duration: 'Half Day' },
-      { id: 't-2', name: 'Zanzibar Spice Plantation Tour', price: 35, duration: '3 Hours' }
     ];
   }
 
@@ -1336,6 +1399,13 @@ export default function MyAccount({ navigate }: MyAccountProps) {
                                   Request Cancel
                                 </button>
                               )}
+                              <button 
+                                onClick={() => setReviewingBooking(b)}
+                                className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl text-xs font-black uppercase transition-all cursor-pointer flex items-center gap-1.5"
+                              >
+                                <Star size={13} fill="currentColor" />
+                                <span>Rate Experience</span>
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -1588,28 +1658,77 @@ export default function MyAccount({ navigate }: MyAccountProps) {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {wishlist.map((item, idx) => (
-                        <div key={idx} className="bg-slate-50 border border-slate-150 p-5 rounded-2xl flex justify-between items-center">
-                          <div className="space-y-1">
-                            <h4 className="text-xs font-extrabold text-slate-800">{item.name}</h4>
-                            <div className="flex gap-3 text-[10px] text-slate-500">
-                              <span>Duration: {item.duration}</span>
-                              <span>Starts at: <strong>${item.price}</strong></span>
+                    {wishlist.length === 0 ? (
+                      <div className="text-center py-10 bg-slate-50 border border-slate-100 rounded-2xl space-y-2">
+                        <Heart size={32} className="mx-auto text-slate-300" />
+                        <p className="font-bold text-slate-650">Your wishlist is empty.</p>
+                        <button 
+                          onClick={() => navigate('tours')}
+                          className="text-[#0B3B8C] hover:underline font-bold text-xs"
+                        >
+                          Explore Tours & Packages
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {wishlist.map((item, idx) => (
+                          <div key={idx} className="bg-white border border-slate-200 p-4 rounded-2xl flex gap-4 shadow-sm relative group hover:shadow-md transition-all">
+                            <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-slate-100">
+                              <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                             </div>
+                            
+                            <div className="flex-1 min-w-0 flex flex-col justify-between">
+                              <div className="pr-6">
+                                <span className="text-[8px] font-black uppercase tracking-wider text-[#D4A017] bg-[#D4A017]/10 px-1.5 py-0.5 rounded mb-1 inline-block">
+                                  {item.type}
+                                </span>
+                                <h4 className="text-xs font-extrabold text-slate-800 truncate">{item.name}</h4>
+                                <div className="flex gap-2 text-[10px] text-slate-500 mt-1">
+                                  <span>{item.duration}</span>
+                                  <span>•</span>
+                                  <span className="font-bold text-[#0B3B8C]">{typeof item.price === 'number' ? `$${item.price}` : item.price}</span>
+                                </div>
+                              </div>
+                              
+                              <div className="flex gap-2 mt-2">
+                                <button 
+                                  onClick={() => {
+                                    if (item.type === 'tour') {
+                                      navigate('tour-detail', item.name.toLowerCase().replace(/\s+/g, '-'));
+                                    } else {
+                                      navigate('packages', `package=${encodeURIComponent(item.name)}`);
+                                    }
+                                  }}
+                                  className="text-[10px] font-extrabold text-[#0B3B8C] hover:underline"
+                                >
+                                  View Details
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    if (item.type === 'tour') {
+                                      navigate('booking', `tour=${encodeURIComponent(item.name)}`);
+                                    } else {
+                                      navigate('booking', `package=${encodeURIComponent(item.name)}`);
+                                    }
+                                  }}
+                                  className="text-[10px] font-extrabold text-emerald-600 hover:underline"
+                                >
+                                  Book Now
+                                </button>
+                              </div>
+                            </div>
+
+                            <button 
+                              onClick={() => removeFromWishlist(item.id)}
+                              className="absolute top-3 right-3 p-1.5 rounded-full text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              title="Remove from wishlist"
+                            >
+                              <ShieldAlert size={14} className="rotate-45" />
+                            </button>
                           </div>
-                          
-                          <button 
-                            onClick={() => {
-                              navigate('booking', `tour=${encodeURIComponent(item.name)}`);
-                            }}
-                            className="bg-[#0B3B8C] hover:bg-[#082d6b] text-white text-[10px] font-extrabold py-2 px-3 rounded-xl uppercase tracking-wider transition-colors shrink-0"
-                          >
-                            Book Now
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1808,6 +1927,43 @@ export default function MyAccount({ navigate }: MyAccountProps) {
           )}
         </div>
       </div>
+
+      {/* Review Modal Overlay */}
+      <AnimatePresence>
+        {reviewingBooking && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setReviewingBooking(null)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-xl bg-white rounded-[2rem] shadow-2xl overflow-hidden"
+            >
+              <div className="p-8">
+                <TourReviewWidget 
+                  tourId={reviewingBooking.tour_name.toLowerCase().replace(/\s+/g, '-')} 
+                  tourName={reviewingBooking.tour_name}
+                  onSuccess={() => {
+                    setTimeout(() => setReviewingBooking(null), 2500);
+                  }}
+                />
+                <button 
+                  onClick={() => setReviewingBooking(null)}
+                  className="mt-4 text-xs font-bold text-slate-400 hover:text-slate-600 block mx-auto underline uppercase tracking-widest"
+                >
+                  Close without submitting
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
