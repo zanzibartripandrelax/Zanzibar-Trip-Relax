@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { Page } from '../hooks/useHashRouter';
 import { 
   Calendar, Clock, MapPin, Check, ChevronDown, ChevronUp, Compass, ArrowRight, X, List, HelpCircle, Image as ImageIcon, Sparkles,
-  Map, Star, Hotel, Utensils, ShieldAlert, ArrowLeft, Heart, Plane, Activity, CheckCircle, XCircle, ShieldCheck
+  Map, Star, Hotel, Utensils, ShieldAlert, ArrowLeft, Heart, Plane, Activity, CheckCircle, XCircle, ShieldCheck, Mail
 } from 'lucide-react';
-import { getSiteContent } from '../lib/cmsStore';
+import { useCMSStore } from '../lib/cmsStore';
 import { ProgressiveImage } from '../components/ProgressiveImage';
 import ShareButtons from '../components/ShareButtons';
 import GuestReviews from '../components/GuestReviews';
@@ -17,202 +17,43 @@ interface PackagesProps {
   queryParams?: Record<string, string>;
 }
 
-export const packagesData = [
-  {
-    id: '3-day-escape',
-    title: '3-Day Zanzibar Romantic Escape',
-    duration: '3 Days / 2 Nights',
-    price: '$350',
-    destinations: 'Stone Town & Prison Island Sanctuary',
-    summary: 'Perfect for couples, honeymooners, and weekend travelers who want an intimate, high-comfort luxury taste of Zanzibar’s historical charm, giant tortoise reserves, sandbanks, and rooftop panoramic dining.',
-    image: 'https://images.pexels.com/photos/1547843/pexels-photo-1547843.jpeg?auto=compress&cs=tinysrgb&w=800',
-    tags: ['Couples Choice', 'Honeymoon Special', 'Short Escape'],
-    highlights: [
-      'Welcome private Airport meet & greet and direct resort transfers',
-      'Hand-feeding prehistoric Aldabra Giant Tortoises on Changuu Island',
-      'Private wooden chartered boat sailing past Stone Town’s classic waterfront',
-      'Authentic candle-lit seafood dinner at a gorgeous rooftop terrace overlooking the sea',
-      'Guided historical tour of Omani Fort lanes and Arab doors'
-    ],
-    bestTimeToVisit: 'Year-round. Outstandingly romantic during warm months (December to March) and cool breeze dry months (June to October).',
-    whatToBring: [
-      'Smart casual clothing (shoulders & knees covered for Stone Town walks)',
-      'Swimwear, sandals, dry beach towels, and highUPF sunblock',
-      'Camera or smartphone for beautiful colonial-lane photographs',
-      'Small cash USD notes for shopping for local saffron or coffee spice'
-    ],
-    included: [
-      '2 Nights boutique historic riad accommodation in Stone Town',
-      'All airport-to-resort and boat-to-shore private land transfers',
-      'Professional bilingual certified historian guide fees',
-      'Ferry or airport greeting logistics service',
-      'Changuu (Prison Island) tortoise reserve admission passes'
-    ],
-    excluded: [
-      'Lunches and restaurant snacking outside program days',
-      'International flight tickets or airport arrival tourist taxes',
-      'Tips for guide and vehicle shuttle drivers'
-    ],
-    pricingTable: [
-      { tier: 'Couples Promo (Duo rate per guest)', rate: '$350 USD' },
-      { tier: 'Solo Traveler Rate', rate: '$490 USD' },
-      { tier: 'Extra Night Riad supplement', rate: '+$95 / night' }
-    ],
-    faqs: [
-      { q: 'Can we customize the hotel choice?', a: 'Yes! We coordinate transfers across budget heritage guest-houses, mid-range traditional riads, and extreme luxury colonial sultan palaces.' },
-      { q: 'Is this trip package kids friendly?', a: 'Perfectly. Children absolutely adore the giant tortoises and shallow boat sails!' }
-    ],
-    gallery: [
-      'https://images.pexels.com/photos/1547843/pexels-photo-1547843.jpeg?auto=compress&cs=tinysrgb&w=600',
-      'https://images.pexels.com/photos/2087394/pexels-photo-2087394.jpeg?auto=compress&cs=tinysrgb&w=600',
-      'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=600'
-    ],
-    seoMetadata: {
-      title: '3-Day Zanzibar Romantic Escape Holiday Package | Local Guide',
-      desc: 'Book a luxury 3-Day Zanzibar holiday. Includes private airport transfers, Prison Island giant tortoise tours, historic Stone Town riads, and rooftop dinners.',
-      keywords: ['Zanzibar 3 Day Package', 'Zanzibar Honeymoon Tour', 'Prison Island Package', 'Stone Town Holiday', 'Zanzibar Weekend Escape']
-    },
-    itinerary: [
-      { day: 1, title: 'Welcome Greeting & Stone Town Sunset Walks', desc: 'Step out to meet your private driver at Zanzibar Airport ZNZ. Transfer to your deluxe historic riad in Stone Town. Sip hot spiced hibiscus tea and embark on an evening sunset walk to Forodhani Gardens to taste local skewers.' },
-      { day: 2, title: 'Prison Island Tortoises & White Sandbank Picnic', desc: 'Board a comfortable private wooden boat to Changuu (Prison) Island. Feed leathery necked 190-year-old Aldabra tortoises. Snorkel warm shallow reefs, then land on a pure shifting sandbar for fresh pineapple and cold drinks.' },
-      { day: 3, title: 'Historic Stone Town Walking Tour & Departure', desc: 'Follow our historian guide past the copper-studded Omani and Arab doors, House of Wonders, and Sultan Palace. Check out of the riad and transfer comfortably back to the airport.' }
-    ]
-  },
-  {
-    id: '5-day-beach-adventure',
-    title: '5-Day Ultimate Beach & Tour Adventure',
-    duration: '5 Days / 4 Nights',
-    price: '$650',
-    destinations: 'Stone Town, Safari Blue, Spice Farms & Nungwi Beach',
-    summary: 'Our legendary best-selling holiday package. Combining historic architecture, world-class dhow sailing, pristine dolphin-spotting reef snorkeling, fragrant organic spice orchards, and premium beachfront relaxation on the white sun sands of northern Nungwi.',
-    image: 'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=800',
-    tags: ['Best Seller', 'Adventure Combo', 'Beaches Master'],
-    highlights: [
-      'Premium classic dhow cruising with marine reef snorkeling across Menai Bay',
-      'Feasting on fresh rock-fire lobsters, marine crabs, and reef snaps on Kwale',
-      'Touching, peeling, and tasting organic cardamom, vanilla, and cinnamon cloves',
-      'Quiet luxury resort beachfront stays in northern Nungwi beach areas',
-      'Snorkeling Muyuni Bay with views of the famous Mnemba Island Atoll'
-    ],
-    bestTimeToVisit: 'July to March. Dry weather yields excellent crystal-clear visibility for the marine Atoll reef snorleks.',
-    whatToBring: [
-      'Two changes of swimwear and reliable UV rashguard swim-tops',
-      'Waterproof cameras (GoPro) and floating phone envelope straps',
-      'Casual light clothes for spice farm trails (close-toe shoes smart)',
-      'High-SPF reef-safe sunscreen and cooling face mists'
-    ],
-    included: [
-      '4 Nights boutique hotels (2 Nights Stone Town + 2 Nights Nungwi Beachfront)',
-      'All inland and airport private transportations (air-conditioned minivans)',
-      'All tour admissions, marine conservation vouchers, and boat hire costs',
-      'Full Safari Blue gourmet lobster and seafood BBQ buffet lunch with beers',
-      'Expert certified island marine guides and captains'
-    ],
-    excluded: [
-      'Personal dining meals at Nungwi (exclusive of hotel breakfast)',
-      'Gratuities for marine boat crew, local farmers, and transfer drivers',
-      'Travel health insurance programs'
-    ],
-    pricingTable: [
-      { tier: 'Standard Rate (Double Share, Per Guest)', rate: '$650 USD' },
-      { tier: 'Triple Share Promo rate (3 guests pool)', rate: '$590 / person' },
-      { tier: 'Solo Traveler Rate', rate: '$820 USD' },
-      { tier: 'Single Room occupancy supplement', rate: '+$140 total' }
-    ],
-    faqs: [
-      { q: 'Is Safari Blue suitable for vegetarians?', a: 'Definitely. We serve delicious fire-roasted veggie skewers, coconut rice, and fresh chips along with local fruits. Inform us upon booking!' },
-      { q: 'How far is the road transit between Stone Town and Nungwi?', a: 'A gentle, scenic 1-hour drive through lush rural coconut orchards in our air-conditioned shuttle.' }
-    ],
-    gallery: [
-      'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=600',
-      'https://images.pexels.com/photos/1430677/pexels-photo-1430677.jpeg?auto=compress&cs=tinysrgb&w=600',
-      'https://images.pexels.com/photos/4198019/pexels-photo-4198019.jpeg?auto=compress&cs=tinysrgb&w=600'
-    ],
-    seoMetadata: {
-      title: '5-Day Ultimate Zanzibar Beach & Tour Adventure Package',
-      desc: 'Embark on our famous 5-Day Zanzibar package. Enjoy Safari Blue ocean sailing, organic spice farm trekking, historic Stone town, and premium beach resorts of Nungwi.',
-      keywords: ['5 Day Zanzibar Package', 'Zanzibar Beach Tour Combo', 'Safari Blue Holiday', 'Zanzibar Spice Farm Packages', 'Nungwi Beach Holidays']
-    },
-    itinerary: [
-      { day: 1, title: 'Arrival, Historic Check-In & Forodhani Bazaars', desc: 'Secure private pickup from ZNZ Airport. Check into your Stone Town riad. Savor a local spice coffee and walk the historic lanes of the waterfront.' },
-      { day: 2, title: 'Safari Blue Sailing Cruise & Lobster Roast on Kwale', desc: 'Head to Fumba. Set sail on a traditional wooden dhow into Menai Bay. Snorkel vibrant coral reefs, meet wild dolphins, and feast on unlimited fire-grilled rock lobsters and prawns on Kwale beach.' },
-      { day: 3, title: 'Fragrant Spice Farms Walk & Nungwi Coast Transit', desc: 'Check out of Stone Town. Explore spice plantations, smelling wild vanilla, cardomom, and cinnamon hooks. Watch tree climbers harvest fresh young coconuts. Direct transit to your beachfront Nungwi resort.' },
-      { day: 4, title: 'Mnemba Atoll Snorkeling & dolphin spotting skiff', desc: 'Board a speedboat towards the pristine marine walls of Mnemba Atoll. Swim with tropical stars, green turtles, and giant starfish, before relaxing on sandy beaches.' },
-      { day: 5, title: 'Seaside Sunrise Breakfast & Airport Return Transfer', desc: 'Enjoy a beachside morning buffet as waves roll in. Take a final swim, check out, and board our private shuttle for a comfortable ride back to the terminal.' }
-    ]
-  },
-  {
-    id: '7-day-zanzibar-combo',
-    title: '7-Day Heritage, Nature & Ocean Wildlife Combo',
-    duration: '7 Days / 6 Nights',
-    price: '$1,150',
-    destinations: 'Stone Town Sultanates, Jozani Forest Red Monkeys, Paje Beach & Safari Blue',
-    summary: 'A luxury, deep week-long immersion that unifies every ecological, historical, and marine aspect of Zanzibar. Experience majestic Omani Sultanate history, walk ancient mahogany forests alongside rare colobus monkeys, swim inside black mangrove lagoons, learn windsurfing on pristine Paje beaches, and sail under majestic dhow canvases.',
-    image: 'https://images.pexels.com/photos/4198019/pexels-photo-4198019.jpeg?auto=compress&cs=tinysrgb&w=800',
-    tags: ['Full Week Special', 'Ultimate Safari Combo', 'Slow Travel Luxe'],
-    highlights: [
-      'Comprehensive Omani, Persian and British historical city tour of Stone Town',
-      'Walking past towering mahogany trees to spot endangered Red Colobus Monkeys',
-      'Trekking black mangrove marine eco-filter suspended loop paths',
-      'Direct coastal resort stays on Paje’s high-vibrant turquoise beaches',
-      'A special reservation dinner at the internationally acclaimed "The Rock" restaurant'
-    ],
-    bestTimeToVisit: 'July to March for superb dry weather. Essential for comfortable forest strolls and sandbar landings.',
-    whatToBring: [
-      'Breathable walk pants and lightweight long-sleeve shirts (great for Jozani mosquito protection)',
-      'Close-toe trainers, lightweight beach footwear, and ocean booties',
-      'Waterproof cameras, smartphones, high-UPF sunblock creams, and insect repellents',
-      'Cash or VISA card for specialized dinings at "The Rock" restaurant'
-    ],
-    included: [
-      '6 Nights premium hotel stays (2 Nights Stone Town, 2 Nights Paje Coast, 2 Nights Nungwi Beachfront)',
-      'All land transits throughout the week in private air-conditioned sprinters',
-      'Full-day Safari Blue marine cruise with seafood grill and unlimited drinks',
-      'Jozani National Park conservation pass, ranger and guide fees',
-      'A dedicated private island concierge available 24/7 on WhatsApp'
-    ],
-    excluded: [
-      'Dinings and beverages at "The Rock" restaurant (pre-arranged table reservation included)',
-      'Tips for national park rangers, boat captains, and private drivers',
-      'Airport luggage helper fees'
-    ],
-    pricingTable: [
-      { tier: 'Shared Double Room Luxury rate (Per Guest)', rate: '$1,150 USD' },
-      { tier: 'Triple Share Group Discount (3+ Guests)', rate: '$1,020 / person' },
-      { tier: 'Solo Luxe Single Supplement rate', rate: '$1,440 USD' },
-      { tier: 'Children rate (Ages 3–11)', rate: '$780 USD' }
-    ],
-    faqs: [
-      { q: 'Is dinner at The Rock Restaurant included in the package cost?', a: 'We guarantee and arrange your table reservation (which typically booked 3 months in advance) and provide private return transfers. The actual food and drinks ordered are paid directly by you on-site.' },
-      { q: 'Can we kitesurf at Paje?', a: 'Yes! Paje is a premium global kitesurfing hub. We can coordinate board hire and certified training lessons as optional checkout upgrades.' }
-    ],
-    gallery: [
-      'https://images.pexels.com/photos/4198019/pexels-photo-4198019.jpeg?auto=compress&cs=tinysrgb&w=600',
-      'https://images.pexels.com/photos/1179229/pexels-photo-1179229.jpeg?auto=compress&cs=tinysrgb&w=600',
-      'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=600'
-    ],
-    seoMetadata: {
-      title: '7-Day Zanzibar Heritage, Nature & Ocean Holiday Package',
-      desc: 'Experience our ultimate 7-Day Zanzibar package. Stone Town walking tours, Jozani forest monkeys safari, Paje beach stays, Safari Blue cruises, and dining at The Rock.',
-      keywords: ['7 Day Zanzibar Package', 'Zanzibar Nature Tour Combo', 'Jozani Red Monkey Package', 'Paje Beach Holidays', 'The Rock Restaurant Zanzibar']
-    },
-    itinerary: [
-      { day: 1, title: 'Zanzibar Airport Welcome & Rooftop Sunset Tea', desc: 'Secure pickup off ZNZ terminal. Check in to your premium historic Stone Town riad hotel. Enjoy spiced tea on a cozy rooftop veranda as the sea breeze rolls in.' },
-      { day: 2, title: 'Slave Chambers Memorial & Spice Plantation Trails', desc: 'Explore the Anglican Cathedral slave cells, old Fort, and bustling bazaars. Drive to organic spice farms to taste vanilla vines and cardamom cloves before enjoying a local harvest lunch.' },
-      { day: 3, title: 'Red Colobus Monkeys Hike & Coast Paje Transit', desc: 'Drive to Jozani National Park. Spot acrobatic, endangered Red Colobus primates and Sykes monkeys. Walk elevated boardwalks over black mangrove swamps. Direct transit to your Paje beach hotel.' },
-      { day: 4, title: 'Sun beach Paje, Lagoon swims or kitesurf sweeps', desc: 'Savor a lazy, tropical morning. Enjoy optional kitesurfing, swim in clear reef pools, or enjoy fresh mocktails under the coconut palms of Paje beach.' },
-      { day: 5, title: 'Safari Blue Marine dhow Cruise & Kwale Lobster BBQ', desc: 'Full-day sailing adventure! Board your wooden dhow at Fumba, snorkel Menai Bay reef gardens, relax on sandbars, and enjoy a fresh lobster seafood BBQ on Kwale Island.' },
-      { day: 6, title: 'The Rock Restaurant Dining & Kendwa Sunset Coast', desc: 'Unwind in the morning. At midnight, travel to the world-famous Rock Restaurant standing isolated on a coral reef. Enjoy premium seafood dining, then drive north to Kendwa beach for evening sunset views.' },
-      { day: 7, title: 'Tropical beach breakfast & Return checkout transits', desc: 'Savor a warm coastal breakfast buffet. Take a final dip,pack bags, and board our private shuttle back to the Airport with unforgettable memories.' }
-    ]
-  }
-];
-
 export default function Packages({ navigate, queryParams }: PackagesProps) {
   const { toggleWishlist, isInWishlist } = useWishlist();
   const scrollY = useScrollY();
   const [openItinerary, setOpenItinerary] = useState<string | null>(null);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+
+  const content = useCMSStore();
+  const allAvailablePackages = (content.tours || [])
+    .filter(t => t.category === 'package' && t.visible !== false)
+    .map(t => ({
+      id: t.id,
+      title: t.title,
+      duration: t.duration || 'Flexible Duration',
+      price: t.price.startsWith('$') ? t.price : `$${t.price}`,
+      destinations: t.location || 'Zanzibar Scenic Sights',
+      summary: t.shortDesc || t.desc || '',
+      image: t.img,
+      tags: t.tags || ['CMS Dynamic', 'Customisable'],
+      highlights: t.highlights || [t.shortDesc || ''],
+      bestTimeToVisit: t.bestTimeToVisit || 'Year-round dry periods.',
+      whatToBring: t.whatToBring || ['Lightweight clothing', 'Camera', 'Beach towel'],
+      included: t.included || ['Private air-conditioned shuttle transfers', 'All tour admissions', 'Professional native guide'],
+      excluded: t.excluded || ['Tips', 'Personal shopping'],
+      pricingTable: t.pricingTable || [{ tier: 'Standard Rate / Person', rate: t.price }],
+      faqs: t.faqs || [{ q: 'Is this dynamic tour customisable?', a: 'Yes! Contact us on WhatsApp to adjust destinations, nights, or meals.' }],
+      gallery: t.gallery && t.gallery.length > 0 ? t.gallery : [t.img],
+      seoMetadata: {
+        title: t.seoTitle || `${t.title} Holiday Package | Zanzibar Trip & Relax`,
+        desc: t.seoDescription || t.shortDesc || '',
+        keywords: t.metaKeywords || ['Zanzibar dynamic packages', 'Zanzibar custom travel']
+      },
+      itinerary: (t.itineraryDays || []).map(d => ({
+        day: d.dayNumber,
+        title: d.title,
+        desc: d.description
+      }))
+    }));
 
   const [searchParams, setSearchParams] = useState(() => {
     const dest = localStorage.getItem('ztr_search_destination') || '';
@@ -229,101 +70,48 @@ export default function Packages({ navigate, queryParams }: PackagesProps) {
     return { dest, type, arrival, departure, adults: Number(adults || '2'), children: Number(children || '0'), budget };
   });
 
-  const content = getSiteContent();
-  const dynamicPackages = (content.tours || [])
-    .filter(t => t.category === 'package')
-    .map(t => ({
-      id: t.id,
-      title: t.title,
-      duration: t.duration || 'Flexible Duration',
-      price: t.price.startsWith('$') ? t.price : `$${t.price}`,
-      destinations: t.scenicValue || 'Zanzibar Scenic Sights',
-      summary: t.desc,
-      image: t.img,
-      tags: ['CMS Dynamic', 'Customisable'],
-      highlights: [
-        t.desc,
-        'Flexible custom hotel upgrades',
-        'Zanzibar registered local driver'
-      ],
-      bestTimeToVisit: 'Year-round dry periods.',
-      whatToBring: ['Lightweight clothing', 'Camera', 'Beach towel'],
-      included: ['Private air-conditioned shuttle transfers', 'All tour admissions', 'Professional native guide'],
-      excluded: ['Tips', 'Personal shopping'],
-      pricingTable: [{ tier: 'Standard Rate / Person', rate: t.price }],
-      faqs: [{ q: 'Is this dynamic tour customisable?', a: 'Yes! Contact us on WhatsApp to adjust destinations, nights, or meals.' }],
-      gallery: [t.img],
-      seoMetadata: {
-        title: `${t.title} Holiday Package | Zanzibar Trip & Relax`,
-        desc: t.desc,
-        keywords: ['Zanzibar dynamic packages', 'Zanzibar custom travel']
-      },
-      itinerary: (t.itinerary && t.itinerary.length > 0)
-        ? t.itinerary.map((it, idx) => ({ day: idx + 1, title: `Day ${idx + 1} Excursion`, desc: it }))
-        : [{ day: 1, title: 'Uniquely Crafted Daily Program', desc: t.desc }],
-    }));
-
-  const combinedPackages = [...packagesData, ...dynamicPackages];
-
   // Sync selected package from query parameter
   useEffect(() => {
     if (queryParams?.package) {
       const decoded = decodeURIComponent(queryParams.package);
-      const matched = combinedPackages.find(p => p.id === decoded || p.title === decoded);
+      const matched = allAvailablePackages.find(p => p.id === decoded || p.title === decoded);
       if (matched) {
         setSelectedPackageId(matched.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } else if (queryParams?.id) {
       const decoded = decodeURIComponent(queryParams.id);
-      const matched = combinedPackages.find(p => p.id === decoded);
+      const matched = allAvailablePackages.find(p => p.id === decoded);
       if (matched) {
         setSelectedPackageId(matched.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
-  }, [queryParams, combinedPackages.length]);
+  }, [queryParams, allAvailablePackages.length]);
 
   const toggleItinerary = (id: string) => {
     setOpenItinerary(openItinerary === id ? null : id);
   };
 
   const getFilteredPackages = () => {
-    if (!searchParams) return combinedPackages;
+    if (!searchParams) return allAvailablePackages;
 
-    const scored = combinedPackages.map(pkg => {
+    const scored = allAvailablePackages.map(pkg => {
       let score = 0;
 
       // 1. Destination Match
       if (searchParams.dest) {
-        if (searchParams.dest === 'zanzibar') {
-          if (pkg.id === '3-day-escape' || pkg.id === '5-day-beach-adventure' || pkg.tags.includes('CMS Dynamic')) {
-            score += 3;
-          }
-        } else {
-          // Mainland / Safari locations
-          if (pkg.id === '7-day-zanzibar-combo') {
-            score += 3;
-          } else {
-            score -= 1; // minor penalty for non-mainland
-          }
+        const dest = searchParams.dest.toLowerCase();
+        if (pkg.destinations.toLowerCase().includes(dest) || pkg.title.toLowerCase().includes(dest)) {
+          score += 3;
         }
       }
 
       // 2. Experience Type Match
       if (searchParams.type) {
         const type = searchParams.type.toLowerCase();
-        if (pkg.id === '3-day-escape') {
-          const matches = ['romantic', 'honeymoon', 'anniversary', 'solo', 'cultural', 'tour'];
-          if (matches.includes(type)) score += 3;
-        } else if (pkg.id === '5-day-beach-adventure') {
-          const matches = ['adventure', 'beach', 'diving', 'family', 'group', 'package'];
-          if (matches.includes(type)) score += 3;
-        } else if (pkg.id === '7-day-zanzibar-combo') {
-          const matches = ['safari', 'wildlife', 'combo', 'custom', 'family', 'group'];
-          if (matches.includes(type)) score += 3;
-        } else if (pkg.tags.includes('CMS Dynamic')) {
-          score += 2;
+        if (pkg.tags.some(t => t.toLowerCase().includes(type)) || pkg.summary.toLowerCase().includes(type)) {
+          score += 3;
         }
       }
 
@@ -332,19 +120,19 @@ export default function Packages({ navigate, queryParams }: PackagesProps) {
         const ms = new Date(searchParams.departure).getTime() - new Date(searchParams.arrival).getTime();
         const nights = Math.ceil(ms / (1000 * 60 * 60 * 24));
         if (nights > 0) {
-          if (nights <= 3 && pkg.id === '3-day-escape') score += 4;
-          else if (nights > 3 && nights <= 5 && pkg.id === '5-day-beach-adventure') score += 4;
-          else if (nights > 5 && pkg.id === '7-day-zanzibar-combo') score += 4;
-          else if (pkg.tags.includes('CMS Dynamic')) score += 2;
+          if (pkg.duration.toLowerCase().includes(`${nights} day`) || pkg.duration.toLowerCase().includes(`${nights} night`)) {
+            score += 4;
+          }
         }
       }
 
       // 4. Budget Match
       if (searchParams.budget) {
         const b = searchParams.budget;
-        if (b === 'budget' && (pkg.id === '3-day-escape' || pkg.id === '5-day-beach-adventure')) score += 2;
-        else if (b === 'mid' && (pkg.id === '5-day-beach-adventure' || pkg.id === '7-day-zanzibar-combo')) score += 2;
-        else if ((b === 'premium' || b === 'luxury') && pkg.id === '7-day-zanzibar-combo') score += 2;
+        const priceNum = parseInt(pkg.price.replace(/[^0-9]/g, ''));
+        if (b === 'budget' && priceNum < 500) score += 2;
+        else if (b === 'mid' && priceNum >= 500 && priceNum < 1000) score += 2;
+        else if ((b === 'premium' || b === 'luxury') && priceNum >= 1000) score += 2;
       }
 
       return { ...pkg, score };
@@ -355,7 +143,7 @@ export default function Packages({ navigate, queryParams }: PackagesProps) {
     if (hasActiveFilter) {
       return scored.sort((a, b) => b.score - a.score);
     }
-    return combinedPackages;
+    return allAvailablePackages;
   };
 
   const filteredData = getFilteredPackages();

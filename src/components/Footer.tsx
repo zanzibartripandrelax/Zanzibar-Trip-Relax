@@ -97,6 +97,12 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
                   <span>Sustainability</span>
                 </button>
               </li>
+              <li>
+                <button onClick={() => navigate('best-time-to-visit')} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
+                  <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
+                  <span>Best Time to Visit</span>
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -107,6 +113,12 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
               Tours
             </h4>
             <ul className="space-y-3 text-xs font-medium">
+              <li>
+                <button onClick={() => navigate('destinations')} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
+                  <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
+                  <span>Tanzania Destinations</span>
+                </button>
+              </li>
               <li>
                 <button onClick={() => navigate('tours')} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
                   <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />

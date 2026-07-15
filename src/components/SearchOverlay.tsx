@@ -3,13 +3,13 @@ import { Search, X, Compass, Calendar, BookOpen, Clock, Tag, ArrowRight, Sparkle
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../context/LanguageContext';
 import { Page } from '../hooks/useHashRouter';
+import { useCMSStore } from '../lib/cmsStore';
 import { ProgressiveImage } from './ProgressiveImage';
 import { usePreferences } from '../context/UserPreferencesContext';
 
 // Dynamic imports of search targets
 import { tours } from '../data/tours';
 import { safarisData } from '../pages/Safaris';
-import { packagesData } from '../pages/Packages';
 import { blogPosts } from '../pages/BlogDetail';
 
 interface SearchOverlayProps {
@@ -32,6 +32,7 @@ interface SearchResult {
 export default function SearchOverlay({ isOpen, onClose, navigate }: SearchOverlayProps) {
   const { t, language } = useLanguage();
   const { formatPrice } = usePreferences();
+  const content = useCMSStore();
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'tour' | 'safari' | 'package' | 'blog'>('all');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -97,18 +98,22 @@ export default function SearchOverlay({ isOpen, onClose, navigate }: SearchOverl
       });
     });
 
-    // 3. Add Holiday Packages
-    packagesData.forEach(pkg => {
-      list.push({
-        id: pkg.id,
-        type: 'package',
-        title: pkg.title,
-        description: pkg.summary,
-        price: pkg.price,
-        duration: pkg.duration,
-        image: pkg.image,
-        category: pkg.destinations
-      });
+    // 3. Add Holiday Packages from CMS
+    const cmsPackages = (content.tours || [])
+      .filter(t => t.category === 'package' && t.visible !== false)
+      .map(t => ({
+        id: t.id,
+        type: 'package' as const,
+        title: t.title,
+        description: t.shortDesc || t.desc || '',
+        price: t.price.startsWith('$') ? t.price : `$${t.price}`,
+        duration: t.duration || 'Flexible Duration',
+        image: t.img,
+        category: t.location || 'Zanzibar'
+      }));
+
+    cmsPackages.forEach(pkg => {
+      list.push(pkg);
     });
 
     // 4. Add Blog Posts

@@ -5,14 +5,14 @@ export type Page =
   | 'contact' | 'packages' | 'safaris' | 'transfers' | 'blog'
   | 'reviews' | 'trip-builder' | 'blog-detail' | 'kilimanjaro'
   | 'faq' | 'tour-detail' | 'policies' | 'admin' | 'trip-results' | 'manage-booking'
-  | 'careers' | 'sustainability' | 'admin/login' | 'owner/login' | 'dashboard' | 'admin/dashboard' | 'my-account';
+  | 'careers' | 'sustainability' | 'admin/login' | 'owner/login' | 'dashboard' | 'admin/dashboard' | 'my-account' | 'best-time-to-visit' | 'destinations';
 
 const VALID_PAGES: Page[] = [
   'home', 'about', 'tours', 'booking', 'gallery',
   'contact', 'packages', 'safaris', 'transfers', 'blog',
   'reviews', 'trip-builder', 'blog-detail', 'kilimanjaro',
   'faq', 'tour-detail', 'policies', 'admin', 'trip-results', 'manage-booking',
-  'careers', 'sustainability', 'admin/login', 'owner/login', 'dashboard', 'admin/dashboard', 'my-account'
+  'careers', 'sustainability', 'admin/login', 'owner/login', 'dashboard', 'admin/dashboard', 'my-account', 'best-time-to-visit', 'destinations'
 ];
 
 interface RouteState {
@@ -41,6 +41,11 @@ function getPageFromHash(): RouteState {
   if (lowerHash.startsWith('blog/')) {
     const blogId = lowerHash.split('/')[1];
     return { page: 'blog-detail', blogId: blogId || null, queryParams };
+  }
+
+  // Handle destinations pages: #destinations/some-destination
+  if (lowerHash.startsWith('destinations/')) {
+    return { page: 'destinations', blogId: null, queryParams };
   }
 
   // Handle tour detail pages: #tour-detail/tour-name or #tours/tour-name
@@ -89,6 +94,8 @@ export function useHashRouter() {
       window.location.hash = `blog/${id}`;
     } else if (page === 'tour-detail' && id) {
       window.location.hash = `tours/${id}`;
+    } else if (page === 'destinations' && id) {
+      window.location.hash = `destinations/${id}`;
     } else if (id) {
       // General support for other pages with extra ID or query parameters
       window.location.hash = `${page}?${id}`;

@@ -13,6 +13,7 @@ interface AdminSidebarProps {
   setCmsEditSection: (section: any) => void;
   session: { username: string; name: string; role: string } | null;
   bookingsCount: number;
+  inquiriesCount: number;
   subscribersCount: number;
   jobsCount: number;
   usersCount: number;
@@ -28,6 +29,7 @@ export default function AdminSidebar({
   setCmsEditSection,
   session,
   bookingsCount,
+  inquiriesCount,
   subscribersCount,
   jobsCount,
   usersCount,
@@ -113,6 +115,14 @@ export default function AdminSidebar({
         badge: bookingsCount > 0 ? bookingsCount : undefined,
         action: () => setActiveTab('bookings'),
         isActive: activeTab === 'bookings'
+      },
+      { 
+        id: 'inquiries', 
+        label: 'Inquiries', 
+        icon: Mail,
+        badge: inquiriesCount > 0 ? inquiriesCount : undefined,
+        action: () => setActiveTab('inquiries'),
+        isActive: activeTab === 'inquiries'
       },
       { 
         id: 'walkin', 
@@ -328,21 +338,21 @@ export default function AdminSidebar({
     // Allowed module IDs mapped per authorized role
     const permissions: Record<string, string[]> = {
       'owner': [
-        'dashboard', 'bookings', 'walkin', 'tourops', 'customers', 'subscriptions', 'careers', 'holidayPackages', 'zanzibarTours', 
+        'dashboard', 'bookings', 'inquiries', 'walkin', 'tourops', 'customers', 'subscriptions', 'careers', 'holidayPackages', 'zanzibarTours', 
         'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'calendar', 'payments', 
         'reports', 'staff', 'rolesPermissions', 'content-management', 'gallery', 
         'blog', 'reviews', 'sustainability', 'emailCentre', 'whatsappCentre', 
         'settings', 'security', 'systemBackup', 'auditLogs', 'logout'
       ],
       'super admin': [
-        'dashboard', 'bookings', 'walkin', 'tourops', 'customers', 'subscriptions', 'careers', 'holidayPackages', 'zanzibarTours', 
+        'dashboard', 'bookings', 'inquiries', 'walkin', 'tourops', 'customers', 'subscriptions', 'careers', 'holidayPackages', 'zanzibarTours', 
         'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'calendar', 'payments', 
         'reports', 'staff', 'rolesPermissions', 'content-management', 'gallery', 
         'blog', 'reviews', 'sustainability', 'emailCentre', 'whatsappCentre', 
         'settings', 'security', 'systemBackup', 'auditLogs', 'logout'
       ],
       'manager': [
-        'dashboard', 'bookings', 'walkin', 'tourops', 'customers', 'subscriptions', 'careers', 'holidayPackages', 'zanzibarTours', 
+        'dashboard', 'bookings', 'inquiries', 'walkin', 'tourops', 'customers', 'subscriptions', 'careers', 'holidayPackages', 'zanzibarTours', 
         'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'calendar', 'payments', 
         'reports', 'content-management', 'gallery', 'blog', 'reviews', 'sustainability', 
         'settings', 'logout'
@@ -397,7 +407,7 @@ export default function AdminSidebar({
         {/* OPERATIONS SECTION */}
         {(() => {
           const operationsIds = [
-            'dashboard', 'bookings', 'walkin', 'tourops', 'customers', 'subscriptions', 'careers',
+            'dashboard', 'bookings', 'inquiries', 'walkin', 'tourops', 'customers', 'subscriptions', 'careers',
             'holidayPackages', 'zanzibarTours', 'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers',
             'calendar', 'finances', 'logs', 'cms', 'media', 'blog', 'reviews', 'sustainability',
             'emailCentre', 'whatsappCentre'

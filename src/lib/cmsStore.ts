@@ -1,17 +1,62 @@
+import { useState, useEffect } from 'react';
 import { supabase } from './supabase';
+import { Destination, ActivityItem, DEFAULT_DESTINATIONS, DEFAULT_ACTIVITIES } from './destinationDefaults';
+
+export type { Destination, ActivityItem };
+
+export interface ItineraryDay {
+  dayNumber: number;
+  title: string;
+  description: string;
+  accommodation?: string;
+  meals?: string; // e.g. "B, L, D"
+  activities?: string[];
+  images?: string[];
+  gpsLocation?: { lat: number; lng: number; label: string };
+  travelTime?: string;
+}
 
 export interface TourItem {
   id: string;
   title: string;
-  category: 'tour' | 'package' | 'safari' | 'transfer' | string;
-  desc: string;
-  price: string;
-  duration: string;
-  scenicValue?: string;
-  img: string;
-  itinerary?: string[];
+  slug: string;
+  category: 'tour' | 'package' | 'safari' | 'transfer' | 'kilimanjaro' | 'honeymoon' | 'day-trip' | string;
+  shortDesc: string;
+  desc?: string; // Legacy
+  scenicValue?: string; // Legacy
   longDescription?: string;
+  highlights?: string[];
+  included?: string[];
+  excluded?: string[];
+  price: string;
+  discountPrice?: string;
+  duration: string;
+  location: string;
+  difficulty?: 'Easy' | 'Moderate' | 'Challenging' | 'Extreme';
+  img: string;
+  gallery?: string[];
+  videoUrl?: string;
+  mapUrl?: string;
+  pickupDetails?: string;
+  dropoffDetails?: string;
+  availability?: string;
+  maxGuests?: number;
+  languages?: string[];
+  itineraryDays?: ItineraryDay[];
+  itinerary?: string[]; // Legacy support
   visible?: boolean;
+  archived?: boolean;
+  featured?: boolean;
+  bestTimeToVisit?: string;
+  whatToBring?: string[];
+  tags?: string[];
+  pricingTable?: { tier: string; rate: string }[];
+  faqs?: { q: string; a: string }[];
+  seoTitle?: string;
+  seoDescription?: string;
+  metaKeywords?: string[];
+  lastUpdated?: string;
+  destinationIds?: string[]; // Related destinations
 }
 
 export interface TeamMember {
@@ -128,11 +173,29 @@ export interface SiteContent {
     team: TeamMember[];
   };
   tours: TourItem[];
+  packages: any[]; // Holiday Packages
+  hotels: any[];
+  transfers: any[];
+  blog_posts: any[];
+  reviews: any[];
   faqs: FaqItem[];
   testimonials: TestimonialItem[];
   newsletterBgImages?: string[];
   kilimanjaroBgImages?: string[];
   youtubeVideos?: YoutubeVideo[];
+  destinations?: Destination[];
+  activities?: ActivityItem[];
+  regions?: Region[];
+}
+
+export interface Region {
+  id: string;
+  name: string;
+  image: string;
+  description: string;
+  tagline: string;
+  tag: string;
+  destCount?: number;
 }
 
 // Default initial state matching exactly current designs and details
@@ -167,7 +230,7 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
     heroSubtitle: 'Zanzibar Trip & Relax is a registered, fully licensed local tour operator based in the heart of historic Stone Town.',
     storyTitle: 'Our Authentic Story',
     storyText1: 'We began with a simple vision: to protect travelers from predatory tour pricing while establishing a platform that supports local guides and protects beautiful marine ecosystems. Born and raised in Zanzibar, our guides understand every reef, tide pool, spice farm, and backstreet history.',
-    storyText2: 'Today, we curate bespoke holidays that connect global minds to Tanzania’s mainland safaris, Uhuru peak climbing summits of Mount Kilimanjaro, and crystal-clear turquoise private beaches of structural islands.',
+    storyText2: 'Today, we curator bespoke holidays that connect global minds to Tanzania’s mainland safaris, Uhuru peak climbing summits of Mount Kilimanjaro, and crystal-clear turquoise private beaches of structural islands.',
     stats: [
       { value: '5,000+', label: 'Happy Travelers' },
       { value: '50+', label: 'Countries Served' },
@@ -187,17 +250,87 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
     ],
   },
   tours: [
-    { id: '1', title: 'Safari Blue Ocean Cruise', category: 'tour', desc: 'Sail past Sandbanks, snorkel clear lagoon corals, and enjoy a fresh seafood buffet on Kwale Island.', price: '$45', duration: 'Full Day', scenicValue: 'Exceptional', img: 'https://images.pexels.com/photos/2087394/pexels-photo-2087394.jpeg?auto=compress&cs=tinysrgb&w=600' },
-    { id: '2', title: 'Mnemba Island Snorkeling', category: 'tour', desc: 'Swim in crystal-clear waters alongside wild dolphins, sea turtles, and starfish near the famous private island.', price: '$35', duration: 'Half Day', scenicValue: 'Splendid', img: 'https://images.pexels.com/photos/1450363/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=600' },
-    { id: '3', title: 'Stone Town Cultural Walk', category: 'tour', desc: 'Explore the narrow coral lanes, rich sultan history, bustling local bazaars, and Fredy Mercury museum.', price: '$20', duration: '3 Hours', scenicValue: 'High', img: 'https://images.pexels.com/photos/2161467/pexels-photo-2161467.jpeg?auto=compress&cs=tinysrgb&w=1600' },
-    { id: '4', title: 'Prison Island & Giant Tortoises', category: 'tour', desc: 'A short boat ride to feed Aldabra giant tortoises dating back to 100 years and snorkel the prison reef flats.', price: '$25', duration: '3 Hours', scenicValue: 'Medium-High', img: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=1600' },
-    { id: '5', title: 'Tangy Spice Farm Tour', category: 'tour', desc: 'Smell, taste, and pick dynamic tropical spices, vanilla pod vines, cloves, and receive hand-woven coconut hats.', price: '$15', duration: '2 Hours', scenicValue: 'Medium', img: 'https://images.pexels.com/photos/2826787/pexels-photo-2826787.jpeg?auto=compress&cs=tinysrgb&w=600' },
-    { id: '6', title: 'Jozani Forest National Park', category: 'tour', desc: 'Walk alongside adorable rare red colobus monkeys in a deep mahogany forest and pristine coastal mangrove boardwalks.', price: '$25', duration: '3 Hours', scenicValue: 'High', img: 'https://images.pexels.com/photos/3474320/pexels-photo-3474320.jpeg?auto=compress&cs=tinysrgb&w=600' },
-    { id: 'sunset-dhow', title: 'Sunset Dhow Cruise', category: 'tour', desc: 'Glide across the Indian Ocean on a traditional wooden dhow as the sun melts into the horizon. Sundowners included.', price: '$55', duration: '2.5 Hours', scenicValue: 'High', img: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=800' },
-    { id: 'dolphin-kizimkazi', title: 'Dolphin Tour Kizimkazi', category: 'tour', desc: 'Swim with wild spinner and bottlenose dolphins in the warm waters off Kizimkazi village in southern Zanzibar.', price: '$60', duration: 'Half Day (4 hrs)', scenicValue: 'Splendid', img: 'https://images.pexels.com/photos/1007657/pexels-photo-1007657.jpeg?auto=compress&cs=tinysrgb&w=800' },
-    { id: 'nakupenda-sandbank', title: 'Nakupenda Sandbank Picnic', category: 'tour', desc: 'Sail to the legendary "I Love You" sandbank for a private beach picnic surrounded by turquoise infinity waters.', price: '$70', duration: 'Half Day (4 hrs)', scenicValue: 'Exceptional', img: 'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=800' },
-    { id: 'quad-bike', title: 'Quad Bike Adventure', category: 'tour', desc: 'Rev through Zanzibar beaches, plantations, and villages on an exhilarating quad bike adventure for all levels.', price: '$65', duration: '2–3 Hours', scenicValue: 'High', img: 'https://images.pexels.com/photos/1591373/pexels-photo-1591373.jpeg?auto=compress&cs=tinysrgb&w=800' },
+    { id: '1', title: 'Safari Blue Ocean Cruise', slug: 'safari-blue', category: 'tour', shortDesc: 'Sail past Sandbanks, snorkel clear lagoon corals, and enjoy a fresh seafood buffet on Kwale Island.', price: '$45', duration: 'Full Day', location: 'Menai Bay, Fumba', img: 'https://images.pexels.com/photos/2087394/pexels-photo-2087394.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
+    { id: '2', title: 'Mnemba Island Snorkeling', slug: 'mnemba-snorkeling', category: 'tour', shortDesc: 'Swim in crystal-clear waters alongside wild dolphins, sea turtles, and starfish near the famous private island.', price: '$35', duration: 'Half Day', location: 'Matemwe, Nungwi', img: 'https://images.pexels.com/photos/1450363/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
+    { id: '3', title: 'Stone Town Cultural Walk', slug: 'stone-town-walk', category: 'tour', shortDesc: 'Explore the narrow coral lanes, rich sultan history, bustling local bazaars, and Fredy Mercury museum.', price: '$20', duration: '3 Hours', location: 'Stone Town', img: 'https://images.pexels.com/photos/2161467/pexels-photo-2161467.jpeg?auto=compress&cs=tinysrgb&w=1600', visible: true },
+    { id: '4', title: 'Prison Island & Giant Tortoises', slug: 'prison-island', category: 'tour', shortDesc: 'A short boat ride to feed Aldabra giant tortoises dating back to 100 years and snorkel the prison reef flats.', price: '$25', duration: '3 Hours', location: 'Stone Town Harbor', img: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=1600', visible: true },
+    {
+      id: '3-day-escape',
+      title: '3-Day Zanzibar Romantic Escape',
+      slug: '3-day-escape',
+      category: 'package',
+      shortDesc: 'Perfect for couples, honeymooners, and weekend travelers who want an intimate, high-comfort luxury taste of Zanzibar’s charm.',
+      price: '$350',
+      duration: '3 Days / 2 Nights',
+      location: 'Stone Town & Prison Island Sanctuary',
+      img: 'https://images.pexels.com/photos/1547843/pexels-photo-1547843.jpeg?auto=compress&cs=tinysrgb&w=800',
+      tags: ['Couples Choice', 'Honeymoon Special', 'Short Escape'],
+      highlights: [
+        'Welcome private Airport meet & greet and direct resort transfers',
+        'Hand-feeding prehistoric Aldabra Giant Tortoises on Changuu Island',
+        'Private wooden chartered boat sailing past Stone Town’s classic waterfront',
+        'Authentic candle-lit seafood dinner at a gorgeous rooftop terrace',
+        'Guided historical tour of Omani Fort lanes and Arab doors'
+      ],
+      bestTimeToVisit: 'Year-round. Outstandingly romantic during warm months.',
+      whatToBring: ['Smart casual clothing', 'Swimwear', 'Camera', 'Small cash USD'],
+      included: ['2 Nights boutique riad', 'Transfers', 'Guide fees', 'Ferry logistics', 'Tortoise reserve passes'],
+      excluded: ['Lunches', 'Flights', 'Tips'],
+      visible: true,
+      itineraryDays: [
+        { dayNumber: 1, title: 'Welcome Greeting & Stone Town Sunset Walks', description: 'Step out to meet your private driver at Zanzibar Airport ZNZ.' },
+        { dayNumber: 2, title: 'Prison Island Tortoises & White Sandbank Picnic', description: 'Board a comfortable private wooden boat to Changuu Island.' },
+        { dayNumber: 3, title: 'Historic Stone Town Walking Tour & Departure', description: 'Follow our historian guide past the copper-studded Omani and Arab doors.' }
+      ]
+    },
+    {
+      id: '5-day-beach-adventure',
+      title: '5-Day Ultimate Beach & Tour Adventure',
+      slug: '5-day-beach-adventure',
+      category: 'package',
+      shortDesc: 'Our legendary best-selling holiday package combining history, sailing, snorkeling, and spice farms.',
+      price: '$650',
+      duration: '5 Days / 4 Nights',
+      location: 'Stone Town, Safari Blue, Spice Farms & Nungwi',
+      img: 'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=800',
+      tags: ['Best Seller', 'Adventure Combo', 'Beaches Master'],
+      visible: true,
+      itineraryDays: [
+        { dayNumber: 1, title: 'Arrival & North Coast Transfer', description: 'Arrival at ZNZ airport and transfer to Nungwi.' },
+        { dayNumber: 2, title: 'Mnemba Snorkeling Expedition', description: 'Full day marine adventure.' },
+        { dayNumber: 3, title: 'Spice Farm & Jozani Monkeys', description: 'Organic farm tour and red colobus monkey spotting.' },
+        { dayNumber: 4, title: 'Safari Blue Marine Safari', description: 'Full day dhow sailing in Menai Bay.' },
+        { dayNumber: 5, title: 'Stone Town & Departure', description: 'Walking tour and final airport transfer.' }
+      ]
+    },
+    {
+      id: '7-day-zanzibar-combo',
+      title: '7-Day Heritage, Nature & Ocean Combo',
+      slug: '7-day-zanzibar-combo',
+      category: 'package',
+      shortDesc: 'Deep Zanzibar immersion combining five-star beach stays, spice trails, and history.',
+      price: '$1150',
+      duration: '7 Days / 6 Nights',
+      location: 'Stone Town, Paje & Nungwi',
+      img: 'https://images.pexels.com/photos/4198019/pexels-photo-4198019.jpeg?auto=compress&cs=tinysrgb&w=800',
+      tags: ['Luxury Leisure', 'Full Immersion'],
+      visible: true,
+      itineraryDays: [
+        { dayNumber: 1, title: 'Arrival & Swahili Welcome', description: 'Transfer to Stone Town and Swahili dinner.' },
+        { dayNumber: 2, title: 'Prison Island & Giant Tortoises', description: 'Meet the giants of Changuu Island.' },
+        { dayNumber: 3, title: 'Spice Farms & Bwejuu Beach', description: 'Farm-to-table lunch and transfer to Bwejuu.' },
+        { dayNumber: 4, title: 'Mnemba Snorkeling', description: 'Outer reef snorkeling expedition.' },
+        { dayNumber: 5, title: 'Leisure Day', description: 'Beachside relaxation at Bwejuu.' },
+        { dayNumber: 6, title: 'Safari Blue Adventure', description: 'Full day marine safari.' },
+        { dayNumber: 7, title: 'Jozani Forest & Departure', description: 'Monkey spotting and airport transfer.' }
+      ]
+    }
   ],
+  packages: [],
+  hotels: [],
+  transfers: [],
+  blog_posts: [],
+  reviews: [],
   faqs: [
     { category: 'Visas & Customs', q: 'Do I need a visa to enter Zanzibar (Tanzania)?', a: 'Most international travelers require a visa. You can apply easily online via the official Tanzania eVisa system (recommended at least 2 weeks before) or purchase a Visa on Arrival at Abeid Amani Karume International Airport (ZNZ) for $50 for standard nations or $100 for citizens of the USA.' },
     { category: 'Visas & Customs', q: 'What is the passport validity requirement?', a: 'Your passport must have at least six (6) months of validity remaining from your arrival date and at least two blank consecutive pages.' },
@@ -241,6 +374,37 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
       url: 'https://www.youtube.com/watch?v=aD77-k1tZxs',
       embedId: 'aD77-k1tZxs',
       description: 'Witness the incredible lions, leopards, and giant elephant herds roaming the Serengeti plains.'
+    }
+  ],
+  destinations: DEFAULT_DESTINATIONS,
+  activities: DEFAULT_ACTIVITIES,
+  regions: [
+    {
+      id: 'northern',
+      name: 'Northern Tanzania',
+      image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=1200&q=80',
+      description: 'The iconic safari capital of East Africa. Experience the endless plains of the Serengeti, the breathtaking caldera of Ngorongoro Crater, and stand in the shadow of Mount Kilimanjaro, the Roof of Africa.',
+      destCount: 7,
+      tagline: 'Classic Safaris & Rooftop Peaks',
+      tag: 'Wildlife & Adventure'
+    },
+    {
+      id: 'southern',
+      name: 'Southern Tanzania',
+      image: 'https://images.pexels.com/photos/1013329/pexels-photo-1013329.jpeg?auto=compress&cs=tinysrgb&w=1200',
+      description: 'A wild, untouched frontier for the true adventurer. Discover the vast plains of Nyerere (Selous), the giant lion prides of Ruaha, and the breathtaking water channels of Mikumi.',
+      destCount: 3,
+      tagline: 'Untamed Wilderness & Boat Safaris',
+      tag: 'Raw & Exclusive'
+    },
+    {
+      id: 'zanzibar',
+      name: 'Zanzibar Archipelago',
+      image: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200',
+      description: 'The ancient clove-scented Swahili coast. Relax on the powdery white-sand beaches of Unguja, dive the pristine walls of Pemba, and swim with gentle whale sharks in Mafia Island.',
+      destCount: 3,
+      tagline: 'Swahili Culture & Turquoise Shores',
+      tag: 'Beach & Culture'
     }
   ]
 };
@@ -322,6 +486,18 @@ export function getSiteContent(): SiteContent {
         parsed.youtubeVideos = DEFAULT_SITE_CONTENT.youtubeVideos;
         modified = true;
       }
+      if (parsed && !parsed.destinations) {
+        parsed.destinations = DEFAULT_SITE_CONTENT.destinations;
+        modified = true;
+      }
+      if (parsed && !parsed.activities) {
+        parsed.activities = DEFAULT_SITE_CONTENT.activities;
+        modified = true;
+      }
+      if (parsed && !parsed.regions) {
+        parsed.regions = DEFAULT_SITE_CONTENT.regions;
+        modified = true;
+      }
       if (modified) {
         localStorage.setItem('site_content_dynamic', JSON.stringify(parsed));
       }
@@ -366,6 +542,16 @@ export async function syncSiteContentFromDb(): Promise<SiteContent | null> {
         merged.tours = [...merged.tours, ...missingTours];
       }
 
+      if (!merged.destinations) {
+        merged.destinations = DEFAULT_SITE_CONTENT.destinations;
+      }
+      if (!merged.activities) {
+        merged.activities = DEFAULT_SITE_CONTENT.activities;
+      }
+      if (!merged.regions) {
+        merged.regions = DEFAULT_SITE_CONTENT.regions;
+      }
+
       localStorage.setItem('site_content_dynamic', JSON.stringify(merged));
       return merged;
     }
@@ -378,6 +564,7 @@ export async function syncSiteContentFromDb(): Promise<SiteContent | null> {
 export function saveSiteContent(content: SiteContent, user = 'Super Admin', action = 'Updated settings'): void {
   localStorage.setItem('site_content_dynamic', JSON.stringify(content));
   addActivityLog(user, user === 'Super Admin' ? 'Super Admin' : 'Staff', action);
+  triggerCMSSync();
 
   // Sync to Supabase if config is set up
   supabase.from('site_config').upsert([{ id: 'global_cms_state', data: content }])
@@ -575,6 +762,11 @@ export interface HotelOption {
   name: string;
   zoneId: string;
   enabled?: boolean;
+  destinationId?: string;
+  image?: string;
+  description?: string;
+  stars?: string;
+  category?: string;
 }
 
 const DEFAULT_SEASONALITY: SeasonalityConfig = {
@@ -606,19 +798,23 @@ const DEFAULT_ZONES: TransportZone[] = [
 ];
 
 const DEFAULT_HOTELS: HotelOption[] = [
-  { id: 'h1', name: 'Zanzibar Royal Beach Resort', zoneId: 'z11' },
-  { id: 'h2', name: 'Baraza Heritage Hotel', zoneId: 'z1' },
-  { id: 'h3', name: 'Paje Blue Surf Palms Resort', zoneId: 'z8' },
-  { id: 'h4', name: 'Gold Zanzibar Beach House', zoneId: 'z12' },
-  { id: 'h5', name: 'Zuri Zanzibar Resort', zoneId: 'z12' },
-  { id: 'h6', name: 'Matemwe Lodge', zoneId: 'z3' },
-  { id: 'h7', name: 'Melia Zanzibar Resort', zoneId: 'z4' },
-  { id: 'h8', name: 'Michamvi Sunset Bay', zoneId: 'z7' },
-  { id: 'h9', name: 'Riu Palace Zanzibar', zoneId: 'z11' },
-  { id: 'h10', name: 'Royal Zanzibar Beach Resort', zoneId: 'z11' },
-  { id: 'h11', name: 'Z Hotel', zoneId: 'z11' },
-  { id: 'h12', name: 'Nungwi Dreams', zoneId: 'z11' },
-  { id: 'h13', name: 'Nungwi Inn', zoneId: 'z11' },
+  { id: 'h1', name: 'Zanzibar Royal Beach Resort', zoneId: 'z11', destinationId: 'unguja', image: 'https://images.pexels.com/photos/189296/pexels-photo-189296.jpeg?auto=compress&cs=tinysrgb&w=600', description: 'Perched on Nungwi beach with premium infinity pools, private beach stretches, and beautiful ocean sunset dining.', stars: '5', category: 'Premium Elite' },
+  { id: 'h2', name: 'Baraza Heritage Hotel', zoneId: 'z1', destinationId: 'unguja', image: 'https://images.pexels.com/photos/258154/pexels-photo-258154.jpeg?auto=compress&cs=tinysrgb&w=600', description: 'Rich Swahili architectural palace in the heart of Stone Town, boasting historical suites and premium rooftop dining.', stars: '5', category: 'Heritage Luxury' },
+  { id: 'h3', name: 'Paje Blue Surf Palms Resort', zoneId: 'z8', destinationId: 'unguja', image: 'https://images.pexels.com/photos/1134176/pexels-photo-1134176.jpeg?auto=compress&cs=tinysrgb&w=600', description: 'Exclusive eco-conscious sanctuary nestled inside pristine private tropical palm forests, offering high-end luxury suites.', stars: '4', category: 'Eco Premium' },
+  { id: 'h4', name: 'Gold Zanzibar Beach House', zoneId: 'z12', destinationId: 'unguja', image: 'https://images.pexels.com/photos/338504/pexels-photo-338504.jpeg?auto=compress&cs=tinysrgb&w=600', description: 'An elegant oasis in Kendwa Beach with premium beachside villas, fine dining options, and extreme-tides wellness treatments.', stars: '5', category: 'Premium Elite' },
+  { id: 'h5', name: 'Zuri Zanzibar Resort', zoneId: 'z12', destinationId: 'unguja', image: 'https://images.pexels.com/photos/261181/pexels-photo-261181.jpeg?auto=compress&cs=tinysrgb&w=600', description: 'Bespoke design resort featuring dynamic thatch villas, award-winning spice gardens, and beautiful private turquoise ocean bays.', stars: '5', category: 'Ultra Luxury' },
+  { id: 'h6', name: 'Matemwe Lodge', zoneId: 'z3', destinationId: 'unguja', image: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=600', description: 'Perched on high coral cliffs overlooking a pristine lagoon and the world-famous snorkeling sandbanks of Mnemba Atoll.', stars: '4', category: 'Scenic Premium' },
+  { id: 'h7', name: 'Melia Zanzibar Resort', zoneId: 'z4', destinationId: 'unguja', image: 'https://images.pexels.com/photos/1134176/pexels-photo-1134176.jpeg?auto=compress&cs=tinysrgb&w=600', description: 'Stunning all-inclusive resort on the east coast, built along private cliffs with a dramatic 300-meter jetty lounge.', stars: '5', category: 'Premium Elite' },
+  { id: 'h8', name: 'Michamvi Sunset Bay', zoneId: 'z7', destinationId: 'unguja', image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=600', description: 'Nestled in a tranquil, protected crescent bay on the Michamvi Peninsula, perfect for swimming and witnessing spectacular Zanzibar sunsets.', stars: '4', category: 'Boutique Relax' },
+  { id: 'h9', name: 'Riu Palace Zanzibar', zoneId: 'z11', destinationId: 'unguja', image: 'https://images.pexels.com/photos/189296/pexels-photo-189296.jpeg?auto=compress&cs=tinysrgb&w=600', description: 'Sprawling premium adult-only cliffside sanctuary, offering all-suite configurations and stellar sea views.', stars: '5', category: 'Ultra Luxury' },
+  { id: 'h10', name: 'Royal Zanzibar Beach Resort', zoneId: 'z11', destinationId: 'unguja', image: 'https://images.pexels.com/photos/338504/pexels-photo-338504.jpeg?auto=compress&cs=tinysrgb&w=600', description: 'A massive beachfront resort offering infinite-pool swim-up bars, traditional Swahili architectures, and family gardens.', stars: '5', category: 'Premium Elite' },
+  { id: 'h11', name: 'Z Hotel', zoneId: 'z11', destinationId: 'unguja', image: 'https://images.pexels.com/photos/258154/pexels-photo-258154.jpeg?auto=compress&cs=tinysrgb&w=600', description: 'Chic, boutique beachfront hotel on the vibrant Nungwi sands, combining contemporary style with Swahili warmth.', stars: '4', category: 'Boutique Elite' },
+  { id: 'h12', name: 'Nungwi Dreams', zoneId: 'z11', destinationId: 'unguja', image: 'https://images.pexels.com/photos/261181/pexels-photo-261181.jpeg?auto=compress&cs=tinysrgb&w=600', description: 'Modern, design-centric suites located in the quiet eastern Nungwi sector, offering infinity rooftop lounges and starfish snorkeling reefs.', stars: '5', category: 'Premium Elite' },
+  { id: 'h13', name: 'Nungwi Inn', zoneId: 'z11', destinationId: 'unguja', image: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=600', description: 'Cozy, traditional thatched beach cottages on the white sands of Nungwi, ideal for budget-friendly beach escapes.', stars: '3', category: 'Standard Beach' },
+  { id: 'h14', name: 'Serengeti Serena Safari Lodge', zoneId: 'z1', destinationId: 'serengeti', image: 'https://images.pexels.com/photos/247502/pexels-photo-247502.jpeg?auto=compress&cs=tinysrgb&w=600', description: 'Built of natural stone and wood on a ridge overlooking the endless savanna, blending seamlessly into the acacia-dotted landscape.', stars: '5', category: 'Safari Lodge Elite' },
+  { id: 'h15', name: 'Ngorongoro Serena Safari Lodge', zoneId: 'z1', destinationId: 'ngorongoro', image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=600&q=80', description: 'Perched directly on the jagged rim of the ancient volcanic caldera, offering majestic sweeping floor views from every room window.', stars: '5', category: 'Safari Lodge Elite' },
+  { id: 'h16', name: 'Manyara Wildlife Safari Camp', zoneId: 'z1', destinationId: 'manyara', image: 'https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?auto=format&fit=crop&w=600&q=80', description: 'Overlooking the dynamic, pink-hued soda lake, offering beautiful canvas-roof suites and wild tree-climbing lion sightings.', stars: '4', category: 'Eco Camp' },
+  { id: 'h17', name: 'Tarangire Sopa Lodge', zoneId: 'z1', destinationId: 'tarangire', image: 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&w=600&q=80', description: 'Built nestled among giant, ancient thousand-year-old baobab trees, offering spacious luxury suites and close encounters with massive elephant herds.', stars: '4', category: 'Baobab Premium' }
 ];
 
 export function getSeasonalityConfig(): SeasonalityConfig {
@@ -689,6 +885,31 @@ export function getHotels(): HotelOption[] {
 
 export function saveHotels(hotels: HotelOption[]): void {
   localStorage.setItem('ztr_hotel_list_dynamic', JSON.stringify(hotels));
+  
+  // Sync to Supabase if config is set up
+  supabase.from('site_config').upsert([{ id: 'ztr_hotel_list_dynamic_state', data: hotels }])
+    .then(({ error }) => {
+      if (error) console.log('Supabase hotels sync info:', error.message);
+    });
+}
+
+export async function syncHotelsFromDb(): Promise<HotelOption[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from('site_config')
+      .select('data')
+      .eq('id', 'ztr_hotel_list_dynamic_state')
+      .maybeSingle();
+
+    if (!error && data && data.data) {
+      const dbHotels = data.data as HotelOption[];
+      localStorage.setItem('ztr_hotel_list_dynamic', JSON.stringify(dbHotels));
+      return dbHotels;
+    }
+  } catch (err) {
+    console.warn('Could not sync hotels from Supabase:', err);
+  }
+  return null;
 }
 
 // Initialise defaults on execution
@@ -716,10 +937,11 @@ if (!localStorage.getItem('ztr_transport_zones')) {
 if (!localStorage.getItem('ztr_hotel_list_dynamic')) {
   localStorage.setItem('ztr_hotel_list_dynamic', JSON.stringify(DEFAULT_HOTELS));
 } else {
-  // Update if missing Riu Palace
+  // Update if missing Riu Palace, lacks destinationId, or has fewer hotels than new defaults
   try {
     const existing = JSON.parse(localStorage.getItem('ztr_hotel_list_dynamic') || '[]');
-    if (!existing.some((h: any) => h.name && h.name.includes('Riu Palace'))) {
+    const lacksDestinationId = existing.some((h: any) => !h.destinationId);
+    if (!existing.some((h: any) => h.name && h.name.includes('Riu Palace')) || lacksDestinationId || existing.length < DEFAULT_HOTELS.length) {
       localStorage.setItem('ztr_hotel_list_dynamic', JSON.stringify(DEFAULT_HOTELS));
     }
   } catch (e) {
@@ -959,4 +1181,38 @@ if (getActivities().length <= 1) {
     'Seeded',
     '127.0.0.1'
   );
+}
+
+// React Hook for CMS data with auto-refresh on changes
+export function useCMSStore() {
+  const [content, setContent] = useState<SiteContent>(getSiteContent());
+
+  useEffect(() => {
+    // Poll for changes or listen to storage events
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'site_content_dynamic') {
+        setContent(getSiteContent());
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    
+    // Custom event for internal tab changes
+    const handleSync = () => {
+      setContent(getSiteContent());
+    };
+    window.addEventListener('cms_sync', handleSync);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('cms_sync', handleSync);
+    };
+  }, []);
+
+  return content;
+}
+
+// Helper to trigger sync across components
+export function triggerCMSSync() {
+  window.dispatchEvent(new Event('cms_sync'));
 }

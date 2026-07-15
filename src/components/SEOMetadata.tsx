@@ -300,6 +300,30 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
       };
     }
 
+    // 2.5 Dynamic check for destinations
+    if (pageId === 'destinations') {
+      const hash = window.location.hash.replace('#', '').toLowerCase();
+      if (hash.includes('destinations/')) {
+        const destId = hash.split('destinations/')[1];
+        try {
+          const content = getSiteContent();
+          const matchedDest = (content.destinations || []).find(d => d.id === destId);
+          if (matchedDest) {
+            return {
+              title: `${matchedDest.seoTitle || matchedDest.name} | Zanzibar Trip & Relax`,
+              description: matchedDest.seoDescription || matchedDest.description,
+              keywords: (matchedDest.metaKeywords || []).join(', ') || `${matchedDest.name} travel, ${matchedDest.name} safari`,
+              canonicalUrl: `https://www.zanzibartripandrelax.com/#destinations/${matchedDest.id}`,
+              ogType: 'website',
+              ogImage: matchedDest.image
+            };
+          }
+        } catch (err) {
+          console.warn('Error reading destination for SEO:', err);
+        }
+      }
+    }
+
     // 3. Check for LocalStorage Admin configurations
     const local = localStorage.getItem('ztr_seo_settings');
     if (local) {
@@ -540,6 +564,36 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
         }
       };
       schemaGraph.push(articleSchema);
+    }
+
+    // H.5 Conditional Destination TouristDestination Schema
+    if (pageId === 'destinations') {
+      const hash = window.location.hash.replace('#', '').toLowerCase();
+      if (hash.includes('destinations/')) {
+        const destId = hash.split('destinations/')[1];
+        try {
+          const content = getSiteContent();
+          const matchedDest = (content.destinations || []).find(d => d.id === destId);
+          if (matchedDest) {
+            const destSchema = {
+              '@type': 'TouristDestination',
+              '@id': `https://www.zanzibartripandrelax.com/#destination-${matchedDest.id}`,
+              'name': matchedDest.name,
+              'description': matchedDest.description,
+              'image': matchedDest.image,
+              'touristType': ['Wildlife', 'Safari', 'Culture', 'Beach', 'Leisure'],
+              'geo': {
+                '@type': 'GeoCoordinates',
+                'latitude': matchedDest.region === 'zanzibar' ? -6.1659 : -2.1540,
+                'longitude': matchedDest.region === 'zanzibar' ? 39.2026 : 34.6857
+              }
+            };
+            schemaGraph.push(destSchema);
+          }
+        } catch (err) {
+          console.warn('Error constructing destination schema:', err);
+        }
+      }
     }
 
     // I. Inject Structured JSON-LD Script

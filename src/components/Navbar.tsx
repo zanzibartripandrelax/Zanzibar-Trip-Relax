@@ -40,6 +40,12 @@ const navigationMenu: MenuItem[] = [
     type: 'link'
   },
   {
+    label: 'Destinations',
+    swLabel: 'Vituo Maarufu',
+    page: 'destinations',
+    type: 'link'
+  },
+  {
     label: 'Transfers',
     swLabel: 'Marekebisho ya Uwanja',
     page: 'transfers',
@@ -133,29 +139,19 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
     return currentPage === item.page;
   };
 
-  const mobileMenuItems = [
+  const mobileMenuItems: Array<{ label: string; swLabel: string; page: Page; action?: () => void }> = [
     { label: 'Home', swLabel: 'Nyumbani', page: 'home' as Page },
     { label: 'Tours', swLabel: 'Ziara za Zanzibar', page: 'tours' as Page },
     { label: 'Safaris', swLabel: 'Safari za Tanzania', page: 'safaris' as Page },
     { label: 'Transfers', swLabel: 'Marekebisho ya Uwanja', page: 'transfers' as Page },
     { label: 'Holiday Packages', swLabel: 'Vifurushi vya Likizo', page: 'packages' as Page },
-    {
-      label: 'Destinations',
-      swLabel: 'Vituo Maarufu',
-      page: 'home' as Page,
-      action: () => {
-        navigate('home');
-        setTimeout(() => {
-          const el = document.getElementById('destinations-showcase');
-          if (el) el.scrollIntoView({ behavior: 'smooth' });
-        }, 300);
-      }
-    },
+    { label: 'Destinations', swLabel: 'Vituo Maarufu', page: 'destinations' as Page },
     { label: 'About Us', swLabel: 'Kuhusu Sisi', page: 'about' as Page },
     { label: 'Sustainability', swLabel: 'Uendelevu', page: 'sustainability' as Page },
     { label: 'Careers', swLabel: 'Ajira zetu', page: 'careers' as Page },
     { label: 'Contact', swLabel: 'Mawasiliano', page: 'contact' as Page },
-    { label: 'FAQs', swLabel: 'Maswali ya Kawaida', page: 'faq' as Page }
+    { label: 'FAQs', swLabel: 'Maswali ya Kawaida', page: 'faq' as Page },
+    { label: 'Best Time to Visit', swLabel: 'Muda Bora wa Kutembelea', page: 'best-time-to-visit' as Page }
   ];
 
   return (

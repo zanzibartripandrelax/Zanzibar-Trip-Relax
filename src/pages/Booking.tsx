@@ -16,7 +16,7 @@ import { useAnalytics } from '../context/AnalyticsContext';
 import {
   getCoupons, getDateBlockages, Coupon, DateBlockage, addActivityLog,
   getSeasonalityConfig, getTransportZones, getHotels, TransportZone, HotelOption,
-  getSiteContent, getExtendedSeasonality
+  getSiteContent, getExtendedSeasonality, useCMSStore
 } from '../lib/cmsStore';
 import {
   generateBookingPDF,
@@ -25,7 +25,7 @@ import {
 import { addEmailLog, generateEmailTemplate, getSmtpConfig } from '../lib/emailService';
 
 // Modular Imports
-import { allPackages, holidayPackageDetails, PackageItem } from '../data/bookingData';
+import { holidayPackageDetails, PackageItem } from '../data/bookingData';
 import {
   HolidayPackageForm,
   DayTourForm,
@@ -41,6 +41,22 @@ interface BookingProps {
 
 export default function Booking({ navigate, queryParams }: BookingProps) {
   const { trackBookingInitiate, trackWhatsAppClick } = useAnalytics();
+
+  const content = useCMSStore();
+  const cmsPackages = useMemo(() => {
+    return (content.tours || [])
+      .filter(t => t.category === 'package')
+      .map(t => ({
+        id: t.id,
+        title: t.title,
+        duration: t.duration || 'Flexible',
+        price: t.price,
+        image: t.img,
+        category: 'packages',
+        tag: (t.tags && t.tags[0]) || 'Featured',
+        highlights: t.highlights || [t.shortDesc || '']
+      }));
+  }, [content.tours]);
 
   // Unified Wizard Flow states
   // Step 1: Specific customized form selection & entries
@@ -182,7 +198,7 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
       const directCategory = queryParams.category;
 
       if (productId) {
-        const matched = allPackages.find(p => p.id === productId);
+        const matched = cmsPackages.find(p => p.id === productId);
         if (matched) {
           setSelectedPackage(matched);
           setActiveCategory(matched.category);
@@ -419,8 +435,9 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
 
   // Filtered packages depending on category
   const filteredPackages = useMemo(() => {
-    return allPackages.filter(p => p.category === activeCategory);
-  }, [activeCategory]);
+    if (activeCategory !== 'packages') return [];
+    return cmsPackages;
+  }, [cmsPackages, activeCategory]);
 
   // Proceed to Summary & Prepayment screen
   const handleProceedToSummary = (e: React.FormEvent) => {

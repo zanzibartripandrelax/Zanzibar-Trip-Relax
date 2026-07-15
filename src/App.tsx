@@ -39,6 +39,8 @@ const MyAccount = lazy(() => import('./pages/MyAccount'));
 const ManageBooking = lazy(() => import('./pages/ManageBooking'));
 const Careers = lazy(() => import('./pages/Careers'));
 const Sustainability = lazy(() => import('./pages/Sustainability'));
+const BestTimeToVisit = lazy(() => import('./pages/BestTimeToVisit'));
+const Destinations = lazy(() => import('./pages/Destinations'));
 
 import AuthGuard from './components/AuthGuard';
 
@@ -144,6 +146,10 @@ export default function App() {
         return <Careers navigate={navigate} />;
       case 'sustainability':
         return <Sustainability navigate={navigate} />;
+      case 'best-time-to-visit':
+        return <BestTimeToVisit navigate={navigate} />;
+      case 'destinations':
+        return <Destinations navigate={navigate} />;
       default:
         return <Home navigate={navigate} />;
     }
