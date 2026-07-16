@@ -25,14 +25,16 @@ export const DestinationManager: React.FC<DestinationManagerProps> = ({ isReadOn
   const [hotels, setHotels] = useState(getHotels());
   const [blogs, setBlogs] = useState<any[]>([]);
   const [regions, setRegions] = useState<Region[]>(siteContent.regions || []);
+  const [attractions, setAttractions] = useState<any[]>(siteContent.attractions || []);
 
-  // Sub-tab: 'destinations' | 'activities' | 'regions'
-  const [activeSubTab, setActiveSubTab] = useState<'destinations' | 'activities' | 'regions'>('destinations');
+  // Sub-tab: 'destinations' | 'activities' | 'regions' | 'attractions'
+  const [activeSubTab, setActiveSubTab] = useState<'destinations' | 'activities' | 'regions' | 'attractions'>('destinations');
 
   // Currently editing objects
   const [editDest, setEditDest] = useState<Partial<Destination> | null>(null);
   const [editAct, setEditAct] = useState<Partial<ActivityItem> | null>(null);
   const [editRegion, setEditRegion] = useState<Partial<Region> | null>(null);
+  const [editAttraction, setEditAttraction] = useState<any | null>(null);
 
   // Editor Sub-tabs
   const [editorTab, setEditorTab] = useState<'basic' | 'content' | 'stats' | 'relations' | 'gallery' | 'seo'>('basic');
@@ -50,6 +52,7 @@ export const DestinationManager: React.FC<DestinationManagerProps> = ({ isReadOn
     setTours(content.tours || []);
     setHotels(getHotels());
     setRegions(content.regions || []);
+    setAttractions(content.attractions || []);
 
     try {
       const blogData = getBlogPostsFromStorage();
@@ -281,6 +284,72 @@ export const DestinationManager: React.FC<DestinationManagerProps> = ({ isReadOn
     if (onRefresh) onRefresh();
   };
 
+  // --- ATTRACTIONS CRUD ---
+  const handleCreateAttraction = () => {
+    if (isReadOnly) return;
+    const newAtt = {
+      id: 'att-' + Math.floor(Math.random() * 10000),
+      destinationId: destinations[0]?.id || 'unguja',
+      name: '',
+      image: 'https://images.unsplash.com/photo-1590001155093-a3c66ab0c3ff?auto=format&fit=crop&w=800&q=80',
+      description: '',
+      location: '',
+      mapUrl: '',
+      thingsToDo: [] as string[],
+      relatedTours: [] as string[]
+    };
+    setEditAttraction(newAtt);
+  };
+
+  const handleEditAttraction = (att: any) => {
+    setEditAttraction({ ...att });
+  };
+
+  const handleDeleteAttraction = (id: string) => {
+    if (isReadOnly) return;
+    if (!window.confirm("Are you sure you want to delete this attraction?")) return;
+
+    const updated = attractions.filter(a => a.id !== id);
+    const content = { ...siteContent, attractions: updated };
+    saveSiteContent(content, 'Admin', `Deleted attraction [id: ${id}]`);
+    setAttractions(updated);
+    setSiteContent(content);
+    showSuccess("Attraction deleted successfully.");
+    if (onRefresh) onRefresh();
+  };
+
+  const handleSaveAttraction = () => {
+    if (isReadOnly || !editAttraction) return;
+    if (!editAttraction.name) {
+      showError("Attraction name is required.");
+      return;
+    }
+
+    const fullAtt = {
+      id: editAttraction.id || 'att-' + Math.floor(Math.random() * 10000),
+      destinationId: editAttraction.destinationId || 'unguja',
+      name: editAttraction.name,
+      image: editAttraction.image || 'https://images.unsplash.com/photo-1590001155093-a3c66ab0c3ff?auto=format&fit=crop&w=800&q=80',
+      description: editAttraction.description || '',
+      location: editAttraction.location || '',
+      mapUrl: editAttraction.mapUrl || '',
+      thingsToDo: editAttraction.thingsToDo || [],
+      relatedTours: editAttraction.relatedTours || []
+    };
+
+    const updatedAttractions = attractions.some(a => a.id === fullAtt.id)
+      ? attractions.map(a => a.id === fullAtt.id ? fullAtt : a)
+      : [...attractions, fullAtt];
+
+    const content = { ...siteContent, attractions: updatedAttractions };
+    saveSiteContent(content, 'Admin', `Saved attraction [${fullAtt.name}]`);
+    setAttractions(updatedAttractions);
+    setSiteContent(content);
+    setEditAttraction(null);
+    showSuccess(`Attraction "${fullAtt.name}" saved successfully.`);
+    if (onRefresh) onRefresh();
+  };
+
   // --- RELATIONSHIPS STATES ---
   // Tracks selected packages/tours for the currently editing destination
   const [selectedTourIds, setSelectedTourIds] = useState<string[]>([]);
@@ -450,9 +519,9 @@ export const DestinationManager: React.FC<DestinationManagerProps> = ({ isReadOn
       )}
 
       {/* Main Mode Toggle Buttons */}
-      <div className="flex items-center gap-2 border-b border-white/5 pb-4">
+      <div className="flex flex-wrap items-center gap-2 border-b border-white/5 pb-4">
         <button
-          onClick={() => { setActiveSubTab('destinations'); setEditDest(null); setEditAct(null); }}
+          onClick={() => { setActiveSubTab('destinations'); setEditDest(null); setEditAct(null); setEditRegion(null); setEditAttraction(null); }}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
             activeSubTab === 'destinations' ? 'bg-[#D4A017] text-[#020C1F]' : 'bg-[#121B30] text-slate-400 hover:text-slate-200'
           }`}
@@ -461,13 +530,31 @@ export const DestinationManager: React.FC<DestinationManagerProps> = ({ isReadOn
           <span>Destinations Directory ({destinations.length})</span>
         </button>
         <button
-          onClick={() => { setActiveSubTab('activities'); setEditDest(null); setEditAct(null); }}
+          onClick={() => { setActiveSubTab('activities'); setEditDest(null); setEditAct(null); setEditRegion(null); setEditAttraction(null); }}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
             activeSubTab === 'activities' ? 'bg-[#D4A017] text-[#020C1F]' : 'bg-[#121B30] text-slate-400 hover:text-slate-200'
           }`}
         >
           <Layers size={14} />
           <span>Activities Module ({activities.length})</span>
+        </button>
+        <button
+          onClick={() => { setActiveSubTab('regions'); setEditDest(null); setEditAct(null); setEditRegion(null); setEditAttraction(null); }}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            activeSubTab === 'regions' ? 'bg-[#D4A017] text-[#020C1F]' : 'bg-[#121B30] text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Globe size={14} />
+          <span>Regions/Categories ({regions.length})</span>
+        </button>
+        <button
+          onClick={() => { setActiveSubTab('attractions'); setEditDest(null); setEditAct(null); setEditRegion(null); setEditAttraction(null); }}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            activeSubTab === 'attractions' ? 'bg-[#D4A017] text-[#020C1F]' : 'bg-[#121B30] text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Sparkles size={14} className="text-[#D4A017]" />
+          <span>Attractions ({attractions.length})</span>
         </button>
       </div>
 
@@ -1291,6 +1378,213 @@ export const DestinationManager: React.FC<DestinationManagerProps> = ({ isReadOn
                 <span>Save Activity</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          ATTRACTIONS TAB VIEW
+          ========================================== */}
+      {activeSubTab === 'attractions' && !editAttraction && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-sm font-bold text-slate-200">Manage Popular Attractions</h3>
+              <p className="text-[10px] text-slate-400">Add, edit, or remove major attractions displayed dynamically on destination pages.</p>
+            </div>
+            {!isReadOnly && (
+              <button
+                onClick={handleCreateAttraction}
+                className="bg-[#D4A017] hover:bg-[#c39010] text-[#020C1F] px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Create Attraction</span>
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {attractions.map(attr => {
+              const destName = destinations.find(d => d.id === attr.destinationId)?.name || attr.destinationId;
+              return (
+                <div key={attr.id} className="bg-[#121B30] border border-white/5 rounded-2xl overflow-hidden flex flex-col group hover:border-[#D4A017]/20 transition-all">
+                  <div className="h-32 w-full relative bg-slate-900">
+                    <img src={attr.image} alt={attr.name} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500" />
+                    <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md text-[9px] px-2 py-1 rounded-md font-bold text-[#D4A017] border border-white/5 uppercase">
+                      {destName}
+                    </div>
+                  </div>
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <MapPin size={12} className="text-[#D4A017]" />
+                        <span>{attr.name}</span>
+                      </h4>
+                      <p className="text-[10px] text-slate-400 font-medium">{attr.location}</p>
+                      <p className="text-[10px] text-slate-400 line-clamp-3 leading-relaxed mt-1">{attr.description}</p>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
+                      <button
+                        onClick={() => handleEditAttraction(attr)}
+                        className="bg-[#1a2642] hover:bg-[#25365e] text-slate-300 p-2 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <Edit size={12} />
+                        <span className="text-[10px]">Edit</span>
+                      </button>
+                      {!isReadOnly && (
+                        <button
+                          onClick={() => handleDeleteAttraction(attr.id)}
+                          className="bg-rose-950/40 hover:bg-rose-900/40 border border-rose-500/20 text-rose-400 p-2 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Trash2 size={12} />
+                          <span className="text-[10px]">Delete</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {attractions.length === 0 && (
+            <div className="text-center py-12 bg-[#121B30] rounded-3xl border border-white/5">
+              <Sparkles className="mx-auto text-slate-500 mb-2" size={24} />
+              <p className="text-xs text-slate-400">No attractions found. Create one above to get started!</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeSubTab === 'attractions' && editAttraction && (
+        <div className="bg-[#121B30] border border-white/5 rounded-3xl p-5 space-y-4">
+          <div className="flex justify-between items-center pb-3 border-b border-white/5">
+            <div>
+              <h4 className="text-xs font-extrabold text-white flex items-center gap-2">
+                <Sparkles size={14} className="text-[#D4A017]" />
+                <span>{editAttraction.name ? `Edit: ${editAttraction.name}` : 'Create New Attraction'}</span>
+              </h4>
+              <p className="text-[9px] text-slate-400">Specify attraction details, location, and link it to its parent destination.</p>
+            </div>
+            <button
+              onClick={() => setEditAttraction(null)}
+              className="p-1.5 hover:bg-white/5 rounded-lg text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Attraction Name *</label>
+                <input
+                  type="text"
+                  value={editAttraction.name || ''}
+                  onChange={e => setEditAttraction({ ...editAttraction, name: e.target.value })}
+                  placeholder="e.g. Stone Town"
+                  className="w-full bg-[#0A1224] border border-white/5 p-2 rounded-xl text-xs focus:border-[#D4A017] outline-none text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Parent Destination *</label>
+                <select
+                  value={editAttraction.destinationId || ''}
+                  onChange={e => setEditAttraction({ ...editAttraction, destinationId: e.target.value })}
+                  className="w-full bg-[#0A1224] border border-white/5 p-2 rounded-xl text-xs focus:border-[#D4A017] outline-none text-white cursor-pointer"
+                >
+                  {destinations.map(d => (
+                    <option key={d.id} value={d.id}>{d.name} ({d.id})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Specific Location</label>
+                <input
+                  type="text"
+                  value={editAttraction.location || ''}
+                  onChange={e => setEditAttraction({ ...editAttraction, location: e.target.value })}
+                  placeholder="e.g. Zanzibar Town, Unguja"
+                  className="w-full bg-[#0A1224] border border-white/5 p-2 rounded-xl text-xs focus:border-[#D4A017] outline-none text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Image URL</label>
+                <input
+                  type="text"
+                  value={editAttraction.image || ''}
+                  onChange={e => setEditAttraction({ ...editAttraction, image: e.target.value })}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full bg-[#0A1224] border border-white/5 p-2 rounded-xl text-xs focus:border-[#D4A017] outline-none text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Google Maps Embed URL</label>
+                <input
+                  type="text"
+                  value={editAttraction.mapUrl || ''}
+                  onChange={e => setEditAttraction({ ...editAttraction, mapUrl: e.target.value })}
+                  placeholder="https://maps.google.com/maps?q=..."
+                  className="w-full bg-[#0A1224] border border-white/5 p-2 rounded-xl text-xs focus:border-[#D4A017] outline-none text-white"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Attraction Description</label>
+                <textarea
+                  value={editAttraction.description || ''}
+                  onChange={e => setEditAttraction({ ...editAttraction, description: e.target.value })}
+                  placeholder="Brief summary of the history, sights, and significance of this attraction..."
+                  rows={4}
+                  className="w-full bg-[#0A1224] border border-white/5 p-2 rounded-xl text-xs focus:border-[#D4A017] outline-none text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Things to Do (One per line)</label>
+                <textarea
+                  value={editAttraction.thingsToDo?.join('\n') || ''}
+                  onChange={e => setEditAttraction({ ...editAttraction, thingsToDo: e.target.value.split('\n').filter(Boolean) })}
+                  placeholder="Feed Giant Aldabra Tortoises&#10;Snorkel the Coral Reefs&#10;Explore the Historical Prison Ruin"
+                  rows={3}
+                  className="w-full bg-[#0A1224] border border-white/5 p-2 rounded-xl text-xs focus:border-[#D4A017] outline-none text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Related Tours / Experiences (One per line)</label>
+                <textarea
+                  value={editAttraction.relatedTours?.join('\n') || ''}
+                  onChange={e => setEditAttraction({ ...editAttraction, relatedTours: e.target.value.split('\n').filter(Boolean) })}
+                  placeholder="Stone Town Walking Tour&#10;Spice Tour & Stone Town Combo"
+                  rows={3}
+                  className="w-full bg-[#0A1224] border border-white/5 p-2 rounded-xl text-xs focus:border-[#D4A017] outline-none text-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
+            <button
+              onClick={() => setEditAttraction(null)}
+              className="bg-[#0A1224] hover:bg-slate-800 text-slate-400 px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveAttraction}
+              className="bg-[#D4A017] hover:bg-[#c39010] text-[#020C1F] px-4 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 cursor-pointer"
+            >
+              <Save size={14} />
+              <span>Save Attraction</span>
+            </button>
           </div>
         </div>
       )}

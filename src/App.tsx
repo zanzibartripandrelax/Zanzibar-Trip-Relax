@@ -41,6 +41,7 @@ const Careers = lazy(() => import('./pages/Careers'));
 const Sustainability = lazy(() => import('./pages/Sustainability'));
 const BestTimeToVisit = lazy(() => import('./pages/BestTimeToVisit'));
 const Destinations = lazy(() => import('./pages/Destinations'));
+const Hotels = lazy(() => import('./pages/Hotels'));
 
 import AuthGuard from './components/AuthGuard';
 
@@ -150,6 +151,8 @@ export default function App() {
         return <BestTimeToVisit navigate={navigate} />;
       case 'destinations':
         return <Destinations navigate={navigate} />;
+      case 'hotels':
+        return <Hotels navigate={navigate} />;
       default:
         return <Home navigate={navigate} />;
     }

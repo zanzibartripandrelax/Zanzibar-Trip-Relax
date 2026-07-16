@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabase';
-import { Destination, ActivityItem, DEFAULT_DESTINATIONS, DEFAULT_ACTIVITIES } from './destinationDefaults';
+import { Destination, ActivityItem, DEFAULT_DESTINATIONS, DEFAULT_ACTIVITIES, DEFAULT_ATTRACTIONS } from './destinationDefaults';
 
 export type { Destination, ActivityItem };
 
@@ -186,6 +186,19 @@ export interface SiteContent {
   destinations?: Destination[];
   activities?: ActivityItem[];
   regions?: Region[];
+  attractions?: Attraction[];
+}
+
+export interface Attraction {
+  id: string;
+  destinationId: string;
+  name: string;
+  image: string;
+  description: string;
+  location: string;
+  mapUrl?: string;
+  thingsToDo: string[];
+  relatedTours?: string[]; // list of related tour IDs or titles
 }
 
 export interface Region {
@@ -406,7 +419,8 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
       tagline: 'Swahili Culture & Turquoise Shores',
       tag: 'Beach & Culture'
     }
-  ]
+  ],
+  attractions: DEFAULT_ATTRACTIONS
 };
 
 export const DEFAULT_MEDIA: MediaFile[] = [
@@ -498,6 +512,10 @@ export function getSiteContent(): SiteContent {
         parsed.regions = DEFAULT_SITE_CONTENT.regions;
         modified = true;
       }
+      if (parsed && !parsed.attractions) {
+        parsed.attractions = DEFAULT_SITE_CONTENT.attractions;
+        modified = true;
+      }
       if (modified) {
         localStorage.setItem('site_content_dynamic', JSON.stringify(parsed));
       }
@@ -550,6 +568,9 @@ export async function syncSiteContentFromDb(): Promise<SiteContent | null> {
       }
       if (!merged.regions) {
         merged.regions = DEFAULT_SITE_CONTENT.regions;
+      }
+      if (!merged.attractions) {
+        merged.attractions = DEFAULT_SITE_CONTENT.attractions;
       }
 
       localStorage.setItem('site_content_dynamic', JSON.stringify(merged));

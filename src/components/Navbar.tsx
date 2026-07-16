@@ -28,27 +28,15 @@ const navigationMenu: MenuItem[] = [
     type: 'link'
   },
   {
-    label: 'Tours',
-    swLabel: 'Ziara za Zanzibar',
-    page: 'tours',
-    type: 'link'
-  },
-  {
-    label: 'Safaris',
-    swLabel: 'Safari za Tanzania',
-    page: 'safaris',
-    type: 'link'
-  },
-  {
     label: 'Destinations',
-    swLabel: 'Vituo Maarufu',
+    swLabel: 'Destinasi',
     page: 'destinations',
     type: 'link'
   },
   {
-    label: 'Transfers',
-    swLabel: 'Marekebisho ya Uwanja',
-    page: 'transfers',
+    label: 'Tours & Excursions',
+    swLabel: 'Ziara na Safari',
+    page: 'tours',
     type: 'link'
   },
   {
@@ -58,7 +46,37 @@ const navigationMenu: MenuItem[] = [
     type: 'link'
   },
   {
-    label: 'About',
+    label: 'Tanzania Safaris',
+    swLabel: 'Safari za Tanzania',
+    page: 'safaris',
+    type: 'link'
+  },
+  {
+    label: 'Kilimanjaro',
+    swLabel: 'Mlima Kilimanjaro',
+    page: 'kilimanjaro',
+    type: 'link'
+  },
+  {
+    label: 'Airport Transfers',
+    swLabel: 'Uhamisho wa Uwanja',
+    page: 'transfers',
+    type: 'link'
+  },
+  {
+    label: 'Hotels',
+    swLabel: 'Hoteli za Washirika',
+    page: 'hotels',
+    type: 'link'
+  },
+  {
+    label: 'Travel Guide',
+    swLabel: 'Mwongozo wa Safari',
+    page: 'best-time-to-visit',
+    type: 'link'
+  },
+  {
+    label: 'About Us',
     swLabel: 'Kuhusu Sisi',
     page: 'about',
     type: 'link'
@@ -67,6 +85,12 @@ const navigationMenu: MenuItem[] = [
     label: 'Contact',
     swLabel: 'Mawasiliano',
     page: 'contact',
+    type: 'link'
+  },
+  {
+    label: 'Plan My Trip',
+    swLabel: 'Panga Safari Yangu',
+    page: 'trip-builder',
     type: 'link'
   }
 ];
@@ -141,17 +165,17 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
 
   const mobileMenuItems: Array<{ label: string; swLabel: string; page: Page; action?: () => void }> = [
     { label: 'Home', swLabel: 'Nyumbani', page: 'home' as Page },
-    { label: 'Tours', swLabel: 'Ziara za Zanzibar', page: 'tours' as Page },
-    { label: 'Safaris', swLabel: 'Safari za Tanzania', page: 'safaris' as Page },
-    { label: 'Transfers', swLabel: 'Marekebisho ya Uwanja', page: 'transfers' as Page },
+    { label: 'Destinations', swLabel: 'Destinasi', page: 'destinations' as Page },
+    { label: 'Tours & Excursions', swLabel: 'Ziara na Safari', page: 'tours' as Page },
     { label: 'Holiday Packages', swLabel: 'Vifurushi vya Likizo', page: 'packages' as Page },
-    { label: 'Destinations', swLabel: 'Vituo Maarufu', page: 'destinations' as Page },
+    { label: 'Tanzania Safaris', swLabel: 'Safari za Tanzania', page: 'safaris' as Page },
+    { label: 'Kilimanjaro', swLabel: 'Mlima Kilimanjaro', page: 'kilimanjaro' as Page },
+    { label: 'Airport Transfers', swLabel: 'Uhamisho wa Uwanja', page: 'transfers' as Page },
+    { label: 'Hotels', swLabel: 'Hoteli za Washirika', page: 'hotels' as Page },
+    { label: 'Travel Guide', swLabel: 'Mwongozo wa Safari', page: 'best-time-to-visit' as Page },
     { label: 'About Us', swLabel: 'Kuhusu Sisi', page: 'about' as Page },
-    { label: 'Sustainability', swLabel: 'Uendelevu', page: 'sustainability' as Page },
-    { label: 'Careers', swLabel: 'Ajira zetu', page: 'careers' as Page },
     { label: 'Contact', swLabel: 'Mawasiliano', page: 'contact' as Page },
-    { label: 'FAQs', swLabel: 'Maswali ya Kawaida', page: 'faq' as Page },
-    { label: 'Best Time to Visit', swLabel: 'Muda Bora wa Kutembelea', page: 'best-time-to-visit' as Page }
+    { label: 'Plan My Trip', swLabel: 'Panga Safari Yangu', page: 'trip-builder' as Page }
   ];
 
   return (
@@ -243,6 +267,14 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
 
         {/* Right Action Panel */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Enquire Now CTA Button */}
+          <button
+            onClick={() => navigate('contact')}
+            className="hidden md:inline-flex items-center gap-1.5 bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-[10px] xl:text-xs font-black uppercase tracking-wider px-4.5 py-2 rounded-full shadow-md shadow-[#D4A017]/15 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap"
+          >
+            Enquire Now
+          </button>
+
           {/* Search Trigger */}
           <button
             onClick={() => setIsSearchOpen(true)}

@@ -552,3 +552,143 @@ export const DEFAULT_DESTINATIONS: Destination[] = [
     visible: true
   }
 ];
+
+export interface Attraction {
+  id: string;
+  destinationId: string;
+  name: string;
+  image: string;
+  description: string;
+  location: string;
+  mapUrl?: string;
+  thingsToDo: string[];
+  relatedTours?: string[]; // list of related tour IDs or titles
+}
+
+export const DEFAULT_ATTRACTIONS: Attraction[] = [
+  // ================= UNGUJA ATTRACTIONS =================
+  {
+    id: 'stone-town',
+    destinationId: 'unguja',
+    name: 'Stone Town',
+    image: 'https://images.unsplash.com/photo-1590001155093-a3c66ab0c3ff?auto=format&fit=crop&w=800&q=80',
+    description: 'The historic heart of Zanzibar City, Stone Town is a labyrinth of narrow alleys, bustling bazaars, and grand Arab-style mansions with beautifully carved wooden doors. It is a UNESCO World Heritage site full of history, fusion Swahili cuisine, and stunning coastal architecture.',
+    location: 'Zanzibar Town, Unguja',
+    mapUrl: 'https://maps.google.com/maps?q=Stone+Town,+Zanzibar&t=&z=14&ie=UTF8&iwloc=&output=embed',
+    thingsToDo: ['Historical Walking Tour', "Visit Sultan's Palace Museum", 'Dine at Forodhani Food Market', 'See House of Wonders', 'Shop in local Swahili bazaars'],
+    relatedTours: ['Stone Town Walking Tour', 'Spice Tour & Stone Town Combo']
+  },
+  {
+    id: 'prison-island',
+    destinationId: 'unguja',
+    name: 'Prison Island',
+    image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=800',
+    description: 'Also known as Changuu Island, this picturesque islet was once a quarantine station and is now home to giant Aldabra tortoises, pristine waters, and beautiful snorkeling reefs.',
+    location: '30 mins boat ride from Stone Town, Unguja',
+    mapUrl: 'https://maps.google.com/maps?q=Changuu+Island,+Zanzibar&t=&z=14&ie=UTF8&iwloc=&output=embed',
+    thingsToDo: ['Feed Giant Aldabra Tortoises', 'Snorkel the Coral Reefs', 'Explore the Historical Prison Ruin', 'Sunbathe on white sandbanks'],
+    relatedTours: ['Prison Island Tour', 'Safari Blue & Sandbank Experience']
+  },
+  {
+    id: 'jozani-forest',
+    destinationId: 'unguja',
+    name: 'Jozani Forest',
+    image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80',
+    description: "Zanzibar's only national park, Jozani Chwaka Bay is famous for harboring the rare and playful Red Colobus monkeys, ancient mahogany trees, and a fascinating mangrove swamp ecosystem.",
+    location: 'Central Unguja',
+    mapUrl: 'https://maps.google.com/maps?q=Jozani+Forest,+Zanzibar&t=&z=14&ie=UTF8&iwloc=&output=embed',
+    thingsToDo: ['Spot Red Colobus Monkeys', 'Walk the Mahogany Trail', 'Explore the Mangrove Boardwalk', 'Guided Nature Walk with Local Experts'],
+    relatedTours: ['Jozani Forest Tour', 'Jozani Forest & Spice Tour Combo']
+  },
+  {
+    id: 'mnemba-island',
+    destinationId: 'unguja',
+    name: 'Mnemba Island',
+    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
+    description: 'An exclusive private island surrounded by an incredibly rich marine conservation area. The shallow coral reef is the absolute best spot in Zanzibar for snorkeling and diving with tropical fish and wild dolphins.',
+    location: 'Northeast Coast of Unguja',
+    mapUrl: 'https://maps.google.com/maps?q=Mnemba+Island,+Zanzibar&t=&z=14&ie=UTF8&iwloc=&output=embed',
+    thingsToDo: ['Swim with Wild Dolphins', 'Snorkel with Tropical Fish', 'Relax on the pristine sandbanks', 'Professional Scuba Diving'],
+    relatedTours: ['Mnemba Atoll Snorkeling Tour', 'Private Boat Hire to Mnemba']
+  },
+  {
+    id: 'salaam-cave',
+    destinationId: 'unguja',
+    name: 'Salaam Cave',
+    image: 'https://images.unsplash.com/photo-1621847468516-1ed5d0df4e8c?auto=format&fit=crop&w=800&q=80',
+    description: 'An enchanting natural water cave located in Nungwi. Known for its sparkling, clear, natural swimming pool, this mystical cave offers an incredibly refreshing swim and rich local heritage.',
+    location: 'Nungwi, North Unguja',
+    mapUrl: 'https://maps.google.com/maps?q=Kuza+Cave,+Zanzibar&t=&z=14&ie=UTF8&iwloc=&output=embed',
+    thingsToDo: ['Swim in crystal clear cave water', 'Learn Swahili history & drumming', 'Take amazing subterranean photos', 'Relax in the tropical garden'],
+    relatedTours: ['Nungwi Village & Cave Tour', 'Northern Zanzibar Explorer']
+  },
+  {
+    id: 'spice-farms',
+    destinationId: 'unguja',
+    name: 'Spice Farms',
+    image: 'https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=800&q=80',
+    description: 'Discover why Zanzibar is nicknamed the "Spice Island." Walk through lush tropical plantations to smell, touch, and taste fresh cloves, nutmeg, cardamom, cinnamon, vanilla, and tropical fruits.',
+    location: 'Kizimbani, Central Unguja',
+    mapUrl: 'https://maps.google.com/maps?q=Kizimbani+Spice+Farm,+Zanzibar&t=&z=14&ie=UTF8&iwloc=&output=embed',
+    thingsToDo: ['Spice smell & taste test', 'Coconut tree climbing show', 'Taste fresh seasonal tropical fruits', 'Get a hand-made palm-leaf crown'],
+    relatedTours: ['Interactive Spice Tour', 'Stone Town & Spice Farm Combo']
+  },
+  {
+    id: 'dolphin-tours',
+    destinationId: 'unguja',
+    name: 'Dolphin Tours',
+    image: 'https://images.unsplash.com/photo-1570481662006-a3a13746fe4e?auto=format&fit=crop&w=800&q=80',
+    description: 'Witness playful bottlenose and humpback dolphins jumping alongside your boat. Kizimkazi on the southern tip of Zanzibar is world-famous for early morning dolphin excursions.',
+    location: 'Kizimkazi, South Unguja',
+    mapUrl: 'https://maps.google.com/maps?q=Kizimkazi,+Zanzibar&t=&z=14&ie=UTF8&iwloc=&output=embed',
+    thingsToDo: ['Spot Bottlenose Dolphins', 'Swim alongside dolphins safely', 'Visit Kizimkazi Old Mosque', 'Enjoy a Swahili seafood lunch on the beach'],
+    relatedTours: ['Kizimkazi Dolphin Adventure', 'Safari Blue Boat Day']
+  },
+  // ================= SAFARI ATTRACTIONS =================
+  {
+    id: 'seronera-valley',
+    destinationId: 'serengeti',
+    name: 'Seronera Valley',
+    image: 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&w=800&q=80',
+    description: 'The heart of central Serengeti, famous for resident leopards, abundant prides of lions, and excellent year-round wildlife game drives.',
+    location: 'Central Serengeti National Park',
+    mapUrl: 'https://maps.google.com/maps?q=Seronera,+Serengeti&t=&z=12&ie=UTF8&iwloc=&output=embed',
+    thingsToDo: ['Predator tracking', 'Picnic at kopjes', 'Hot air balloon safari'],
+    relatedTours: ['4-Day Classic Serengeti Safari']
+  },
+  {
+    id: 'mara-river-crossing',
+    destinationId: 'serengeti',
+    name: 'Mara River Migration',
+    image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=800&q=80',
+    description: 'Witness the high-stakes, dramatic Wildebeest Migration river crossings where thousands of wildebeests brave Nile crocodiles.',
+    location: 'Northern Serengeti National Park',
+    mapUrl: 'https://maps.google.com/maps?q=Mara+River,+Serengeti&t=&z=10&ie=UTF8&iwloc=&output=embed',
+    thingsToDo: ['Watch river crossings', 'Observe massive crocodile feeding', 'Photography safaris'],
+    relatedTours: ['7-Day Great Migration Exclusive']
+  },
+  {
+    id: 'crater-floor',
+    destinationId: 'ngorongoro',
+    name: 'Ngorongoro Crater Floor',
+    image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=800&q=80',
+    description: 'The spectacular caldera floor home to over 25,000 large mammals, including highly endangered black rhinos and huge tuskers.',
+    location: 'Ngorongoro Crater, Tanzania',
+    mapUrl: 'https://maps.google.com/maps?q=Ngorongoro+Crater&t=&z=12&ie=UTF8&iwloc=&output=embed',
+    thingsToDo: ['Track black rhinos', 'Dine at Hippo Pool picnic site', 'Spot giant lions on the prowl'],
+    relatedTours: ['3-Day Crater & Lake Manyara Safari']
+  },
+  // ================= KILIMANJARO ATTRACTIONS =================
+  {
+    id: 'uhuru-peak',
+    destinationId: 'kilimanjaro',
+    name: 'Uhuru Peak Summit',
+    image: 'https://images.unsplash.com/photo-1627896157734-4d7d4388f24b?auto=format&fit=crop&w=800&q=80',
+    description: 'Conquer Uhuru Peak, the highest summit in Africa at 5,895m, surrounded by massive ancient volcanic glaciers.',
+    location: 'Mount Kilimanjaro National Park',
+    mapUrl: 'https://maps.google.com/maps?q=Mount+Kilimanjaro&t=&z=12&ie=UTF8&iwloc=&output=embed',
+    thingsToDo: ['High-altitude alpine trekking', 'Sunrise peak celebration', 'Glacier photography'],
+    relatedTours: ['7-Day Lemosho Route Trek', '6-Day Machame Route Summit']
+  }
+];
+

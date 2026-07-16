@@ -2,94 +2,105 @@ import { useState, useEffect, useMemo } from 'react';
 import { Page } from '../hooks/useHashRouter';
 import { tours as staticTours } from '../data/tours';
 import { getSiteContent, getDateBlockages } from '../lib/cmsStore';
-import { Clock, Users, Star, ArrowRight, Compass, Check, MapPin, Search, Filter, Calendar, DollarSign, ChevronDown, ChevronUp, SlidersHorizontal, Info, Sparkles, AlertTriangle, Heart } from 'lucide-react';
+import { 
+  Clock, Users, Star, ArrowRight, Compass, Check, MapPin, Search, 
+  Calendar, ShieldCheck, Heart, Waves, Palmtree, BookOpen, Leaf, Zap, Crown, MessageCircle, SlidersHorizontal
+} from 'lucide-react';
 import { ProgressiveImage } from '../components/ProgressiveImage';
-import TourComparison from '../components/TourComparison';
 import { useScrollY } from '../hooks/useScrollY';
 import { usePreferences } from '../context/UserPreferencesContext';
-import SmartTourRecommendations from '../components/SmartTourRecommendations';
 import { useWishlist } from '../hooks/useWishlist';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface ToursProps {
   navigate: (page: Page, id?: string) => void;
   queryParams?: Record<string, string>;
 }
 
-const categories = ['All', 'Full-Day Tours', 'Half-Day Tours', 'Marine Tours', 'Nature Tours', 'Cultural Tours', 'Luxury Tours', 'Adventure Tours'];
+// Curated luxury experience categories
+const visualCategories = [
+  {
+    id: 'All',
+    label: 'All Experiences',
+    desc: 'Browse our complete catalog of unforgettable adventures.',
+    icon: Compass,
+    keywords: []
+  },
+  {
+    id: 'Marine',
+    label: 'Marine Experiences',
+    desc: 'Dive into crystal-clear waters, snorkel reefs, and sail traditional wooden dhows.',
+    icon: Waves,
+    keywords: ['marine', 'snorkeling', 'dhow', 'blue', 'swim', 'dolphin', 'menai', 'ocean', 'safari blue', 'mnemba', 'sunset dhow', 'cruise', 'boat', 'island', 'nakupenda', 'sandbank', 'reef']
+  },
+  {
+    id: 'Island',
+    label: 'Island & Beach',
+    desc: 'Relax on shifting sandbanks, explore historic islands, and discover secluded shores.',
+    icon: Palmtree,
+    keywords: ['prison', 'sandbank', 'beach', 'island', 'nakupenda', 'coast', 'nungwi', 'paje', 'kendwa']
+  },
+  {
+    id: 'Culture',
+    label: 'Culture & History',
+    desc: 'Wander historic streets, tour exotic spice farms, and discover Swahili heritage.',
+    icon: BookOpen,
+    keywords: ['culture', 'history', 'stone town', 'spice', 'village', 'heritage', 'local', 'museum', 'monument', 'market', 'town']
+  },
+  {
+    id: 'Nature',
+    label: 'Nature & Wildlife',
+    desc: 'Encounter endangered Colobus monkeys and feed centenary giant Aldabra tortoises.',
+    icon: Leaf,
+    keywords: ['forest', 'wildlife', 'jozani', 'monkey', 'turtle', 'aquarium', 'mangrove', 'nature', 'conservation', 'biodiversity']
+  },
+  {
+    id: 'Adventure',
+    label: 'Adventure & Sports',
+    desc: 'Power through rugged tracks on quad bikes and enjoy thrilling coastal water activities.',
+    icon: Zap,
+    keywords: ['quad', 'bike', 'adventure', 'thrill', 'kayak', 'windsurf', 'jet ski', 'speed', 'climb', 'parasail', 'active']
+  },
+  {
+    id: 'Luxury',
+    label: 'Luxury Charters',
+    desc: 'Indulge in private catamaran sunset cruises, fine seafood dining, and VIP services.',
+    icon: Crown,
+    keywords: ['luxury', 'premium', 'private', 'exclusive', 'charter', 'yacht', 'catamaran', 'vip', 'sunset cruise', 'ocean dhow']
+  }
+];
 
 export default function Tours({ navigate, queryParams }: ToursProps) {
   const { formatPrice } = usePreferences();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const scrollY = useScrollY();
-  const [selectedCategory, setSelectedCategory] = useState(() => {
+
+  // Active Category filter state
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => {
     if (queryParams?.category) {
-      const found = categories.find(c => c.toLowerCase() === queryParams.category.toLowerCase());
-      if (found) return found;
+      const found = visualCategories.find(c => c.id.toLowerCase() === queryParams.category.toLowerCase());
+      if (found) return found.id;
     }
     return 'All';
   });
-  const [searchQuery, setSearchQuery] = useState(queryParams?.search || '');
-  
-  // Advanced search and dynamic filtering parameters
-  const [selectedDestination, setSelectedDestination] = useState('All');
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedDuration, setSelectedDuration] = useState('All');
-  const [maxPrice, setMaxPrice] = useState(350);
-  const [selectedTourStyle, setSelectedTourStyle] = useState('All');
-  const [guestCount, setGuestCount] = useState(2);
-  const [selectedDeparture, setSelectedDeparture] = useState('All');
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Search & secondary filter states
+  const [searchQuery, setSearchQuery] = useState(queryParams?.search || '');
+  const [durationFilter, setDurationFilter] = useState('All');
+  const [budgetFilter, setBudgetFilter] = useState('All');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+
+  // Sync state with query params
   useEffect(() => {
     if (queryParams?.category) {
-      const found = categories.find(c => c.toLowerCase() === queryParams.category.toLowerCase());
-      if (found) {
-        setSelectedCategory(found);
-      }
-    } else if (queryParams && !queryParams.category) {
-      setSelectedCategory('All');
+      const found = visualCategories.find(c => c.id.toLowerCase() === queryParams.category.toLowerCase());
+      if (found) setSelectedCategory(found.id);
     }
     if (queryParams?.search) {
       setSearchQuery(queryParams.search);
-    } else if (queryParams && !queryParams.search) {
-      setSearchQuery('');
     }
   }, [queryParams]);
-  const [selectedTourIds, setSelectedTourIds] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('zanzibar_compare_tours');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [limitWarning, setLimitWarning] = useState(false);
-
-  const handleToggleCompare = (id: string) => {
-    setSelectedTourIds(prev => {
-      let next;
-      if (prev.includes(id)) {
-        next = prev.filter(x => x !== id);
-        setLimitWarning(false);
-      } else {
-        if (prev.length >= 4) {
-          setLimitWarning(true);
-          setTimeout(() => setLimitWarning(false), 4000);
-          return prev;
-        }
-        next = [...prev, id];
-        setLimitWarning(false);
-      }
-      localStorage.setItem('zanzibar_compare_tours', JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const handleClearAll = () => {
-    setSelectedTourIds([]);
-    localStorage.removeItem('zanzibar_compare_tours');
-    setLimitWarning(false);
-  };
 
   const cmsContent = getSiteContent();
   const seenTitles = new Set<string>();
@@ -101,7 +112,7 @@ export default function Tours({ navigate, queryParams }: ToursProps) {
     if (seenTitles.has(normTitle)) continue;
     seenTitles.add(normTitle);
 
-    // Check if we can find matching static tour for advanced metadata (includes, exclusions)
+    // Sync metadata with static tour library for high-fidelity content
     const staticWalk = staticTours.find(st => 
       st.id === t.id || 
       st.name.toLowerCase() === t.title.toLowerCase() ||
@@ -118,26 +129,25 @@ export default function Tours({ navigate, queryParams }: ToursProps) {
     activeTours.push({
       id: t.id,
       name: t.title,
-      description: t.desc,
-      longDescription: t.desc,
+      description: t.desc || '',
       price: t.price,
-      duration: t.duration,
-      groupSize: staticWalk?.groupSize || '1–15 people',
-      includes: staticWalk?.includes || ['Local guide', 'Bottled water', 'Entrance fees'],
+      duration: t.duration || 'Half Day',
+      location: t.location || (staticWalk?.bestTimeToVisit ? (staticWalk?.id === 'stone-town' ? 'Stone Town' : staticWalk?.id === 'safari-blue' ? 'Menai Bay' : 'Zanzibar') : 'Zanzibar Island'),
+      groupSize: staticWalk?.groupSize || '1–12 guests',
+      highlights: staticWalk?.highlights || ['Hotel Transfers Included', 'Professional Local Guides', 'All Entrance Fees Covered'],
       image: t.img,
       badge: staticWalk?.badge || (t.category === 'tour' ? 'Best Seller' : t.category),
       category: staticWalk?.category || (t.category.charAt(0).toUpperCase() + t.category.slice(1)),
     });
   }
 
-  // System-level booked dates
+  // System blocked dates loading
   const SYSTEM_BLOCKED_DATES = useMemo(() => [
-    '2026-07-15', '2026-07-16', '2026-07-17', // Fully Booked peak safari slots
-    '2026-08-10', '2026-08-11',              // Zanzibar Cultural Festival Blockouts
-    '2026-12-25', '2026-12-31', '2027-01-01'  // Premium high-season private party blocks
+    '2026-07-15', '2026-07-16', '2026-07-17',
+    '2026-08-10', '2026-08-11',
+    '2026-12-25', '2026-12-31', '2027-01-01'
   ], []);
 
-  // Compute combined blockout dates dynamically
   const blockedDates = useMemo(() => {
     const dates = new Set<string>();
     SYSTEM_BLOCKED_DATES.forEach(d => dates.add(d));
@@ -156,562 +166,426 @@ export default function Tours({ navigate, queryParams }: ToursProps) {
     return dates;
   }, [SYSTEM_BLOCKED_DATES]);
 
+  const isTourInVisualCategory = (tour: any, categoryId: string) => {
+    if (categoryId === 'All') return true;
+    const catObj = visualCategories.find(c => c.id === categoryId);
+    if (!catObj) return false;
+    
+    const titleAndDesc = (tour.name + ' ' + tour.description + ' ' + (tour.category || '')).toLowerCase();
+    return catObj.keywords.some(kw => titleAndDesc.includes(kw));
+  };
+
   const filteredTours = useMemo(() => {
     return activeTours.filter(tour => {
-      // 1. Category Filter
-      let matchesCategory = true;
+      // Category filter
       if (selectedCategory !== 'All') {
-        const cat = selectedCategory;
+        if (!isTourInVisualCategory(tour, selectedCategory)) return false;
+      }
+
+      // Search bar query
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = 
+          tour.name.toLowerCase().includes(query) ||
+          tour.description.toLowerCase().includes(query) ||
+          tour.location.toLowerCase().includes(query);
+        if (!matchesSearch) return false;
+      }
+
+      // Duration Filter
+      if (durationFilter !== 'All') {
         const durText = String(tour.duration).toLowerCase();
-        const titleAndDesc = (tour.name + ' ' + tour.description + ' ' + (tour.category || '')).toLowerCase();
-        const tourPrice = typeof tour.price === 'number' ? tour.price : parseFloat(String(tour.price).replace(/[^0-9.]/g, '')) || 0;
-        
-        if (cat === 'Full-Day Tours') {
-          matchesCategory = durText.includes('full day') || durText.includes('8 hr') || durText.includes('6 hr') || durText.includes('7 hr') || durText.includes('full-day');
-        } else if (cat === 'Half-Day Tours') {
-          matchesCategory = durText.includes('half day') || durText.includes('4 hr') || durText.includes('3 hr') || durText.includes('5 hr') || durText.includes('half-day');
-        } else if (cat === 'Marine Tours') {
-          matchesCategory = titleAndDesc.includes('ocean') || titleAndDesc.includes('snorkeling') || titleAndDesc.includes('marine') || titleAndDesc.includes('dhow') || titleAndDesc.includes('swim') || titleAndDesc.includes('sandbank') || titleAndDesc.includes('reef') || tour.category === 'Ocean';
-        } else if (cat === 'Nature Tours') {
-          matchesCategory = titleAndDesc.includes('nature') || titleAndDesc.includes('forest') || titleAndDesc.includes('spice') || titleAndDesc.includes('wildlife') || titleAndDesc.includes('zoo') || tour.category === 'Nature';
-        } else if (cat === 'Cultural Tours') {
-          matchesCategory = titleAndDesc.includes('culture') || titleAndDesc.includes('history') || titleAndDesc.includes('town') || titleAndDesc.includes('heritage') || tour.category === 'Culture';
-        } else if (cat === 'Luxury Tours') {
-          matchesCategory = titleAndDesc.includes('luxury') || titleAndDesc.includes('premium') || titleAndDesc.includes('private') || tourPrice >= 75;
-        } else if (cat === 'Adventure Tours') {
-          matchesCategory = titleAndDesc.includes('adventure') || titleAndDesc.includes('quad') || titleAndDesc.includes('climb') || titleAndDesc.includes('safari') || tour.category === 'Adventure';
+        if (durationFilter === 'Half Day') {
+          const isHalf = durText.includes('half') || durText.includes('3 hr') || durText.includes('4 hr') || durText.includes('5 hr');
+          if (!isHalf) return false;
+        } else if (durationFilter === 'Full Day') {
+          const isFull = durText.includes('full') || durText.includes('8 hr') || durText.includes('6 hr') || durText.includes('day trip');
+          if (!isFull) return false;
         }
       }
 
-      // 2. Search query filter
-      const matchesSearch = !searchQuery ? true : (
-        tour.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        tour.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (tour.includes && tour.includes.some((inc: string) => inc.toLowerCase().includes(searchQuery.toLowerCase())))
-      );
-
-      // 3. Destination Filter
-      let matchesDestination = true;
-      if (selectedDestination !== 'All') {
-        const dest = selectedDestination.toLowerCase();
-        const textToSearch = (tour.name + ' ' + tour.description).toLowerCase();
-        matchesDestination = textToSearch.includes(dest) || 
-          (dest === 'stone town' && textToSearch.includes('stone town')) ||
-          (dest === 'mnemba' && textToSearch.includes('mnemba')) ||
-          (dest === 'prison island' && textToSearch.includes('prison')) ||
-          (dest === 'jozani' && textToSearch.includes('jozani')) ||
-          (dest === 'spice farm' && textToSearch.includes('spice')) ||
-          (dest === 'nungwi' && textToSearch.includes('nungwi'));
-      }
-
-      // 4. Departure Filter
-      let matchesDeparture = true;
-      if (selectedDeparture !== 'All') {
-        const dep = selectedDeparture.toLowerCase();
-        const textToSearch = (tour.name + ' ' + tour.description + ' ' + (tour.groupSize || '')).toLowerCase();
-        matchesDeparture = textToSearch.includes(dep) || 
-          (dep === 'stone town' && textToSearch.includes('town')) ||
-          (dep === 'nungwi' && textToSearch.includes('nungwi')) ||
-          (dep === 'paje' && textToSearch.includes('paje')) ||
-          (dep === 'kiwengwa' && textToSearch.includes('kiwengwa'));
-      }
-
-      // 5. Duration Filter
-      let matchesDuration = true;
-      if (selectedDuration !== 'All') {
-        const durText = String(tour.duration).toLowerCase();
-        const hoursMatch = durText.match(/(\d+)\s*(hour|hr)/i);
-        const hours = hoursMatch ? parseInt(hoursMatch[1]) : 0;
-        const daysMatch = durText.match(/(\d+)\s*(day)/i);
-        const days = daysMatch ? parseInt(daysMatch[1]) : 0;
-
-        if (selectedDuration === 'Half Day') {
-          matchesDuration = (hours > 0 && hours <= 5 && days === 0) || durText.includes('half day');
-        } else if (selectedDuration === 'Full Day') {
-          matchesDuration = (hours > 5 && hours <= 12) || durText.includes('full day') || durText.includes('day trip') || durText.includes('excursion');
-        } else if (selectedDuration === 'Multi-Day') {
-          matchesDuration = days > 0 || hours > 12 || durText.includes('days') || durText.includes('night');
-        }
-      }
-
-      // 6. Price Filter
+      // Budget Filter
       const tourPrice = typeof tour.price === 'number' ? tour.price : parseFloat(String(tour.price).replace(/[^0-9.]/g, '')) || 0;
-      const matchesPrice = tourPrice <= maxPrice;
-
-      // 7. Tour Style Filter (Private vs Group/Shared)
-      let matchesTourStyle = true;
-      if (selectedTourStyle !== 'All') {
-        const titleAndDesc = (tour.name + ' ' + tour.description + ' ' + (tour.badge || '')).toLowerCase();
-        if (selectedTourStyle === 'Private') {
-          matchesTourStyle = titleAndDesc.includes('private') || titleAndDesc.includes('exclusive') || titleAndDesc.includes('charter');
-        } else if (selectedTourStyle === 'Group') {
-          matchesTourStyle = titleAndDesc.includes('group') || titleAndDesc.includes('shared') || titleAndDesc.includes('public');
-        } else if (selectedTourStyle === 'Luxury') {
-          matchesTourStyle = titleAndDesc.includes('luxury') || titleAndDesc.includes('premium') || tourPrice > 100;
-        } else if (selectedTourStyle === 'Budget') {
-          matchesTourStyle = titleAndDesc.includes('budget') || titleAndDesc.includes('cheap') || tourPrice <= 65;
+      if (budgetFilter !== 'All') {
+        if (budgetFilter === 'Under $50') {
+          if (tourPrice > 50) return false;
+        } else if (budgetFilter === '$50–100') {
+          if (tourPrice <= 50 || tourPrice > 100) return false;
+        } else if (budgetFilter === '$100+') {
+          if (tourPrice <= 100) return false;
         }
       }
 
-      // 8. Guest Capacity Filter
-      let matchesGuests = true;
-      if (guestCount > 1) {
-        const groupSizeText = String(tour.groupSize).toLowerCase();
-        // Check for common capacity ranges e.g. "1-15 people", "up to 6 guests"
-        const maxMatch = groupSizeText.match(/up to\s*(\d+)/) || groupSizeText.match(/1–(\d+)/) || groupSizeText.match(/(\d+)\s*max/);
-        if (maxMatch) {
-          const maxCap = parseInt(maxMatch[1]);
-          if (maxCap > 0) {
-            matchesGuests = guestCount <= maxCap;
-          }
-        }
-      }
+      // Travel Date Blockage Check
+      if (selectedDate && blockedDates.has(selectedDate)) return false;
 
-      // 9. Date Booking Blockage Availability
-      let matchesDate = true;
-      if (selectedDate) {
-        const isBlocked = blockedDates.has(selectedDate);
-        if (isBlocked) {
-          matchesDate = false;
-        }
-      }
-
-      return matchesCategory && matchesSearch && matchesDestination && matchesDeparture && matchesDuration && matchesPrice && matchesTourStyle && matchesGuests && matchesDate;
+      return true;
     });
-  }, [
-    activeTours, selectedCategory, searchQuery, selectedDestination, selectedDeparture,
-    selectedDuration, maxPrice, selectedTourStyle, guestCount, selectedDate, blockedDates
-  ]);
+  }, [activeTours, selectedCategory, searchQuery, durationFilter, budgetFilter, selectedDate, blockedDates]);
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
-    if (selectedDestination !== 'All') count++;
-    if (selectedDeparture !== 'All') count++;
-    if (selectedDuration !== 'All') count++;
-    if (selectedTourStyle !== 'All') count++;
+    if (durationFilter !== 'All') count++;
+    if (budgetFilter !== 'All') count++;
     if (selectedDate !== '') count++;
-    if (guestCount > 1) count++;
-    if (maxPrice < 350) count++;
     return count;
-  }, [selectedDestination, selectedDeparture, selectedDuration, selectedTourStyle, selectedDate, guestCount, maxPrice]);
+  }, [durationFilter, budgetFilter, selectedDate]);
 
   const handleClearAllFilters = () => {
     setSelectedCategory('All');
     setSearchQuery('');
-    setSelectedDestination('All');
+    setDurationFilter('All');
+    setBudgetFilter('All');
     setSelectedDate('');
-    setSelectedDuration('All');
-    setMaxPrice(350);
-    setSelectedTourStyle('All');
-    setGuestCount(2);
-    setSelectedDeparture('All');
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hero */}
-      <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
+    <div className="min-h-screen bg-[#FAF9F6] text-slate-900">
+      
+      {/* Hero Banner Section */}
+      <section className="relative h-[65vh] min-h-[450px] flex items-center justify-center overflow-hidden">
         <div 
           className="absolute inset-0 bg-cover bg-center" 
           style={{ 
-            backgroundImage: "url('https://images.pexels.com/photos/1433052/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1600')",
-            transform: `translateY(${scrollY * 0.3}px) scale(1.15)`
+            backgroundImage: "url('https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1920')",
+            transform: `translateY(${scrollY * 0.15}px)`
           }} 
         />
-        <div className="absolute inset-0 hero-gradient" />
-        <div className="relative z-10 text-center px-4 pt-16" style={{ transform: `translateY(-${scrollY * 0.1}px)` }}>
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>
-            Tour Packages
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0A1224]/85 via-[#0A1224]/50 to-[#FAF9F6]" />
+        
+        <div className="relative z-10 text-center px-4 max-w-4xl mx-auto space-y-5">
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-1.5 rounded-full shadow-lg">
+            <span className="text-[#D4A017] text-xs font-black tracking-widest uppercase font-mono">Licensed Zanzibari Operator</span>
+          </div>
+          
+          <h1 
+            className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white tracking-tight drop-shadow-xl"
+            style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+          >
+            Zanzibar Tours & Excursions
           </h1>
-          <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto">
-            Discover the magic of Zanzibar with our handcrafted day trips and excursions
+          
+          <p className="text-sm md:text-lg text-white/90 max-w-xl mx-auto leading-relaxed font-medium">
+            Discover paradise at your own pace. Hand-crafted private island adventures, crystal-clear snorkeling reefs, and authentic historical walks with native historians.
           </p>
+
+          <div className="flex items-center justify-center gap-6 pt-3 text-white/90 text-xs font-bold uppercase tracking-wider flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <Star className="text-[#D4A017] shrink-0" size={13} fill="currentColor" />
+              <span>4.9/5 Trust Rating</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="text-emerald-400 shrink-0" size={14} />
+              <span>Private Ground Vehicles</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Check className="text-[#D4A017] shrink-0" size={14} />
+              <span>No Hidden Fees</span>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Filters & Search */}
-      <section className="bg-white shadow-md border-b sticky top-[68px] lg:top-[80px] z-30 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
-          <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
-            
-            {/* Category tabs */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1 w-full lg:w-auto scrollbar-none">
-              {categories.map(cat => (
+      {/* Main Tours Explorer Area */}
+      <section className="py-16 max-w-7xl mx-auto px-4 md:px-8 space-y-12">
+        
+        {/* Luxury Experience Categories Selector */}
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <h2 className="text-xl md:text-2xl font-black text-[#0B3B8C] uppercase tracking-wider">Choose Experience Category</h2>
+              <p className="text-xs text-slate-500 font-medium mt-1">Filter our local excursions by type of activity to discover your perfect pace.</p>
+            </div>
+            {selectedCategory !== 'All' && (
+              <button 
+                onClick={() => setSelectedCategory('All')} 
+                className="text-xs font-black text-[#D4A017] hover:underline uppercase tracking-wider self-start"
+              >
+                Show All ({activeTours.length} tours)
+              </button>
+            )}
+          </div>
+
+          {/* Premium category list of pills */}
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-4 scrollbar-thin">
+            {visualCategories.map(cat => {
+              const Icon = cat.icon;
+              const isSelected = selectedCategory === cat.id;
+              return (
                 <button
-                  type="button"
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 rounded-full text-xs md:text-sm font-bold transition-all shrink-0 ${
-                    selectedCategory === cat 
-                      ? 'bg-[#0B3B8C] text-white shadow-md shadow-[#0B3B8C]/15 border border-[#0B3B8C]' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 border border-transparent'
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-5 py-3.5 rounded-2xl flex items-center gap-2.5 shrink-0 transition-all shadow-sm border cursor-pointer ${
+                    isSelected 
+                      ? 'bg-[#0B3B8C] text-white border-[#0B3B8C] scale-102 font-black shadow-md' 
+                      : 'bg-white text-slate-600 border-slate-200/60 hover:border-slate-300 hover:text-[#0B3B8C]'
                   }`}
                 >
-                  {cat}
+                  <Icon size={16} className={isSelected ? 'text-[#D4A017]' : 'text-slate-400'} />
+                  <span className="text-xs font-extrabold uppercase tracking-wider">{cat.label}</span>
                 </button>
-              ))}
-            </div>
+              );
+            })}
+          </div>
+        </div>
 
-            {/* Search Input and Collapsible Trigger */}
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full lg:w-auto">
-              
-              {/* Search Bar */}
-              <div className="relative w-full sm:w-80">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+        {/* Discovery Filter Controls */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200/50 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+          {/* Left search */}
+          <div className="relative flex-1 max-w-md">
+            <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search excursion title, beach, keywords..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-full pl-11 pr-4 py-3 text-xs font-semibold focus:bg-white focus:border-[#0B3B8C] focus:outline-none transition-all"
+            />
+          </div>
+
+          {/* Right dropdown filters */}
+          <div className="flex flex-wrap items-center gap-3">
+            
+            {/* Quick Trigger Filters Toggle */}
+            <button
+              onClick={() => setShowFiltersPanel(!showFiltersPanel)}
+              className={`px-4.5 py-3 rounded-full text-[11px] font-black uppercase tracking-wider border flex items-center gap-2 cursor-pointer transition-all ${
+                showFiltersPanel || activeFiltersCount > 0
+                  ? 'bg-[#0B3B8C]/5 text-[#0B3B8C] border-[#0B3B8C]/20'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
+              }`}
+            >
+              <SlidersHorizontal size={12} />
+              <span>More Filters</span>
+              {activeFiltersCount > 0 && (
+                <span className="bg-[#D4A017] text-[#0A1224] text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+
+            {activeFiltersCount > 0 && (
+              <button 
+                onClick={handleClearAllFilters} 
+                className="text-[10px] text-slate-500 hover:text-red-600 font-extrabold uppercase tracking-widest underline decoration-dashed"
+              >
+                Reset Filters
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Expanded filter panel drawers */}
+        <AnimatePresence>
+          {showFiltersPanel && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-white p-6 rounded-3xl border border-slate-200/50 shadow-md grid grid-cols-1 md:grid-cols-3 gap-6"
+            >
+              <div className="space-y-1.5">
+                <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest font-mono">Trip Duration</span>
+                <select
+                  value={durationFilter}
+                  onChange={e => setDurationFilter(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+                >
+                  <option value="All">All Durations</option>
+                  <option value="Half Day">Half Day (1–5 hours)</option>
+                  <option value="Full Day">Full Day (6+ hours)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest font-mono">Max Budget</span>
+                <select
+                  value={budgetFilter}
+                  onChange={e => setBudgetFilter(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+                >
+                  <option value="All">All Budgets</option>
+                  <option value="Under $50">Under $50 USD</option>
+                  <option value="$50–100">$50 to $100 USD</option>
+                  <option value="$100+">$100+ USD</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest font-mono">Date Check</span>
                 <input
-                  type="text"
-                  placeholder="Search destination, style, activity..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full border border-gray-300 rounded-full pl-10 pr-4 py-2 text-sm focus:border-[#0B3B8C] focus:ring-1 focus:ring-[#0B3B8C] focus:outline-none transition-all placeholder:text-gray-400"
+                  type="date"
+                  value={selectedDate}
+                  onChange={e => setSelectedDate(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
                 />
               </div>
 
-              {/* Advanced Filter Toggle Button */}
-              <button
-                type="button"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all border shrink-0 ${
-                  showAdvanced || activeFiltersCount > 0
-                    ? 'bg-[#0B3B8C]/10 text-[#0B3B8C] border-[#0B3B8C]/35'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-transparent'
-                }`}
-              >
-                <SlidersHorizontal size={14} />
-                <span>Filters</span>
-                {activeFiltersCount > 0 && (
-                  <span className="bg-[#D4A017] text-[#020C1F] text-[10px] font-black h-5 w-5 rounded-full flex items-center justify-center animate-pulse">
-                    {activeFiltersCount}
-                  </span>
-                )}
-                {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
-
-              {/* Clear filters shortcut */}
-              {activeFiltersCount > 0 && (
-                <button
-                  type="button"
-                  onClick={handleClearAllFilters}
-                  className="text-xs text-gray-500 hover:text-red-500 font-bold transition-all uppercase tracking-wider shrink-0 underline"
-                >
-                  Clear All
-                </button>
+              {selectedDate && blockedDates.has(selectedDate) && (
+                <div className="col-span-full bg-red-50 text-red-700 border border-red-100 p-4 rounded-xl text-xs font-semibold">
+                  * Selected date is currently blocked or fully booked. Please try an alternative date.
+                </div>
               )}
-            </div>
-          </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-          {/* Collapsible Advanced Filters Drawer Panel */}
-          {showAdvanced && (
-            <div className="border-t border-gray-100 pt-4 pb-2 animate-fadeIn">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {/* Dynamic Tours Discover List */}
+        {filteredTours.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredTours.map(tour => (
+              <div 
+                key={tour.id} 
+                className="group bg-white rounded-3xl border border-slate-200/50 hover:border-slate-200 hover:shadow-2xl transition-all duration-300 flex flex-col justify-between h-[480px] overflow-hidden"
+              >
                 
-                {/* Destination Dropdown */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block">Excursion Location</label>
-                  <div className="relative">
-                    <MapPin size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0B3B8C]" />
-                    <select
-                      value={selectedDestination}
-                      onChange={e => setSelectedDestination(e.target.value)}
-                      className="w-full text-xs font-bold text-gray-800 bg-gray-50/70 border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 appearance-none focus:outline-none focus:border-[#0B3B8C] cursor-pointer"
+                {/* Image & Badges */}
+                <div className="relative h-56 overflow-hidden bg-slate-50 shrink-0">
+                  <ProgressiveImage src={tour.image} alt={tour.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102" />
+                  
+                  {/* Floating Left Badge */}
+                  <div className="absolute top-4 left-4 bg-[#0B3B8C] text-white text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-full">
+                    {tour.badge || 'Private Excursion'}
+                  </div>
+
+                  {/* Wishlist Heart */}
+                  <button
+                    type="button"
+                    onClick={() => toggleWishlist({
+                      id: tour.id,
+                      name: tour.name,
+                      price: tour.price,
+                      duration: tour.duration,
+                      image: tour.image,
+                      type: 'tour'
+                    })}
+                    className={`absolute top-4 right-4 p-2 rounded-full cursor-pointer z-10 transition-colors shadow-sm ${
+                      isInWishlist(tour.id) ? 'bg-[#D4A017] text-white' : 'bg-white/95 hover:bg-white text-slate-600'
+                    }`}
+                  >
+                    <Heart size={14} fill={isInWishlist(tour.id) ? "currentColor" : "none"} />
+                  </button>
+
+                  {/* Price */}
+                  <span className="absolute bottom-4 right-4 bg-black/85 backdrop-blur-md text-white text-xs font-black px-3.5 py-1.5 rounded-xl border border-white/10 shadow-lg">
+                    from {formatPrice(tour.price)}
+                  </span>
+                </div>
+
+                {/* Body Content */}
+                <div className="p-5 flex-1 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
+                      <MapPin size={11} className="text-[#D4A017]" />
+                      <span>{tour.location}</span>
+                    </div>
+
+                    <h3 
+                      onClick={() => navigate('tour-detail', tour.name.toLowerCase().replace(/\s+/g, '-'))}
+                      className="font-extrabold text-base sm:text-lg text-[#0B3B8C] hover:text-[#D4A017] cursor-pointer transition-colors leading-snug line-clamp-1"
+                      style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
                     >
-                      <option value="All">All Locations (Island Wide)</option>
-                      <option value="Stone Town">Stone Town Historical</option>
-                      <option value="Mnemba">Mnemba Atoll Snorkeling</option>
-                      <option value="Prison Island">Prison Island Reef</option>
-                      <option value="Jozani">Jozani Forest Biosphere</option>
-                      <option value="Spice Farm">Spice Farm Plantations</option>
-                      <option value="Nungwi">Nungwi Beach & Aquarium</option>
-                    </select>
-                  </div>
-                </div>
+                      {tour.name}
+                    </h3>
 
-                {/* Departure Location */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block">Departure Point</label>
-                  <div className="relative">
-                    <Compass size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0B3B8C]" />
-                    <select
-                      value={selectedDeparture}
-                      onChange={e => setSelectedDeparture(e.target.value)}
-                      className="w-full text-xs font-bold text-gray-800 bg-gray-50/70 border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 appearance-none focus:outline-none focus:border-[#0B3B8C] cursor-pointer"
+                    <p className="text-xs text-slate-500 leading-relaxed font-medium line-clamp-2">
+                      {tour.description}
+                    </p>
+
+                    {/* Standard details */}
+                    <div className="grid grid-cols-2 gap-1.5 text-[10px] font-black text-slate-450 uppercase tracking-widest bg-slate-50/70 p-2.5 rounded-xl border border-slate-100">
+                      <div className="flex items-center gap-1.5"><Clock size={11} className="text-[#0B3B8C]" /> {tour.duration}</div>
+                      <div className="flex items-center gap-1.5"><Users size={11} className="text-[#0B3B8C]" /> {tour.groupSize}</div>
+                    </div>
+
+                    {/* Checkmarks */}
+                    <div className="space-y-1 pt-1.5">
+                      {tour.highlights.slice(0, 2).map((h: string, i: number) => (
+                        <div key={i} className="flex items-start gap-2 text-[11px] text-slate-600 font-bold">
+                          <Check size={11} className="text-emerald-500 shrink-0 mt-0.5" />
+                          <span className="truncate">{h}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Actions footer */}
+                  <div className="flex gap-2.5 pt-4 border-t border-slate-100 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => navigate('tour-detail', tour.name.toLowerCase().replace(/\s+/g, '-'))}
+                      className="flex-1 border border-slate-200 hover:border-[#0B3B8C] text-slate-600 hover:text-[#0B3B8C] font-bold text-xs uppercase tracking-wider py-3 rounded-full transition-colors cursor-pointer text-center bg-white"
                     >
-                      <option value="All">All Departures</option>
-                      <option value="Stone Town">Stone Town Pier</option>
-                      <option value="Nungwi">Nungwi Beach Front</option>
-                      <option value="Paje">Paje Kite-Reef Point</option>
-                      <option value="Kiwengwa">Kiwengwa Beach Pier</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Travel Date */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block">Desired Travel Date</label>
-                  <div className="relative">
-                    <Calendar size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0B3B8C]" />
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={e => setSelectedDate(e.target.value)}
-                      className="w-full text-xs font-bold text-gray-800 bg-gray-50/70 border border-gray-200 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:border-[#0B3B8C] cursor-pointer"
-                    />
-                  </div>
-                </div>
-
-                {/* Duration Filter */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block">Excursion Duration</label>
-                  <div className="relative">
-                    <Clock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0B3B8C]" />
-                    <select
-                      value={selectedDuration}
-                      onChange={e => setSelectedDuration(e.target.value)}
-                      className="w-full text-xs font-bold text-gray-800 bg-gray-50/70 border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 appearance-none focus:outline-none focus:border-[#0B3B8C] cursor-pointer"
+                      Details
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.setItem('booking_prefilled_category', 'tour');
+                        localStorage.setItem('booking_prefilled_tour', tour.name);
+                        navigate('booking', `package=${encodeURIComponent(tour.name)}`);
+                      }}
+                      className="flex-1 bg-[#D4A017] hover:bg-opacity-95 text-[#0A1224] font-black text-xs uppercase tracking-wider py-3 rounded-full shadow-md flex items-center justify-center gap-1 cursor-pointer"
                     >
-                      <option value="All">All Durations</option>
-                      <option value="Half Day">Half Day (1–5 hours)</option>
-                      <option value="Full Day">Full Day (6–12 hours)</option>
-                      <option value="Multi-Day">Multi-Day Trips</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Tour Style */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block">Tour Style / Budget</label>
-                  <div className="relative">
-                    <Sparkles size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#D4A017]" />
-                    <select
-                      value={selectedTourStyle}
-                      onChange={e => setSelectedTourStyle(e.target.value)}
-                      className="w-full text-xs font-bold text-gray-800 bg-gray-50/70 border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 appearance-none focus:outline-none focus:border-[#0B3B8C] cursor-pointer"
-                    >
-                      <option value="All">All Tour Styles</option>
-                      <option value="Private">Private / Exclusive Charter</option>
-                      <option value="Group">Shared / Group Excursion</option>
-                      <option value="Luxury">Luxury / Premium Package</option>
-                      <option value="Budget">Budget / Economy Friendly</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Guest Count */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 block">Guest Count</label>
-                  <div className="relative">
-                    <Users size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0B3B8C]" />
-                    <input
-                      type="number"
-                      min="1"
-                      max="30"
-                      value={guestCount}
-                      onChange={e => setGuestCount(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-full text-xs font-bold text-gray-800 bg-gray-50/70 border border-gray-200 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:border-[#0B3B8C]"
-                    />
-                  </div>
-                </div>
-
-                {/* Price Range Slider */}
-                <div className="space-y-1 sm:col-span-2">
-                  <div className="flex justify-between items-center">
-                    <label className="text-[11px] font-black uppercase tracking-wider text-gray-400">Max Package Price</label>
-                    <span className="text-xs font-black text-[#0B3B8C]">{formatPrice(maxPrice)}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-gray-400 font-bold">$10</span>
-                    <input
-                      type="range"
-                      min="10"
-                      max="500"
-                      step="5"
-                      value={maxPrice}
-                      onChange={e => setMaxPrice(parseInt(e.target.value))}
-                      className="w-full accent-[#0B3B8C] h-1.5 bg-gray-200 rounded-lg cursor-pointer"
-                    />
-                    <span className="text-[10px] text-gray-400 font-bold">$500</span>
+                      <span>Book Now</span>
+                      <ArrowRight size={13} />
+                    </button>
                   </div>
                 </div>
 
               </div>
-              
-              {/* Blockout Dates Warning Alert */}
-              {selectedDate && blockedDates.has(selectedDate) && (
-                <div className="mt-4 bg-red-50 border border-red-200 rounded-2xl p-4 flex gap-3 items-start animate-pulse">
-                  <AlertTriangle className="text-red-500 shrink-0 w-5 h-5" />
-                  <div className="space-y-1">
-                    <h5 className="text-xs font-black text-red-950 uppercase tracking-wider">Date is Blocked or Fully Booked</h5>
-                    <p className="text-[11px] text-red-700 leading-relaxed font-semibold">
-                      Your chosen travel date <strong className="text-red-900">{selectedDate}</strong> is a high-demand peak blockout slot or fully booked. Please select another date, or clear the date filter to review other available times.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
-      {/* Smart Recommendations */}
-      <section className="pt-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <SmartTourRecommendations navigate={navigate} />
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20 bg-white border-2 border-dashed border-slate-200 rounded-3xl space-y-4">
+            <p className="text-slate-800 font-extrabold text-sm uppercase tracking-wider">No Excursions Found</p>
+            <p className="text-slate-400 text-xs font-semibold max-w-sm mx-auto leading-relaxed">
+              We couldn't find any tours matching your active criteria. Try removing some filters or change categories.
+            </p>
+            <button 
+              onClick={handleClearAllFilters} 
+              className="px-5 py-2.5 bg-[#0B3B8C] text-white text-xs font-black uppercase rounded-full shadow hover:bg-opacity-95"
+            >
+              Reset Filters
+            </button>
+          </div>
+        )}
+
       </section>
 
-      {/* Tour Grid */}
-      <section className="py-16 px-4">
-        <div className="max-w-7xl mx-auto">
-          {filteredTours.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredTours.map(tour => (
-                <div key={tour.id} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col">
-                  {/* Image */}
-                  <div className="relative h-56 overflow-hidden group cursor-pointer">
-                    <div onClick={() => navigate('tour-detail', tour.name.toLowerCase().replace(/\s+/g, '-'))} className="w-full h-full">
-                      <ProgressiveImage src={tour.image} alt={tour.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    </div>
-                    <div className="absolute top-3 left-3 bg-[#0B3B8C] text-white text-xs font-bold px-3 py-1 rounded-full z-10">
-                      {tour.badge || tour.category}
-                    </div>
-                    
-                    {/* Wishlist Button */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleWishlist({
-                          id: tour.id,
-                          name: tour.name,
-                          price: tour.price,
-                          duration: tour.duration,
-                          image: tour.image,
-                          type: 'tour'
-                        });
-                      }}
-                      className={`absolute top-3 right-3 p-2 rounded-full z-10 transition-all ${
-                        isInWishlist(tour.id)
-                          ? 'bg-[#D4A017] text-white shadow-lg'
-                          : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-500'
-                      }`}
-                    >
-                      <Heart size={16} fill={isInWishlist(tour.id) ? "currentColor" : "none"} />
-                    </button>
-
-                    <div className="absolute bottom-3 right-3 bg-white/95 text-[#0B3B8C] text-sm font-bold px-3 py-1 rounded-lg font-mono">
-                      {formatPrice(tour.price)}
-                    </div>
-                  </div>
-
-                  {/* Body */}
-                  <div className="p-6 flex flex-col flex-1">
-                    <h3 className="text-xl font-bold text-[#0B3B8C] mb-2 cursor-pointer" onClick={() => navigate('tour-detail', tour.name.toLowerCase().replace(/\s+/g, '-'))} style={{ fontFamily: 'Playfair Display, serif' }}>
-                      {tour.name}
-                    </h3>
-                    <p className="text-gray-600 text-sm mb-4 flex-1">{tour.description}</p>
-
-                    {/* Metadata & Compare toggle */}
-                    <div className="flex items-center justify-between gap-2 text-xs text-gray-500 mb-6">
-                      <div className="flex gap-4">
-                        <span className="flex items-center gap-1">
-                          <Clock size={14} /> {tour.duration}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Users size={14} /> {tour.groupSize}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleCompare(tour.id)}
-                        className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
-                          selectedTourIds.includes(tour.id)
-                            ? 'bg-[#D4A017] text-[#0A1224] border-[#D4A017] shadow-sm'
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-transparent'
-                        }`}
-                      >
-                        {selectedTourIds.includes(tour.id) ? (
-                          <>
-                            <Check size={11} className="stroke-[3]" />
-                            <span>Comparing</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>+ Compare</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* CTAs */}
-                    <div className="flex gap-2 border-t pt-4">
-                      <button
-                        type="button"
-                        onClick={() => navigate('tour-detail', tour.name.toLowerCase().replace(/\s+/g, '-'))}
-                        className="flex-1 border-2 border-gray-200 text-gray-600 hover:border-[#0B3B8C] hover:text-[#0B3B8C] font-semibold py-2.5 rounded-full text-xs transition-colors"
-                      >
-                        View Details
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          localStorage.setItem('booking_prefilled_category', 'tour');
-                          localStorage.setItem('booking_prefilled_tour', tour.name);
-                          navigate('booking', `package=${encodeURIComponent(tour.name)}`);
-                        }}
-                        className="flex-1 bg-[#D4A017] hover:bg-[#c49010] text-[#0A1224] font-bold py-2.5 rounded-full text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        Book Now <ArrowRight size={14} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-20 bg-white rounded-2xl shadow-sm">
-              <Compass className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-500 font-medium">No tour packages match your search criteria.</p>
-              <button type="button" onClick={() => { setSelectedCategory('All'); setSearchQuery(''); }} className="text-[#0B3B8C] font-semibold mt-2 hover:underline">
-                Clear Filters
-              </button>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Customize CTA */}
-      <section className="py-20 px-4 bg-[#0B1E3D] text-white text-center">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>
-            Want to Build a Custom Itinerary?
+      {/* Bottom bespoke traveler card */}
+      <section className="py-20 bg-[#0A1224] text-white relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(212,160,23,0.05),transparent_50%)] pointer-events-none" />
+        <div className="max-w-4xl mx-auto text-center px-4 space-y-6 relative z-10">
+          <span className="text-[#D4A017] text-xs font-black uppercase tracking-widest bg-[#D4A017]/10 px-4.5 py-2 rounded-full">
+            Tailor-made itineraries
+          </span>
+          <h2 className="text-3xl md:text-5xl font-extrabold text-white" style={{ fontFamily: '"Playfair Display", Georgia, serif' }}>
+            Want a Custom Excursion Program?
           </h2>
-          <p className="text-gray-400 mb-8 max-w-lg mx-auto">
-            Choose exactly what you want to see, do, and experience in Zanzibar.
+          <p className="text-slate-300 text-xs sm:text-sm md:text-base max-w-xl mx-auto leading-relaxed font-medium">
+            Plan a specialized private boat charter, dynamic spice farm walking paths, private beach bonfires, or group team building. Speak to our local travel architects directly.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button type="button" onClick={() => navigate('trip-builder')} className="bg-[#D4A017] hover:bg-[#c49010] text-white font-semibold px-8 py-3.5 rounded-full transition-colors">
-              Start Trip Builder
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
+            <button
+              onClick={() => navigate('trip-builder')}
+              className="w-full sm:w-auto bg-[#D4A017] hover:bg-[#c49010] text-[#020C1F] font-black px-8 py-4 rounded-full text-xs uppercase tracking-wider transition-all"
+            >
+              Launch Custom Trip Planner
             </button>
-            <button type="button" onClick={() => navigate('contact')} className="border-2 border-white/20 hover:border-white font-semibold px-8 py-3.5 rounded-full transition-colors">
-              Contact Our Experts
-            </button>
+            <a
+              href="https://wa.me/255629506063"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto bg-[#25D366] hover:bg-[#1ebd5a] text-white font-black px-8 py-4 rounded-full text-xs uppercase tracking-wider flex items-center justify-center gap-2"
+            >
+              <MessageCircle size={15} fill="white" /> Chat with Experts
+            </a>
           </div>
         </div>
       </section>
 
-      {/* Tour Comparison Bar / Side-by-Side Modal overlay */}
-      <TourComparison
-        navigate={navigate}
-        selectedTourIds={selectedTourIds}
-        onToggleCompare={handleToggleCompare}
-        onClearAll={handleClearAll}
-      />
-
-      {/* Floating toast notification warning when maximum of 4 tours are selected */}
-      {limitWarning && (
-        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[100] bg-rose-600 text-white font-extrabold text-xs uppercase px-4 py-3 rounded-2xl shadow-2xl border border-rose-500 animate-bounce tracking-widest font-mono">
-          ⚠️ Maximum of 4 tours can be compared at once!
-        </div>
-      )}
     </div>
   );
 }
