@@ -20,7 +20,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Zanzibar Trip & Relax | Local Zanzibar Tour Operator & Safaris',
     description: 'Explore pristine Zanzibar beaches, historic Stone Town, marine dolphin safaris, and custom Tanzanian mainland adventures with Zanzibar\'s premier licensed local guides.',
     keywords: 'Zanzibar trips, Zanzibar local tours, Tanzania safaris, Stone Town guided walks, Mnemba Island snorkeling, Jozani Forest monkeys',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/',
+    canonicalUrl: 'https://zanzibartripandrelax.com/',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -28,7 +28,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'About Us | Certified KPAP Ethical Tour Guides in Zanzibar',
     description: 'Discover the honest story of Zanzibar Trip & Relax. Owned and guided by authentic native coordinators based in historic Stone Town supporting reef conservation and fair wages.',
     keywords: 'local Zanzibar operators, Gerevas Paulo Mtaki, Careen Harrison, KPAP Kilimanjaro, eco travel Zanzibar',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#about',
+    canonicalUrl: 'https://zanzibartripandrelax.com/about',
     ogType: 'about',
     ogImage: 'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -36,7 +36,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Zanzibar Day Excursions, Snorkeling & Spice Farm Tours',
     description: 'Book fully private and guided single-day tours in Zanzibar. Safari Blue ocean cruises, swim with dolphins at Mnemba reef, organic spice fields, prison island giant tortoises.',
     keywords: 'Safari Blue cruise, Mnemba Island snorkeling, Prison Island tortoise tours, spice farm guide',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#tours',
+    canonicalUrl: 'https://zanzibartripandrelax.com/tours',
     ogType: 'product',
     ogImage: 'https://images.pexels.com/photos/2087394/pexels-photo-2087394.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -44,7 +44,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Zanzibar Holiday Packages | Custom Multi-Day Beaches Tours',
     description: 'Handcrafted all-inclusive private Zanzibar vacation packages. 3-day romantic couples retreats, 5-day beach adventures, or 7-day wildlife combos with airport transfers.',
     keywords: 'Zanzibar holiday packages, Zanzibar honeymoon tours, 5 day beach adventure, Zanzibar tour itineraries',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#packages',
+    canonicalUrl: 'https://zanzibartripandrelax.com/packages',
     ogType: 'product',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -52,7 +52,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Tanzania Wildlife Safaris | Serengeti, Ngorongoro & Tarangire',
     description: 'Bespoke multi-day safaris from Zanzibar. Experience the Great Migration across Serengeti plains and spot the Big Five in Ngorongoro Crater with native professional spotters.',
     keywords: 'Serengeti safari Zanzibar, Tanzania budget safaris, Ngorongoro day trip, Big Five wildlife drive',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#safaris',
+    canonicalUrl: 'https://zanzibartripandrelax.com/tanzania-safaris',
     ogType: 'product',
     ogImage: 'https://images.pexels.com/photos/247502/pexels-photo-247502.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -60,7 +60,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Climb Mount Kilimanjaro Tours | Complete Uhuru Peak Guides',
     description: 'Summits of Africa! Join our expert-led, KPAP ethical climbing expeditions up Mount Kilimanjaro via scenic Machame, Lemosho, and classic Marangu cabin routes.',
     keywords: 'Climb Mt Kilimanjaro, Mount Kilimanjaro routes, Machame Route booking, Lemosho climbing expedition, Uhuru peak summit',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#kilimanjaro',
+    canonicalUrl: 'https://zanzibartripandrelax.com/kilimanjaro',
     ogType: 'product',
     ogImage: 'https://images.pexels.com/photos/1433052/pexels-photo-1433052.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -68,7 +68,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Book Zanzibar Tours & Safaris Online | Secure Payment',
     description: 'Reserve your customizable Swahili coast experiences, hotel packages, and private airport transfers with real-time billing and secure deposit schemes.',
     keywords: 'Zanzibar booking checkout, secure paypal Zanzibar, book transport Stone Town, Zanzibar vacation planner',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#booking',
+    canonicalUrl: 'https://zanzibartripandrelax.com/booking',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -76,7 +76,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Zanzibar Travel Photo Gallery | Beautiful Beaches & Safari Highlights',
     description: 'Browse high-definition photos of tropical Zanzibar beaches, active mainland safaris, historic Stone Town, and vibrant marine life captured on our tours.',
     keywords: 'Zanzibar photo gallery, tropical beach pictures, Tanzania safari images, Stone Town photos',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#gallery',
+    canonicalUrl: 'https://zanzibartripandrelax.com/gallery',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -84,7 +84,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Contact Us | Zanzibar Trip & Relax Travel Planners',
     description: 'Get in touch with local travel experts in Zanzibar. Inquire about custom safari packages, airport transfers, hotel booking, or local day excursions.',
     keywords: 'contact Zanzibar operator, email Zanzibar trip, Zanzibar phone number, local Swahili guide',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#contact',
+    canonicalUrl: 'https://zanzibartripandrelax.com/contact',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -92,7 +92,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Zanzibar Travel Blog | Local Safari Tips & Swahili Coast Insights',
     description: 'Read expert-curated guides, packing lists, weather reports, and travel advice for Zanzibar and Tanzania mainland safaris from our native operators.',
     keywords: 'Zanzibar travel blog, Zanzibar packing list, safaris in Serengeti, Swahili customs',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#blog',
+    canonicalUrl: 'https://zanzibartripandrelax.com/blog',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1320688/pexels-photo-1320688.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -100,7 +100,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Guest Reviews & Feedback | Verified Zanzibar Trip & Relax Experiences',
     description: 'Read genuine client testimonials, TripAdvisor feedback, and travel reviews of our private Zanzibar beach holidays, safaris, and Kilimanjaro climbs.',
     keywords: 'Zanzibar travel reviews, TripAdvisor Zanzibar Trip and Relax, customer testimonials Kilimanjaro',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#reviews',
+    canonicalUrl: 'https://zanzibartripandrelax.com/reviews',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -108,7 +108,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Custom Trip Builder | Tailor Your Zanzibar Dream Vacation',
     description: 'Build your bespoke Zanzibar and Tanzania itinerary in real-time. Pick day tours, multi-day safaris, luxury hotels, and transfers that fit your budget.',
     keywords: 'Zanzibar itinerary builder, custom Tanzania trips, tailor made Africa holidays, interactive trip builder',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#trip-builder',
+    canonicalUrl: 'https://zanzibartripandrelax.com/trip-builder',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -116,7 +116,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Frequently Asked Questions | Zanzibar Travel Tips & Safety',
     description: 'Answers to your questions about Zanzibar visas, vaccinations, malaria risk, payment methods, local customs, and travel safety protocols.',
     keywords: 'Zanzibar travel FAQ, Zanzibar visa requirements, malaria prophylaxis Zanzibar, Zanzibar local tipping',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#faq',
+    canonicalUrl: 'https://zanzibartripandrelax.com/faq',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -124,7 +124,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Privacy Policy & Terms of Service | Zanzibar Trip & Relax',
     description: 'Review our transparent booking agreements, free cancellation policies, safety protocols, and privacy statements for a worry-free African getaway.',
     keywords: 'Zanzibar booking terms, refund policy tours, privacy policy travel, tour conditions',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#policies',
+    canonicalUrl: 'https://zanzibartripandrelax.com/policies',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -132,7 +132,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Admin Dashboard | Zanzibar Trip & Relax Control Panel',
     description: 'Secured administrative dashboard to monitor bookings, adjust real-time pricing, update tours list, and manage customer inquiries.',
     keywords: 'admin dashboard, secure backend',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#admin',
+    canonicalUrl: 'https://zanzibartripandrelax.com/admin',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -140,7 +140,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Manage Your Booking | Zanzibar Trip & Relax Reservation Portal',
     description: 'View, customize, or modify your existing Zanzibar vacation reservations. Real-time updates with no deposit required.',
     keywords: 'manage booking Zanzibar, update reservation, edit itinerary, view travel invoice',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#manage-booking',
+    canonicalUrl: 'https://zanzibartripandrelax.com/manage-booking',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -148,7 +148,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Join Our Team | Careers at Zanzibar Trip & Relax',
     description: 'Exciting job opportunities for licensed local tour guides, boat captains, safari driver-guides, and digital travel coordinators in Zanzibar.',
     keywords: 'Zanzibar tour guide jobs, travel coordinator careers, work in Zanzibar tourism',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#careers',
+    canonicalUrl: 'https://zanzibartripandrelax.com/careers',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -156,7 +156,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Eco-Tourism & Reef Conservation | Sustainable Zanzibar Trips',
     description: 'Learn about our local sustainability initiatives, fair KPAP porter treatment on Mt. Kilimanjaro, reef preservation projects, and community support.',
     keywords: 'sustainable travel Zanzibar, KPAP certified partner, eco-friendly beach tours, reef conservation Fumba',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#sustainability',
+    canonicalUrl: 'https://zanzibartripandrelax.com/sustainability',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -164,7 +164,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Zanzibar Private Airport Transfers & Resort Shuttles',
     description: 'Book reliable, fully licensed, air-conditioned private vehicles from Abeid Amani Karume International Airport (ZNZ) to Nungwi, Kendwa, Paje, and Stone Town.',
     keywords: 'Zanzibar airport transfer, private taxi Nungwi, ZNZ airport shuttle, Zanzibar stone town transport',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#transfers',
+    canonicalUrl: 'https://zanzibartripandrelax.com/airport-transfer',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -172,7 +172,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'View Tour Details | Handcrafted Guided Zanzibar Experiences',
     description: 'Explore specific itineraries, real photos, tiered prices, duration, and reviews for our private guided Zanzibar tours and snorkeling excursions.',
     keywords: 'guided Zanzibar tour details, private excursions Swahili coast, price estimator',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#tours',
+    canonicalUrl: 'https://zanzibartripandrelax.com/tours',
     ogType: 'product',
     ogImage: 'https://images.pexels.com/photos/2087394/pexels-photo-2087394.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -180,7 +180,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Zanzibar Travel Article | Swahili Coast Expert Insights',
     description: 'Discover the best local spots, travel regulations, safety tips, and packing requirements in Zanzibar with our deep-dive travel guides.',
     keywords: 'Zanzibar travel advice, local Swahili tips, vacation planning guides',
-    canonicalUrl: 'https://www.zanzibartripandrelax.com/#blog',
+    canonicalUrl: 'https://zanzibartripandrelax.com/blog',
     ogType: 'article',
     ogImage: 'https://images.pexels.com/photos/1320688/pexels-photo-1320688.jpeg?auto=compress&cs=tinysrgb&w=1200'
   }
@@ -277,7 +277,7 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
           title: `${staticTour.seoMetadata?.title || staticTour.name} | Zanzibar Trip & Relax`,
           description: staticTour.seoMetadata?.desc || staticTour.description,
           keywords: (staticTour.seoMetadata?.keywords || []).join(', ') || 'Zanzibar tour, excursion',
-          canonicalUrl: `https://www.zanzibartripandrelax.com/#tours/${staticTour.id}`,
+          canonicalUrl: `https://zanzibartripandrelax.com/tours/${staticTour.id}`,
           ogType: 'product',
           ogImage: staticTour.image
         };
@@ -294,7 +294,7 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
         title: `${matchedBlog.title} | Zanzibar Travel Blog`,
         description: matchedBlog.excerpt,
         keywords: matchedBlog.tags.join(', '),
-        canonicalUrl: `https://www.zanzibartripandrelax.com/#blog/${blogId || '1'}`,
+        canonicalUrl: `https://zanzibartripandrelax.com/blog/${blogId || '1'}`,
         ogType: 'article',
         ogImage: matchedBlog.image
       };
@@ -313,7 +313,7 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
               title: `${matchedDest.seoTitle || matchedDest.name} | Zanzibar Trip & Relax`,
               description: matchedDest.seoDescription || matchedDest.description,
               keywords: (matchedDest.metaKeywords || []).join(', ') || `${matchedDest.name} travel, ${matchedDest.name} safari`,
-              canonicalUrl: `https://www.zanzibartripandrelax.com/#destinations/${matchedDest.id}`,
+              canonicalUrl: `https://zanzibartripandrelax.com/destinations/${matchedDest.id}`,
               ogType: 'website',
               ogImage: matchedDest.image
             };
@@ -395,12 +395,12 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
       // A. Travel Agency / Local Business Schema
       {
         '@type': 'TravelAgency',
-        '@id': 'https://www.zanzibartripandrelax.com/#agency',
+        '@id': 'https://zanzibartripandrelax.com/#agency',
         'name': 'Zanzibar Trip & Relax Ltd.',
         'image': 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=600',
         'telephone': '+255629506063',
         'email': 'info@zanzibartripandrelax.com',
-        'url': 'https://www.zanzibartripandrelax.com',
+        'url': 'https://zanzibartripandrelax.com',
         'priceRange': '$$',
         'address': {
           '@type': 'PostalAddress',
@@ -412,7 +412,7 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
         'geo': {
           '@type': 'GeoCoordinates',
           'latitude': -6.1627,
-          'longitude': 39.1911
+          "longitude": 39.1911
         },
         'openingHoursSpecification': {
           '@type': 'OpeningHoursSpecification',
@@ -431,15 +431,15 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
       // B. WebSite & SearchAction Schema
       {
         '@type': 'WebSite',
-        '@id': 'https://www.zanzibartripandrelax.com/#website',
-        'url': 'https://www.zanzibartripandrelax.com/',
+        '@id': 'https://zanzibartripandrelax.com/#website',
+        'url': 'https://zanzibartripandrelax.com/',
         'name': 'Zanzibar Trip & Relax',
         'description': 'Zanzibar\'s leading certified local tour guide service.',
         'potentialAction': {
           '@type': 'SearchAction',
           'target': {
             '@type': 'EntryPoint',
-            'urlTemplate': 'https://www.zanzibartripandrelax.com/?search={search_term_string}'
+            'urlTemplate': 'https://zanzibartripandrelax.com/?search={search_term_string}'
           },
           'query-input': 'required name=search_term_string'
         }
@@ -450,7 +450,7 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
         '@id': `${config.canonicalUrl}#webpage`,
         'url': config.canonicalUrl,
         'name': config.title,
-        'isPartOf': { '@id': 'https://www.zanzibartripandrelax.com/#website' },
+        'isPartOf': { '@id': 'https://zanzibartripandrelax.com/#website' },
         'description': config.description,
         'breadcrumb': { '@id': `${config.canonicalUrl}#breadcrumb` }
       },
@@ -463,7 +463,7 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
             '@type': 'ListItem',
             'position': 1,
             'name': 'Home',
-            'item': 'https://www.zanzibartripandrelax.com/'
+            'item': 'https://zanzibartripandrelax.com/'
           },
           {
             '@type': 'ListItem',
@@ -490,7 +490,7 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
         if (dbFaqs.length > 0) {
           const faqSchema = {
             '@type': 'FAQPage',
-            '@id': 'https://www.zanzibartripandrelax.com/#faq-schema',
+            '@id': 'https://zanzibartripandrelax.com/#faq-schema',
             'mainEntity': dbFaqs.map(item => ({
               '@type': 'Question',
               'name': item.q,
@@ -516,11 +516,11 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
       if (matchedTour) {
         const tourSchema = {
           '@type': 'Tour',
-          '@id': `https://www.zanzibartripandrelax.com/#tour-${matchedTour.id}`,
+          '@id': `https://zanzibartripandrelax.com/#tour-${matchedTour.id}`,
           'name': matchedTour.name,
           'description': matchedTour.description,
           'image': matchedTour.image,
-          'provider': { '@id': 'https://www.zanzibartripandrelax.com/#agency' },
+          'provider': { '@id': 'https://zanzibartripandrelax.com/#agency' },
           'itinerary': matchedTour.itinerary.map((step, idx) => ({
             '@type': 'HowToStep',
             'position': idx + 1,
@@ -548,7 +548,7 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
 
       const articleSchema = {
         '@type': 'NewsArticle',
-        '@id': `https://www.zanzibartripandrelax.com/#blogpost-${blogId}`,
+        '@id': `https://zanzibartripandrelax.com/#blogpost-${blogId}`,
         'headline': matchedBlog.title,
         'description': matchedBlog.excerpt,
         'image': [matchedBlog.image],
@@ -560,7 +560,7 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
           'jobTitle': 'Founder of Zanzibar Trip & Relax'
         },
         'publisher': {
-          '@id': 'https://www.zanzibartripandrelax.com/#agency'
+          '@id': 'https://zanzibartripandrelax.com/#agency'
         }
       };
       schemaGraph.push(articleSchema);
@@ -577,7 +577,7 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
           if (matchedDest) {
             const destSchema = {
               '@type': 'TouristDestination',
-              '@id': `https://www.zanzibartripandrelax.com/#destination-${matchedDest.id}`,
+              '@id': `https://zanzibartripandrelax.com/#destination-${matchedDest.id}`,
               'name': matchedDest.name,
               'description': matchedDest.description,
               'image': matchedDest.image,

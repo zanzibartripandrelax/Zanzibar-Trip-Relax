@@ -2,97 +2,97 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Core Landing Pages -->
   <url>
-    <loc>https://www.zanzibartripandrelax.com/</loc>
+    <loc>https://zanzibartripandrelax.com/</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.00</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#about</loc>
+    <loc>https://zanzibartripandrelax.com/about</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#tours</loc>
+    <loc>https://zanzibartripandrelax.com/tours</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.90</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#packages</loc>
+    <loc>https://zanzibartripandrelax.com/packages</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.90</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#safaris</loc>
+    <loc>https://zanzibartripandrelax.com/tanzania-safaris</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.90</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#kilimanjaro</loc>
+    <loc>https://zanzibartripandrelax.com/kilimanjaro</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.90</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#transfers</loc>
+    <loc>https://zanzibartripandrelax.com/airport-transfer</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.80</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#gallery</loc>
-    <lastmod>2026-07-03</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.70</priority>
-  </url>
-  <url>
-    <loc>https://www.zanzibartripandrelax.com/#reviews</loc>
-    <lastmod>2026-07-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.80</priority>
-  </url>
-  <url>
-    <loc>https://www.zanzibartripandrelax.com/#blog</loc>
-    <lastmod>2026-07-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.80</priority>
-  </url>
-  <url>
-    <loc>https://www.zanzibartripandrelax.com/#faq</loc>
+    <loc>https://zanzibartripandrelax.com/gallery</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#trip-builder</loc>
+    <loc>https://zanzibartripandrelax.com/reviews</loc>
+    <lastmod>2026-07-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://zanzibartripandrelax.com/blog</loc>
+    <lastmod>2026-07-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://zanzibartripandrelax.com/faq</loc>
+    <lastmod>2026-07-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+  <url>
+    <loc>https://zanzibartripandrelax.com/trip-builder</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#contact</loc>
+    <loc>https://zanzibartripandrelax.com/contact</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#sustainability</loc>
+    <loc>https://zanzibartripandrelax.com/sustainability</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#careers</loc>
+    <loc>https://zanzibartripandrelax.com/careers</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.50</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#policies</loc>
+    <loc>https://zanzibartripandrelax.com/policies</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.40</priority>
@@ -100,37 +100,37 @@
 
   <!-- Deep Link Tours -->
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#tours/stone-town</loc>
+    <loc>https://zanzibartripandrelax.com/tours/stone-town</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#tours/safari-blue</loc>
+    <loc>https://zanzibartripandrelax.com/tours/safari-blue</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#tours/mnemba-snorkeling</loc>
+    <loc>https://zanzibartripandrelax.com/tours/mnemba-snorkeling</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#tours/prison-island</loc>
+    <loc>https://zanzibartripandrelax.com/tours/prison-island</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#tours/spice-farm</loc>
+    <loc>https://zanzibartripandrelax.com/tours/spice-farm</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#tours/jozani-forest</loc>
+    <loc>https://zanzibartripandrelax.com/tours/jozani-forest</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
@@ -138,49 +138,49 @@
 
   <!-- Deep Link Blog Articles -->
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#blog/1</loc>
+    <loc>https://zanzibartripandrelax.com/blog/1</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#blog/2</loc>
+    <loc>https://zanzibartripandrelax.com/blog/2</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#blog/3</loc>
+    <loc>https://zanzibartripandrelax.com/blog/3</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#blog/4</loc>
+    <loc>https://zanzibartripandrelax.com/blog/4</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#blog/5</loc>
+    <loc>https://zanzibartripandrelax.com/blog/5</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#blog/6</loc>
+    <loc>https://zanzibartripandrelax.com/blog/6</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#blog/7</loc>
+    <loc>https://zanzibartripandrelax.com/blog/7</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://www.zanzibartripandrelax.com/#blog/8</loc>
+    <loc>https://zanzibartripandrelax.com/blog/8</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>

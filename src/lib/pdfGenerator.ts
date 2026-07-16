@@ -8,7 +8,7 @@ const COMPANY_INFO = {
   address: 'Kenyatta Road, Stone Town, Zanzibar, Tanzania',
   phone: '+255 629 506 063',
   email: 'info@zanzibartripandrelax.com',
-  web: 'www.zanzibartripandrelax.com',
+  web: 'zanzibartripandrelax.com',
   emergency: '+255 629 506 063 (WhatsApp / Call 24/7)',
   licence: 'Tanzania Tourism Registry (TALA No. 98112-ZRT)'
 };
