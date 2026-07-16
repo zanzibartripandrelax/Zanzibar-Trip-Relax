@@ -1,0 +1,52 @@
+[
+  {
+    "id": "log_dglyoser6",
+    "timestamp": "2026-07-16T16:41:00.308Z",
+    "type": "SMS_OTP_FAILURE",
+    "target": "+255777123456",
+    "details": "Twilio gateway rejected dispatch: username is required",
+    "status": "Failed",
+    "providerResponse": "{}"
+  },
+  {
+    "id": "log_6zn0sdb93",
+    "timestamp": "2026-07-16T16:40:59.889Z",
+    "type": "SMS_OTP_DISPATCH",
+    "target": "+255777123456",
+    "details": "Initiating SMS transmission to +255777123456 via Twilio gateway",
+    "status": "Success"
+  },
+  {
+    "id": "log_yuyn4hn4o",
+    "timestamp": "2026-07-16T16:40:59.889Z",
+    "type": "OTP_GENERATED",
+    "target": "+255777123456",
+    "details": "Generated 2fa OTP code. Expiring in 10 minutes. Resend disabled for 45s.",
+    "status": "Success"
+  },
+  {
+    "id": "log_frjciawgf",
+    "timestamp": "2026-07-16T16:40:50.020Z",
+    "type": "EMAIL_OTP_FAILURE",
+    "target": "test@test.com",
+    "details": "SMTP Transmission failed: getaddrinfo ENOTFOUND smtp.zanzibartripandrelax.com",
+    "status": "Failed",
+    "providerResponse": "{\"errno\":-3008,\"code\":\"EDNS\",\"syscall\":\"getaddrinfo\",\"hostname\":\"smtp.zanzibartripandrelax.com\",\"command\":\"CONN\"}"
+  },
+  {
+    "id": "log_l9wev5h10",
+    "timestamp": "2026-07-16T16:40:49.830Z",
+    "type": "EMAIL_OTP_DISPATCH",
+    "target": "test@test.com",
+    "details": "Initiating email transmission to test@test.com via SMTP server smtp.zanzibartripandrelax.com",
+    "status": "Success"
+  },
+  {
+    "id": "log_h7oqkfvmr",
+    "timestamp": "2026-07-16T16:40:49.830Z",
+    "type": "OTP_GENERATED",
+    "target": "test@test.com",
+    "details": "Generated 2fa OTP code. Expiring in 10 minutes. Resend disabled for 45s.",
+    "status": "Success"
+  }
+]
