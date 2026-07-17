@@ -20,6 +20,12 @@
     <priority>0.90</priority>
   </url>
   <url>
+    <loc>https://zanzibartripandrelax.com/zanzibar-tours</loc>
+    <lastmod>2026-07-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
     <loc>https://zanzibartripandrelax.com/packages</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
@@ -100,19 +106,19 @@
 
   <!-- Deep Link Tours -->
   <url>
-    <loc>https://zanzibartripandrelax.com/tours/stone-town</loc>
-    <lastmod>2026-07-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
     <loc>https://zanzibartripandrelax.com/tours/safari-blue</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://zanzibartripandrelax.com/tours/mnemba-snorkeling</loc>
+    <loc>https://zanzibartripandrelax.com/tours/mnemba-island</loc>
+    <lastmod>2026-07-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://zanzibartripandrelax.com/tours/stone-town</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
@@ -131,6 +137,56 @@
   </url>
   <url>
     <loc>https://zanzibartripandrelax.com/tours/jozani-forest</loc>
+    <lastmod>2026-07-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://zanzibartripandrelax.com/tours/dolphin-tour</loc>
+    <lastmod>2026-07-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://zanzibartripandrelax.com/tours/nakupenda-island</loc>
+    <lastmod>2026-07-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Deep Link Holiday Packages -->
+  <url>
+    <loc>https://zanzibartripandrelax.com/packages/zanzibar-holiday-package</loc>
+    <lastmod>2026-07-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://zanzibartripandrelax.com/packages/luxury-zanzibar-package</loc>
+    <lastmod>2026-07-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://zanzibartripandrelax.com/packages/honeymoon-zanzibar</loc>
+    <lastmod>2026-07-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://zanzibartripandrelax.com/packages/family-zanzibar-package</loc>
+    <lastmod>2026-07-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://zanzibartripandrelax.com/packages/7-day-zanzibar-trip</loc>
+    <lastmod>2026-07-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://zanzibartripandrelax.com/packages/zanzibar-all-inclusive</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>

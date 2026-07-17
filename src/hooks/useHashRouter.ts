@@ -25,6 +25,20 @@ function getPageFromHash(): RouteState {
   let hashAndQuery = window.location.hash.replace('#', '');
   const pathname = window.location.pathname.toLowerCase();
 
+  const mapPackageSlug = (slug: string): string => {
+    const s = slug.toLowerCase();
+    if (s === 'zanzibar-holiday-package' || s === 'family-zanzibar-package') {
+      return '5-day-beach-adventure';
+    }
+    if (s === 'luxury-zanzibar-package' || s === '7-day-zanzibar-trip' || s === 'zanzibar-all-inclusive') {
+      return '7-day-zanzibar-combo';
+    }
+    if (s === 'honeymoon-zanzibar') {
+      return '3-day-escape';
+    }
+    return slug;
+  };
+
   // Map clean pathname to hash if there is no hash
   if (!hashAndQuery && pathname && pathname !== '/' && pathname !== '/index.html') {
     const cleanPath = pathname.replace(/\/$/, ''); // remove trailing slash
@@ -97,7 +111,8 @@ function getPageFromHash(): RouteState {
       window.location.hash = `booking?package=${id}`;
     } else if (cleanPath.startsWith('/packages/')) {
       const id = cleanPath.substring('/packages/'.length);
-      window.location.hash = `booking?package=${id}`;
+      const mappedPkgId = mapPackageSlug(id);
+      window.location.hash = `packages?package=${mappedPkgId}`;
     } else if (cleanPath.startsWith('/kilimanjaro/')) {
       const id = cleanPath.substring('/kilimanjaro/'.length);
       window.location.hash = `booking?package=${id}`;
