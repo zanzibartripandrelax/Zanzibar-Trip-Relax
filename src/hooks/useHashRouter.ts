@@ -27,16 +27,29 @@ function getPageFromHash(): RouteState {
 
   const mapPackageSlug = (slug: string): string => {
     const s = slug.toLowerCase();
-    if (s === 'zanzibar-holiday-package' || s === 'family-zanzibar-package') {
+    if (s === 'zanzibar-holiday-package' || s === 'family-zanzibar-package' || s === '5-day-zanzibar-package') {
       return '5-day-beach-adventure';
     }
-    if (s === 'luxury-zanzibar-package' || s === '7-day-zanzibar-trip' || s === 'zanzibar-all-inclusive') {
+    if (s === 'luxury-zanzibar-package' || s === '7-day-zanzibar-trip' || s === 'zanzibar-all-inclusive' || s === '7-day-zanzibar-holiday') {
       return '7-day-zanzibar-combo';
     }
-    if (s === 'honeymoon-zanzibar') {
+    if (s === 'honeymoon-zanzibar' || s === 'honeymoon-zanzibar-package' || s === '3-day-zanzibar-package') {
       return '3-day-escape';
     }
     return slug;
+  };
+
+  const mapTourSlug = (slug: string): string => {
+    const s = slug.toLowerCase();
+    if (s === 'safari-blue-zanzibar' || s === 'safari-blue') return 'safari-blue';
+    if (s === 'mnemba-island-snorkeling' || s === 'mnemba-island' || s === 'mnemba-snorkeling') return 'mnemba-snorkeling';
+    if (s === 'stone-town-tour' || s === 'stone-town') return 'stone-town';
+    if (s === 'prison-island') return 'prison-island';
+    if (s === 'spice-farm') return 'spice-farm';
+    if (s === 'jozani-forest') return 'jozani-forest';
+    if (s === 'dolphin-tour' || s === 'dolphin-kizimkazi') return 'dolphin-kizimkazi';
+    if (s === 'nakupenda-island' || s === 'nakupenda-sandbank') return 'nakupenda-sandbank';
+    return s;
   };
 
   // Map clean pathname to hash if there is no hash
@@ -48,13 +61,13 @@ function getPageFromHash(): RouteState {
       window.location.hash = 'about';
     } else if (cleanPath === '/contact') {
       window.location.hash = 'contact';
-    } else if (cleanPath === '/tours' || cleanPath === '/zanzibar-tours') {
+    } else if (cleanPath === '/tours' || cleanPath === '/zanzibar-tours' || cleanPath === '/zanzibar-excursions') {
       window.location.hash = 'tours';
     } else if (cleanPath === '/booking') {
       window.location.hash = 'booking';
     } else if (cleanPath === '/gallery') {
       window.location.hash = 'gallery';
-    } else if (cleanPath === '/packages') {
+    } else if (cleanPath === '/packages' || cleanPath === '/zanzibar-holiday-packages') {
       window.location.hash = 'packages';
     } else if (cleanPath === '/tanzania-safaris' || cleanPath === '/safaris') {
       window.location.hash = 'safaris';
@@ -80,7 +93,7 @@ function getPageFromHash(): RouteState {
       window.location.hash = 'destinations';
     } else if (cleanPath === '/hotels') {
       window.location.hash = 'hotels';
-    } else if (cleanPath === '/kilimanjaro') {
+    } else if (cleanPath === '/kilimanjaro' || cleanPath === '/kilimanjaro-climbing') {
       window.location.hash = 'kilimanjaro';
     } else if (cleanPath === '/admin') {
       window.location.hash = 'admin';
@@ -96,10 +109,12 @@ function getPageFromHash(): RouteState {
       window.location.hash = 'manage-booking';
     } else if (cleanPath.startsWith('/tours/')) {
       const id = cleanPath.substring('/tours/'.length);
-      window.location.hash = `tours/${id}`;
+      const mappedId = mapTourSlug(id);
+      window.location.hash = `tours/${mappedId}`;
     } else if (cleanPath.startsWith('/tour-detail/')) {
       const id = cleanPath.substring('/tour-detail/'.length);
-      window.location.hash = `tours/${id}`;
+      const mappedId = mapTourSlug(id);
+      window.location.hash = `tours/${mappedId}`;
     } else if (cleanPath.startsWith('/blog/')) {
       const id = cleanPath.substring('/blog/'.length);
       window.location.hash = `blog/${id}`;

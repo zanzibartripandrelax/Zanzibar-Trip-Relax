@@ -36,7 +36,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Zanzibar Day Excursions, Snorkeling & Spice Farm Tours',
     description: 'Book fully private and guided single-day tours in Zanzibar. Safari Blue ocean cruises, swim with dolphins at Mnemba reef, organic spice fields, prison island giant tortoises.',
     keywords: 'Safari Blue cruise, Mnemba Island snorkeling, Prison Island tortoise tours, spice farm guide',
-    canonicalUrl: 'https://zanzibartripandrelax.com/tours',
+    canonicalUrl: 'https://zanzibartripandrelax.com/zanzibar-tours',
     ogType: 'product',
     ogImage: 'https://images.pexels.com/photos/2087394/pexels-photo-2087394.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -44,7 +44,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Zanzibar Holiday Packages | Custom Multi-Day Beaches Tours',
     description: 'Handcrafted all-inclusive private Zanzibar vacation packages. 3-day romantic couples retreats, 5-day beach adventures, or 7-day wildlife combos with airport transfers.',
     keywords: 'Zanzibar holiday packages, Zanzibar honeymoon tours, 5 day beach adventure, Zanzibar tour itineraries',
-    canonicalUrl: 'https://zanzibartripandrelax.com/packages',
+    canonicalUrl: 'https://zanzibartripandrelax.com/zanzibar-holiday-packages',
     ogType: 'product',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -60,7 +60,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Climb Mount Kilimanjaro Tours | Complete Uhuru Peak Guides',
     description: 'Summits of Africa! Join our expert-led, KPAP ethical climbing expeditions up Mount Kilimanjaro via scenic Machame, Lemosho, and classic Marangu cabin routes.',
     keywords: 'Climb Mt Kilimanjaro, Mount Kilimanjaro routes, Machame Route booking, Lemosho climbing expedition, Uhuru peak summit',
-    canonicalUrl: 'https://zanzibartripandrelax.com/kilimanjaro',
+    canonicalUrl: 'https://zanzibartripandrelax.com/kilimanjaro-climbing',
     ogType: 'product',
     ogImage: 'https://images.pexels.com/photos/1433052/pexels-photo-1433052.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -164,7 +164,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'Zanzibar Private Airport Transfers & Resort Shuttles',
     description: 'Book reliable, fully licensed, air-conditioned private vehicles from Abeid Amani Karume International Airport (ZNZ) to Nungwi, Kendwa, Paje, and Stone Town.',
     keywords: 'Zanzibar airport transfer, private taxi Nungwi, ZNZ airport shuttle, Zanzibar stone town transport',
-    canonicalUrl: 'https://zanzibartripandrelax.com/airport-transfer',
+    canonicalUrl: 'https://zanzibartripandrelax.com/zanzibar-airport-transfer',
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -172,7 +172,7 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     title: 'View Tour Details | Handcrafted Guided Zanzibar Experiences',
     description: 'Explore specific itineraries, real photos, tiered prices, duration, and reviews for our private guided Zanzibar tours and snorkeling excursions.',
     keywords: 'guided Zanzibar tour details, private excursions Swahili coast, price estimator',
-    canonicalUrl: 'https://zanzibartripandrelax.com/tours',
+    canonicalUrl: 'https://zanzibartripandrelax.com/zanzibar-tours',
     ogType: 'product',
     ogImage: 'https://images.pexels.com/photos/2087394/pexels-photo-2087394.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
@@ -273,15 +273,98 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
       );
 
       if (staticTour) {
+        let seoSlug = staticTour.id;
+        if (staticTour.id === 'safari-blue') seoSlug = 'safari-blue-zanzibar';
+        if (staticTour.id === 'mnemba-snorkeling') seoSlug = 'mnemba-island-snorkeling';
+        if (staticTour.id === 'stone-town') seoSlug = 'stone-town-tour';
+        if (staticTour.id === 'prison-island') seoSlug = 'prison-island';
+        if (staticTour.id === 'spice-farm') seoSlug = 'spice-farm';
+        if (staticTour.id === 'jozani-forest') seoSlug = 'jozani-forest';
+        if (staticTour.id === 'dolphin-kizimkazi') seoSlug = 'dolphin-tour';
+        if (staticTour.id === 'nakupenda-sandbank') seoSlug = 'nakupenda-island';
+
+        let seoTitle = staticTour.seoMetadata?.title || staticTour.name;
+        if (staticTour.id === 'safari-blue') seoTitle = 'Safari Blue Zanzibar Full Day Tour | Snorkeling, Lunch & Island Adventure';
+        if (staticTour.id === 'mnemba-snorkeling') seoTitle = 'Mnemba Island Snorkeling Tour | Swim with Dolphins & Turtles';
+        if (staticTour.id === 'stone-town') seoTitle = 'Stone Town Walking Tour Zanzibar | UNESCO World Heritage Historic Walk';
+        if (staticTour.id === 'prison-island') seoTitle = 'Prison Island & Giant Tortoises Tour | Feed Ancient Aldabra Tortoises';
+        if (staticTour.id === 'spice-farm') seoTitle = 'Zanzibar Spice Farm Tour | Organic Spices, Fruits & Swahili Lunch';
+        if (staticTour.id === 'jozani-forest') seoTitle = 'Jozani Forest Guided Tour | Rare Red Colobus Monkeys & Mangroves';
+        if (staticTour.id === 'dolphin-kizimkazi') seoTitle = 'Dolphin Tour Zanzibar Kizimkazi | Swim with Wild Dolphins at Sunrise';
+        if (staticTour.id === 'nakupenda-sandbank') seoTitle = 'Nakupenda Sandbank Beach Day Tour | Snorkeling & Fresh Seafood Feast';
+
         return {
-          title: `${staticTour.seoMetadata?.title || staticTour.name} | Zanzibar Trip & Relax`,
+          title: `${seoTitle} | Zanzibar Trip & Relax`,
           description: staticTour.seoMetadata?.desc || staticTour.description,
           keywords: (staticTour.seoMetadata?.keywords || []).join(', ') || 'Zanzibar tour, excursion',
-          canonicalUrl: `https://zanzibartripandrelax.com/tours/${staticTour.id}`,
+          canonicalUrl: `https://zanzibartripandrelax.com/tours/${seoSlug}`,
           ogType: 'product',
           ogImage: staticTour.image
         };
       }
+    }
+
+    // 1.5 Dynamic check for packages
+    if (pageId === 'packages') {
+      const pathname = window.location.pathname.toLowerCase();
+      let pkgSlug = '';
+      if (pathname.includes('/packages/')) {
+        pkgSlug = pathname.split('/packages/')[1].replace(/\/$/, '');
+      } else {
+        const queryParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+        const pParam = queryParams.get('package');
+        if (pParam) {
+          if (pParam === '3-day-escape') pkgSlug = '3-day-zanzibar-package';
+          else if (pParam === '5-day-beach-adventure') pkgSlug = '5-day-zanzibar-package';
+          else if (pParam === '7-day-zanzibar-combo') pkgSlug = '7-day-zanzibar-holiday';
+          else pkgSlug = pParam;
+        }
+      }
+
+      if (pkgSlug) {
+        let title = 'Zanzibar Holiday Packages | Custom Multi-Day Beaches Tours';
+        let desc = 'Handcrafted all-inclusive private Zanzibar vacation packages.';
+        if (pkgSlug === '3-day-zanzibar-package') {
+          title = '3-Day Zanzibar Romantic Package | Short Beach Getaway';
+          desc = 'Indulge in a perfect 3-day romantic Zanzibar escape. Historic Stone Town sunset walks, Prison Island tortoises, and beautiful beachfront hotel dining.';
+        } else if (pkgSlug === '5-day-zanzibar-package') {
+          title = '5-Day Zanzibar Holiday Package | Ultimate Beach & Tours';
+          desc = 'Experience the ultimate 5-day Zanzibar vacation. Snorkeling at Mnemba Atoll, red colobus monkeys at Jozani Forest, Safari Blue, and premium hotels.';
+        } else if (pkgSlug === '7-day-zanzibar-holiday') {
+          title = '7-Day Zanzibar Holiday Package | Heritage, Nature & Ocean';
+          desc = 'Spend 7 days in tropical paradise. Historic Stone Town tours, giant tortoises, organic spice farm visits, dolphin snorkeling, and pristine beaches.';
+        } else if (pkgSlug === 'luxury-zanzibar-package') {
+          title = 'Luxury Zanzibar Package | 5-Star Premium Zanzibar Trip';
+          desc = 'Indulge in absolute luxury with our premium 5-star Zanzibar package. Private luxury yacht cruises, 5-star oceanfront suites, and VIP private guides.';
+        } else if (pkgSlug === 'honeymoon-zanzibar-package') {
+          title = 'Honeymoon Zanzibar Package | Romantic Tropical Escape';
+          desc = 'Create memories to last a lifetime with our bespoke Zanzibar Honeymoon package. Romantic candlelit beach dinners, couples massage, and sunset dhow cruise.';
+        } else if (pkgSlug === 'family-zanzibar-package') {
+          title = 'Family Zanzibar Package | Safe & Fun Activities For All Ages';
+          desc = 'A safe, fun-filled Zanzibar family holiday package. Kid-friendly tours, giant sea tortoises, safe snorkeling, and spacious family beachfront resorts.';
+        }
+
+        return {
+          title: `${title} | Zanzibar Trip & Relax`,
+          description: desc,
+          keywords: 'Zanzibar packages, Zanzibar tour packages, Zanzibar holiday booking',
+          canonicalUrl: `https://zanzibartripandrelax.com/packages/${pkgSlug}`,
+          ogType: 'product',
+          ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
+        };
+      }
+    }
+
+    // 1.8 Custom check for zanzibar-excursions
+    if (window.location.pathname.toLowerCase().includes('/zanzibar-excursions')) {
+      return {
+        title: 'Zanzibar Day Excursions, Snorkeling & Spice Farm Tours',
+        description: 'Book fully private and guided single-day tours in Zanzibar. Safari Blue ocean cruises, swim with dolphins at Mnemba reef, organic spice fields, prison island giant tortoises.',
+        keywords: 'Safari Blue cruise, Mnemba Island snorkeling, Prison Island tortoise tours, spice farm guide',
+        canonicalUrl: 'https://zanzibartripandrelax.com/zanzibar-excursions',
+        ogType: 'product',
+        ogImage: 'https://images.pexels.com/photos/2087394/pexels-photo-2087394.jpeg?auto=compress&cs=tinysrgb&w=1200'
+      };
     }
 
     // 2. Dynamic check for blog-detail
