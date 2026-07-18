@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useHashRouter } from './hooks/useHashRouter';
+import { ExitIntentModal } from './components/ExitIntentModal';
 import { motion, AnimatePresence } from 'motion/react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -189,6 +190,9 @@ export default function App() {
 
       {/* Persistent Floating WhatsApp Help desk icon */}
       {!isAdminPage && <WhatsAppButton />}
+
+      {/* Premium Luxury CRO Exit Intent Lead-Gen Popup */}
+      {!isAdminPage && currentPage !== 'booking' && <ExitIntentModal />}
 
       {/* Elegant Back to Top button */}
       {!isAdminPage && <BackToTopButton />}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Page } from '../hooks/useHashRouter';
 import { motion, AnimatePresence } from 'motion/react';
 import { showToast } from '../components/ToastNotification';
-import { ExitIntentModal } from '../components/ExitIntentModal';
+import { ExitIntentModal, trackPopupMetric } from '../components/ExitIntentModal';
 import {
   Calendar, User, Phone, Mail, CheckCircle2, MessageCircle, AlertCircle, RefreshCw,
   MapPin, Users, Clock, Compass, Shield, HelpCircle, ArrowRight, Download, Printer,
@@ -25,7 +25,7 @@ import {
 import { addEmailLog, generateEmailTemplate, getSmtpConfig } from '../lib/emailService';
 
 // Modular Imports
-import { holidayPackageDetails, PackageItem } from '../data/bookingData';
+import { holidayPackageDetails, PackageItem, allPackages } from '../data/bookingData';
 import {
   HolidayPackageForm,
   DayTourForm,
@@ -43,19 +43,65 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
   const { trackBookingInitiate, trackWhatsAppClick } = useAnalytics();
 
   const content = useCMSStore();
-  const cmsPackages = useMemo(() => {
-    return (content.tours || [])
-      .filter(t => t.category === 'package')
-      .map(t => ({
+  const allExperiences = useMemo(() => {
+    // 1. Get all from CMS content.tours
+    const cmsList = (content.tours || []).map(t => {
+      let cat: 'packages' | 'tour' | 'transfer' | 'safari' | 'kilimanjaro' = 'tour';
+      if (t.category === 'package' || t.category === 'packages') cat = 'packages';
+      else if (t.category === 'safari') cat = 'safari';
+      else if (t.category === 'kilimanjaro') cat = 'kilimanjaro';
+      else if (t.category === 'transfer') cat = 'transfer';
+
+      let catLabel = 'Zanzibar Excursion';
+      if (cat === 'packages') catLabel = 'Zanzibar Package';
+      else if (cat === 'safari') catLabel = 'Tanzania Safari';
+      else if (cat === 'kilimanjaro') catLabel = 'Kilimanjaro Climb';
+      else if (cat === 'transfer') catLabel = 'Private Transfer';
+
+      return {
         id: t.id,
+        name: t.title,
         title: t.title,
+        basePrice: typeof t.price === 'number' ? t.price : parseFloat(String(t.price).replace(/[^0-9.]/g, '')) || 50,
         duration: t.duration || 'Flexible',
-        price: t.price,
+        price: typeof t.price === 'number' ? t.price : parseFloat(String(t.price).replace(/[^0-9.]/g, '')) || 50,
         image: t.img,
-        category: 'packages',
+        category: cat,
+        categoryLabel: catLabel,
         tag: (t.tags && t.tags[0]) || 'Featured',
-        highlights: t.highlights || [t.shortDesc || '']
-      }));
+        highlights: t.highlights || [t.shortDesc || ''],
+        includesPickup: true,
+        rating: 4.9,
+        reviews: 142,
+        description: t.shortDesc || ''
+      };
+    });
+
+    // 2. Merge with static allPackages, overriding if there is a matching ID or name
+    const result = [...cmsList];
+    for (const p of allPackages) {
+      const exists = result.some(item => item.id === p.id || item.name.toLowerCase() === p.name.toLowerCase());
+      if (!exists) {
+        result.push({
+          id: p.id,
+          name: p.name,
+          title: p.name,
+          basePrice: p.basePrice,
+          duration: p.duration,
+          price: p.basePrice,
+          image: p.image,
+          category: p.category,
+          categoryLabel: p.categoryLabel,
+          tag: p.badge || 'Highly Rated',
+          highlights: [p.description],
+          includesPickup: p.includesPickup,
+          rating: p.rating,
+          reviews: p.reviews,
+          description: p.description
+        });
+      }
+    }
+    return result;
   }, [content.tours]);
 
   // Unified Wizard Flow states
@@ -194,11 +240,32 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
   // Parse routing / pre-selected experiences from query parameters
   useEffect(() => {
     if (queryParams && Object.keys(queryParams).length > 0) {
-      const productId = queryParams.package || queryParams.id || queryParams.product;
+      const productId = queryParams.package || queryParams.id || queryParams.product || queryParams.tour || queryParams.safari;
       const directCategory = queryParams.category;
+      const hotelParam = queryParams.hotel;
+
+      if (hotelParam) {
+        const decodedHotel = decodeURIComponent(hotelParam).trim().toLowerCase();
+        const matchedHotel = hotelsList.find(h => 
+          h.id.toLowerCase() === decodedHotel || 
+          h.name.toLowerCase() === decodedHotel
+        );
+        if (matchedHotel) {
+          setSelectedHotelId(matchedHotel.id);
+          setNotListedHotel(false);
+        } else {
+          setNotListedHotel(true);
+          setCustomHotelName(decodeURIComponent(hotelParam));
+        }
+      }
 
       if (productId) {
-        const matched = cmsPackages.find(p => p.id === productId);
+        const decodedId = decodeURIComponent(productId).trim().toLowerCase();
+        const matched = allExperiences.find(p => 
+          p.id.toLowerCase() === decodedId || 
+          p.name.toLowerCase() === decodedId || 
+          (p.title && p.title.toLowerCase() === decodedId)
+        );
         if (matched) {
           setSelectedPackage(matched);
           setActiveCategory(matched.category);
@@ -221,7 +288,7 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
         }
       }
     }
-  }, [queryParams]);
+  }, [queryParams, allExperiences, hotelsList]);
 
   // Handle Category Tab switching
   const handleCategorySwitch = (cat: 'packages' | 'tour' | 'transfer' | 'safari' | 'kilimanjaro') => {
@@ -269,12 +336,18 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
       }
     } else {
       // Fallback for demo/standard codes
-      if (cleaned === 'WELCOME10' || cleaned === 'SWAHILI10' || cleaned === 'ZANZIBAR10') {
+      const storedCode = (localStorage.getItem('ztr_exit_popup_promo_code') || 'PARADISE10').toUpperCase();
+      const storedDiscount = Number(localStorage.getItem('ztr_exit_popup_discount')) || 10;
+
+      if (cleaned === 'WELCOME10' || cleaned === 'SWAHILI10' || cleaned === 'ZANZIBAR10' || cleaned === storedCode) {
+        const isExitCode = cleaned === storedCode;
+        const discountVal = isExitCode ? storedDiscount : 10;
+
         const mockCoupon: Coupon = {
           id: 'MOCK-1',
           name: cleaned,
           type: 'percentage',
-          value: 10,
+          value: discountVal,
           expirationDate: '2028-12-31',
           maxUses: 1000,
           usedCount: 0,
@@ -285,7 +358,10 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
         };
         setActiveCoupon(mockCoupon);
         setCouponApplied(true);
-        showToast('Promo code "WELCOME10" applied! 10% off base rate.', 'success');
+        if (isExitCode) {
+          trackPopupMetric('discountRedeemed');
+        }
+        showToast(`Promo code "${cleaned}" applied! ${discountVal}% off base rate.`, 'success');
       } else {
         setCouponError('Invalid promo code. Please try again.');
       }
@@ -435,9 +511,8 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
 
   // Filtered packages depending on category
   const filteredPackages = useMemo(() => {
-    if (activeCategory !== 'packages') return [];
-    return cmsPackages;
-  }, [cmsPackages, activeCategory]);
+    return allExperiences.filter(p => p.category === activeCategory);
+  }, [allExperiences, activeCategory]);
 
   // Proceed to Summary & Prepayment screen
   const handleProceedToSummary = (e: React.FormEvent) => {
@@ -629,6 +704,15 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
     } catch (err) {
       console.warn('Mail notification skip:', err);
       setEmailSendingStatus('idle');
+    }
+
+    // Track exit intent conversion if submitted previously
+    if (localStorage.getItem('ztr_exit_popup_submitted') === 'true') {
+      try {
+        trackPopupMetric('bookingCompleted');
+      } catch (err) {
+        console.warn('Popup conversion bookingCompleted track error:', err);
+      }
     }
 
     setStatus('success');
@@ -1791,8 +1875,6 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
 
       </div>
 
-      {/* Exit Intent Modal */}
-      <ExitIntentModal />
     </div>
   );
 }

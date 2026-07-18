@@ -18,7 +18,7 @@ export interface EmailLog {
   toEmail: string;
   subject: string;
   bodyHtml: string;
-  type: 'verification' | 'welcome' | 'reset' | 'booking_confirm' | 'payment_confirm' | 'booking_cancel' | 'staff_created' | 'two_factor_auth' | 'password_reset' | 'sms_dispatch_log' | 'security_alert' | 'custom_inquiry';
+  type: 'verification' | 'welcome' | 'reset' | 'booking_confirm' | 'payment_confirm' | 'booking_cancel' | 'staff_created' | 'two_factor_auth' | 'password_reset' | 'sms_dispatch_log' | 'security_alert' | 'custom_inquiry' | 'exit_intent_lead';
   status: 'Delivered' | 'Pending' | 'Failed';
   smtpUsed: string;
 }
@@ -376,6 +376,48 @@ export function generateEmailTemplate(
 
           <p>We are dedicated to crafting your ultimate Swahili coastline experience.</p>
           <p style="margin-top: 25px;">Warmest regards,<br>Bespoke Reservations Office</p>
+        </div>
+      `;
+      break;
+
+    case 'exit_intent_lead':
+      subject = 'Your Zanzibar Travel Benefits & Guide are Here! 🌴';
+      contentHtml = `
+        <div style="padding: 30px 25px; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #334155;">
+          <p style="font-size: 16px; font-weight: bold; color: ${secondaryColor};">Jambo, ${toName}!</p>
+          <p>Thank you for claiming your exclusive traveler benefits from Zanzibar Trip & Relax.</p>
+          
+          <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <p style="margin: 0; font-weight: bold; font-size: 15px; color: #15803d;">🎁 Your Exclusive Promo Code:</p>
+            <p style="margin: 10px 0 0 0; font-family: monospace; font-size: 24px; font-weight: bold; color: #166534; letter-spacing: 2px;">${data.promoCode || 'PARADISE10'}</p>
+            <p style="margin: 5px 0 0 0; font-size: 12px; color: #166534;">Enjoy <strong>${data.discountValue || '10'}% OFF</strong> your choice of day tours, packages, or hotel bookings!</p>
+          </div>
+
+          <p>We've also attached your premium <strong>Zanzibar Insider Travel Guide</strong>. You can click the link below to access and download it instantly on any device:</p>
+          
+          <div style="text-align: center; margin: 25px 0;">
+            <a href="${data.pdfUrl || 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1200&q=80'}" style="background-color: ${brandColor}; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px -1px rgba(11, 59, 140, 0.2);">Download My Zanzibar Guide (PDF)</a>
+          </div>
+
+          <h3 style="color: ${brandColor}; font-size: 16px; font-weight: bold; margin-top: 30px;">What's Inside Your Zanzibar Insider Guide:</h3>
+          <ul style="padding-left: 20px; line-height: 1.8; margin-top: 10px;">
+            <li>🗺️ <strong>Hidden beaches</strong> & scenic coastal pathways</li>
+            <li>🍽️ <strong>Secret local restaurants</strong> serving authentic spices</li>
+            <li>🎒 <strong>Packing checklist</strong> for the ultimate safari comfort</li>
+            <li>🗣️ <strong>Local Swahili phrases</strong> to blend in like a local</li>
+            <li>💰 <strong>Money-saving tips</strong> for markets and taxis</li>
+            <li>🐠 <strong>Best snorkeling spots</strong> and timing for sea turtles</li>
+            <li>🌅 <strong>Best sunset locations</strong> with dhow boat view angles</li>
+          </ul>
+
+          <p style="margin-top: 25px;"><strong>Need custom travel advice?</strong> Reply to this email or click the button below to message our concierge directly on WhatsApp for a complimentary, personalized itinerary consultation!</p>
+          
+          <div style="text-align: center; margin: 25px 0;">
+            <a href="https://wa.me/255629506063?text=Hello%20Zanzibar%20Trip%20%26%20Relax%2C%20I%20claimed%20the%2010%25%20holiday%20offer%20and%20would%20like%20help%20planning%20my%20Zanzibar%20trip." style="background-color: #25D366; color: #ffffff; padding: 11px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Get Free Consultation on WhatsApp</a>
+          </div>
+
+          <p>We look forward to seeing you in Zanzibar very soon!</p>
+          <p style="margin-top: 25px;">Asante sana,<br>Your Zanzibar Trip & Relax Concierge Team</p>
         </div>
       `;
       break;

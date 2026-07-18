@@ -263,10 +263,19 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
     ],
   },
   tours: [
-    { id: '1', title: 'Safari Blue Ocean Cruise', slug: 'safari-blue', category: 'tour', shortDesc: 'Sail past Sandbanks, snorkel clear lagoon corals, and enjoy a fresh seafood buffet on Kwale Island.', price: '$45', duration: 'Full Day', location: 'Menai Bay, Fumba', img: 'https://images.pexels.com/photos/2087394/pexels-photo-2087394.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
-    { id: '2', title: 'Mnemba Island Snorkeling', slug: 'mnemba-snorkeling', category: 'tour', shortDesc: 'Swim in crystal-clear waters alongside wild dolphins, sea turtles, and starfish near the famous private island.', price: '$35', duration: 'Half Day', location: 'Matemwe, Nungwi', img: 'https://images.pexels.com/photos/1450363/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
-    { id: '3', title: 'Stone Town Cultural Walk', slug: 'stone-town-walk', category: 'tour', shortDesc: 'Explore the narrow coral lanes, rich sultan history, bustling local bazaars, and Fredy Mercury museum.', price: '$20', duration: '3 Hours', location: 'Stone Town', img: 'https://images.pexels.com/photos/2161467/pexels-photo-2161467.jpeg?auto=compress&cs=tinysrgb&w=1600', visible: true },
-    { id: '4', title: 'Prison Island & Giant Tortoises', slug: 'prison-island', category: 'tour', shortDesc: 'A short boat ride to feed Aldabra giant tortoises dating back to 100 years and snorkel the prison reef flats.', price: '$25', duration: '3 Hours', location: 'Stone Town Harbor', img: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=1600', visible: true },
+    { id: 'safari-blue', title: 'Safari Blue Ocean Cruise', slug: 'safari-blue', category: 'tour', shortDesc: 'Sail past Sandbanks, snorkel clear lagoon corals, and enjoy a fresh seafood buffet on Kwale Island.', price: '$80', duration: 'Full Day (8 hrs)', location: 'Menai Bay, Fumba', img: 'https://images.pexels.com/photos/2087394/pexels-photo-2087394.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
+    { id: 'mnemba-snorkeling', title: 'Mnemba Island Snorkeling', slug: 'mnemba-snorkeling', category: 'tour', shortDesc: 'Swim in crystal-clear waters alongside wild dolphins, sea turtles, and starfish near the famous private island.', price: '$35', duration: 'Half Day (4 hrs)', location: 'Matemwe, Nungwi', img: 'https://images.pexels.com/photos/1450363/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
+    { id: 'stone-town', title: 'Stone Town Historical Tour', slug: 'stone-town-walk', category: 'tour', shortDesc: 'Explore the narrow coral lanes, rich sultan history, bustling local bazaars, and Fredy Mercury museum.', price: '$45', duration: 'Half Day (4 hrs)', location: 'Stone Town', img: 'https://images.pexels.com/photos/2161467/pexels-photo-2161467.jpeg?auto=compress&cs=tinysrgb&w=1600', visible: true },
+    { id: 'prison-island', title: 'Prison Island & Giant Tortoises', slug: 'prison-island', category: 'tour', shortDesc: 'A short boat ride to feed Aldabra giant tortoises dating back to 100 years and snorkel the prison reef flats.', price: '$50', duration: 'Half Day (4 hrs)', location: 'Stone Town Harbor', img: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=1600', visible: true },
+    { id: 'spice-farm', title: 'Zanzibar Spice Farm Tour', slug: 'spice-farm', category: 'tour', shortDesc: 'Touch, smell, and taste organic spices like cloves, vanilla, and nutmeg on a private guided farm walkthrough.', price: '$30', duration: '3 Hours', location: 'Kizimbani, Zanzibar', img: 'https://images.pexels.com/photos/1012509/pexels-photo-1012509.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
+    { id: 'jozani-forest', title: 'Jozani Chwaka Bay National Park Guided Tour', slug: 'jozani-forest', category: 'tour', shortDesc: 'Spot the endemic, playful red colobus monkeys in Zanzibar’s only national park and explore mangrove boardwalks.', price: '$40', duration: '3 Hours', location: 'Jozani, Central Region', img: 'https://images.pexels.com/photos/2289409/pexels-photo-2289409.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
+    { id: 'dolphin-kizimkazi', title: 'Dolphin Safari at Kizimkazi', slug: 'dolphin-kizimkazi', category: 'tour', shortDesc: 'Take a boat ride at sunrise to swim with wild dolphins in the pristine coastal waters of Kizimkazi.', price: '$45', duration: 'Half Day (5 hrs)', location: 'Kizimkazi, South Coast', img: 'https://images.pexels.com/photos/2087394/pexels-photo-2087394.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
+    { id: 'nakupenda-sandbank', title: 'Nakupenda Sandbank Beach Picnic', slug: 'nakupenda-sandbank', category: 'tour', shortDesc: 'A complete tropical beach picnic on a stunning sandbank with snorkeling and fresh wood-fire lobsters.', price: '$65', duration: 'Full Day (8 hrs)', location: 'Stone Town Harbor', img: 'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
+    { id: 'sunset-dhow', title: 'Traditional Sunset Dhow Cruise', slug: 'sunset-dhow', category: 'tour', shortDesc: 'Watch the golden sunset sink into the Indian Ocean while sailing on a traditional wooden Swahili dhow with live music and appetizers.', price: '$40', duration: '2–3 Hours', location: 'Stone Town or Nungwi', img: 'https://images.pexels.com/photos/1430677/pexels-photo-1430677.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
+    { id: 'quad-bike', title: 'Exhilarating Quad Bike (ATV) Safari', slug: 'quad-bike', category: 'tour', shortDesc: 'Rev through scenic coconut plantations, Swahili clay villages, muddy forest tracks, and coastal dunes.', price: '$65', duration: '3 Hours', location: 'Nungwi Base, North Coast', img: 'https://images.pexels.com/photos/1591373/pexels-photo-1591373.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
+    { id: 'fishing-experience', title: 'Traditional Deep Sea Sport Fishing', slug: 'fishing-experience', category: 'tour', shortDesc: 'Troll the deep Indian Ocean drop-offs for Yellowfin Tuna, Wahoo, Sailfish, and Kingfish with high-end rods and captains.', price: '$150', duration: 'Half Day (5 hrs)', location: 'Nungwi Docks, North Coast', img: 'https://images.pexels.com/photos/1684187/pexels-photo-1684187.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
+    { id: 'blue-lagoon', title: 'Blue Lagoon & Starfish Snorkeling', slug: 'blue-lagoon', category: 'tour', shortDesc: 'Explore calm soft coral gardens and marvel at giant orange starfish on shallow Michamvi sandbars.', price: '$35', duration: '3 Hours', location: 'Michamvi, East Coast', img: 'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
+    { id: 'cave-experience', title: 'Kuza Cave Cultural Swim', slug: 'cave-experience', category: 'tour', shortDesc: 'Swim in sacred, therapeutic fresh water cavern pools and enjoy Swahili drumming and cooking lessons.', price: '$40', duration: 'Half Day (4 hrs)', location: 'Jambiani, East Coast', img: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=600', visible: true },
     {
       id: '3-day-escape',
       title: '3-Day Zanzibar Romantic Escape',
@@ -487,10 +496,26 @@ export function getSiteContent(): SiteContent {
     try {
       const parsed = JSON.parse(local) as SiteContent;
       let modified = false;
-      // Ensure missing default tours are merged back
+      // Ensure missing default tours are merged back and no duplicate IDs exist
       if (parsed && parsed.tours) {
+        // First, check for pre-existing duplicate IDs in parsed.tours and deduplicate them
+        const uniqueTours: any[] = [];
+        const seenIds = new Set<string>();
+        for (const t of parsed.tours) {
+          if (t && t.id && !seenIds.has(t.id)) {
+            seenIds.add(t.id);
+            uniqueTours.push(t);
+          } else {
+            modified = true; // Duplicate detected and discarded
+          }
+        }
+        parsed.tours = uniqueTours;
+
         const existingTitles = new Set(parsed.tours.map(t => t.title.toLowerCase()));
-        const missingTours = DEFAULT_SITE_CONTENT.tours.filter(t => !existingTitles.has(t.title.toLowerCase()));
+        const existingIds = new Set(parsed.tours.map(t => t.id));
+        const missingTours = DEFAULT_SITE_CONTENT.tours.filter(t => 
+          !existingTitles.has(t.title.toLowerCase()) && !existingIds.has(t.id)
+        );
         if (missingTours.length > 0) {
           parsed.tours = [...parsed.tours, ...missingTours];
           modified = true;
@@ -553,9 +578,23 @@ export async function syncSiteContentFromDb(): Promise<SiteContent | null> {
         } catch {}
       }
 
+      // Deduplicate merged.tours first
+      const uniqueMergedTours: any[] = [];
+      const seenMergedIds = new Set<string>();
+      for (const t of merged.tours) {
+        if (t && t.id && !seenMergedIds.has(t.id)) {
+          seenMergedIds.add(t.id);
+          uniqueMergedTours.push(t);
+        }
+      }
+      merged.tours = uniqueMergedTours;
+
       // Ensure all default static tours are in the merged tours list too
       const existingTitles = new Set(merged.tours.map(t => t.title.toLowerCase()));
-      const missingTours = DEFAULT_SITE_CONTENT.tours.filter(t => !existingTitles.has(t.title.toLowerCase()));
+      const existingIds = new Set(merged.tours.map(t => t.id));
+      const missingTours = DEFAULT_SITE_CONTENT.tours.filter(t => 
+        !existingTitles.has(t.title.toLowerCase()) && !existingIds.has(t.id)
+      );
       if (missingTours.length > 0) {
         merged.tours = [...merged.tours, ...missingTours];
       }

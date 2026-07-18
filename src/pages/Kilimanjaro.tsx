@@ -1188,8 +1188,7 @@ Special Demands or Requests: ${formData.specialRequests || 'None'}
                       <button
                         type="button"
                         onClick={() => {
-                          setFormData(prev => ({ ...prev, routeId: selectedRoute.id }));
-                          scrollToSection('expedition-enquiry-form');
+                          navigate('booking', `package=${encodeURIComponent(selectedRoute.name)}`);
                         }}
                         className="w-full text-center bg-white/5 hover:bg-[#D4A017] hover:text-[#020C1F] text-white font-black text-xs uppercase tracking-wider py-2.5 rounded-xl transition-all cursor-pointer"
                       >

@@ -49,6 +49,9 @@ function getPageFromHash(): RouteState {
     if (s === 'jozani-forest') return 'jozani-forest';
     if (s === 'dolphin-tour' || s === 'dolphin-kizimkazi') return 'dolphin-kizimkazi';
     if (s === 'nakupenda-island' || s === 'nakupenda-sandbank') return 'nakupenda-sandbank';
+    if (s === 'fishing-charter-zanzibar' || s === 'fishing-experience') return 'fishing-experience';
+    if (s === 'blue-lagoon-starfish' || s === 'blue-lagoon') return 'blue-lagoon';
+    if (s === 'kuza-cave-jambiani' || s === 'cave-experience') return 'cave-experience';
     return s;
   };
 

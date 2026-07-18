@@ -740,8 +740,8 @@ Please help me tailor this absolute dream itinerary!`;
                   <h3 className="text-2xl font-serif font-bold text-white uppercase">Recommended Multi-Day Packages</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {relatedTours.map(tour => (
-                    <div key={tour.id} className="bg-[#0A1224] border border-white/5 p-5 sm:p-6 rounded-3xl flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                  {relatedTours.map((tour, idx) => (
+                    <div key={`${tour.id}-${idx}`} className="bg-[#0A1224] border border-white/5 p-5 sm:p-6 rounded-3xl flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                       <div className="h-24 w-24 rounded-2xl bg-slate-900 shrink-0 overflow-hidden">
                         <img src={tour.image} alt={tour.title} className="w-full h-full object-cover" />
                       </div>

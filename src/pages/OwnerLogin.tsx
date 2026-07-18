@@ -192,9 +192,9 @@ export default function OwnerLogin({ navigate }: OwnerLoginProps) {
         localStorage.removeItem('ztr_lockout_until_owner');
 
         // Check if 2FA is active
-        // DEV BYPASS: Skip 2FA if VITE_AUTH_BYPASS_VERIFICATION is enabled in dev.
+        // DEV BYPASS: Skip 2FA if VITE_AUTH_BYPASS_VERIFICATION is enabled in dev or AUTH_MODE is development.
         // To re-enable verification: Set VITE_AUTH_BYPASS_VERIFICATION=false in .env.
-        const isBypassActive = import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS_VERIFICATION === 'true';
+        const isBypassActive = (process.env.AUTH_MODE === 'development') || (import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS_VERIFICATION === 'true');
 
         if (!isBypassActive && ownerAccount.twoFactorEnabled) {
           setOwnerFor2FA(ownerAccount);
@@ -392,9 +392,9 @@ export default function OwnerLogin({ navigate }: OwnerLoginProps) {
     e.preventDefault();
     setSetupError('');
     
-    // DEV BYPASS: Skip token verification if VITE_AUTH_BYPASS_VERIFICATION is enabled in dev.
+    // DEV BYPASS: Skip token verification if VITE_AUTH_BYPASS_VERIFICATION is enabled in dev or AUTH_MODE is development.
     // To re-enable verification: Set VITE_AUTH_BYPASS_VERIFICATION=false in .env.
-    const isBypassActive = import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS_VERIFICATION === 'true';
+    const isBypassActive = (process.env.AUTH_MODE === 'development') || (import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS_VERIFICATION === 'true');
 
     if (!isBypassActive && inputToken.trim() !== verificationToken) {
       setSetupError('Invalid verification code. Please check your simulated email inbox below.');

@@ -37,7 +37,11 @@ export default function TourDetail({ navigate }: TourDetailProps) {
     (slug.includes('spice-farm') && st.id === 'spice-farm') ||
     (slug.includes('jozani-forest') && st.id === 'jozani-forest') ||
     (slug.includes('dolphin') && st.id === 'dolphin-kizimkazi') ||
-    (slug.includes('nakupenda') && st.id === 'nakupenda-sandbank')
+    (slug.includes('nakupenda') && st.id === 'nakupenda-sandbank') ||
+    (slug.includes('fishing') && st.id === 'fishing-experience') ||
+    (slug.includes('blue-lagoon') && st.id === 'blue-lagoon') ||
+    (slug.includes('kuza') && st.id === 'cave-experience') ||
+    (slug.includes('cave-experience') && st.id === 'cave-experience')
   ) || tours[0];
   
   // Merge static metadata with CMS overrides

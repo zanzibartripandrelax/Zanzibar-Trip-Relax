@@ -815,8 +815,8 @@ export default function CustomerDashboard({
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {wishlistedTours.map(tour => (
-                <div key={tour.id} className="bg-[#121B30]/50 border border-white/5 rounded-2xl overflow-hidden flex flex-col justify-between hover:border-white/10 transition-all shadow-md group">
+              {wishlistedTours.map((tour, idx) => (
+                <div key={`${tour.id}-${idx}`} className="bg-[#121B30]/50 border border-white/5 rounded-2xl overflow-hidden flex flex-col justify-between hover:border-white/10 transition-all shadow-md group">
                   <div className="relative h-44 overflow-hidden">
                     <img 
                       src={tour.img} 

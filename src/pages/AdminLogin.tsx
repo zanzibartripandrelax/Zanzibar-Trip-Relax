@@ -223,9 +223,9 @@ export default function AdminLogin({ navigate }: AdminLoginProps) {
           localStorage.removeItem('ztr_lockout_until_' + userProfile.username);
 
           // Force Profile Completion & Security Setup if flagged or if missing security questions
-          // DEV BYPASS: Skip mandatory profile completion if VITE_AUTH_BYPASS_VERIFICATION is enabled in dev.
+          // DEV BYPASS: Skip mandatory profile completion if VITE_AUTH_BYPASS_VERIFICATION is enabled in dev or AUTH_MODE is development.
           // To re-enable verification: Set VITE_AUTH_BYPASS_VERIFICATION=false in .env or disable DEV mode.
-          const isBypassActive = import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS_VERIFICATION === 'true';
+          const isBypassActive = (process.env.AUTH_MODE === 'development') || (import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS_VERIFICATION === 'true');
           
           if (!isBypassActive && (userProfile.requirePasswordChange || !userProfile.profileCompleted || !userProfile.securityQuestions)) {
             setPendingUser(userProfile);
@@ -434,9 +434,9 @@ export default function AdminLogin({ navigate }: AdminLoginProps) {
       }
       setLoginStage('recover_questions');
     } else if (method === 'email') {
-      // DEV BYPASS: Skip email OTP challenge if VITE_AUTH_BYPASS_VERIFICATION is enabled in dev.
+      // DEV BYPASS: Skip email OTP challenge if VITE_AUTH_BYPASS_VERIFICATION is enabled in dev or AUTH_MODE is development.
       // To re-enable verification: Set VITE_AUTH_BYPASS_VERIFICATION=false in .env.
-      if (import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS_VERIFICATION === 'true') {
+      if ((process.env.AUTH_MODE === 'development') || (import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS_VERIFICATION === 'true')) {
         setAuthSuccess('Development Mode Bypass: Email verification challenge skipped.');
         setLoginStage('reset_password');
         return;
@@ -478,9 +478,9 @@ export default function AdminLogin({ navigate }: AdminLoginProps) {
       });
 
     } else if (method === 'phone') {
-      // DEV BYPASS: Skip SMS OTP challenge if VITE_AUTH_BYPASS_VERIFICATION is enabled in dev.
+      // DEV BYPASS: Skip SMS OTP challenge if VITE_AUTH_BYPASS_VERIFICATION is enabled in dev or AUTH_MODE is development.
       // To re-enable verification: Set VITE_AUTH_BYPASS_VERIFICATION=false in .env.
-      if (import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS_VERIFICATION === 'true') {
+      if ((process.env.AUTH_MODE === 'development') || (import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS_VERIFICATION === 'true')) {
         setAuthSuccess('Development Mode Bypass: SMS verification challenge skipped.');
         setLoginStage('reset_password');
         return;

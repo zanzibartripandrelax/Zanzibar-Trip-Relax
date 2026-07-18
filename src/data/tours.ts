@@ -694,6 +694,195 @@ export const tours: Tour[] = [
       keywords: ['Zanzibar Quad Bike', 'ATV Zanzibar Tour', 'Zanzibar Adventure Excursions', 'Off Road Zanzibar', 'Nungwi Quad Activity']
     },
     relatedTours: ['spice-farm', 'jozani-forest', 'safari-blue']
+  },
+  {
+    id: 'fishing-experience',
+    name: 'Zanzibar Traditional Deep Sea Fishing',
+    description: 'Embark on a professional deep-sea game fishing trip in the fertile waters off Zanzibar.',
+    longDescription: 'Experience the thrill of sport fishing in the rich waters of the Zanzibar channel and the open Indian Ocean. Our fully equipped professional fishing vessels, rigged with outriggers, downriggers, GPS, and high-quality Shimano and Penn reels, are guided by expert captains who know every seasonal migratory route. Whether you are aiming for Marlin, Sailfish, Yellowfin Tuna, Kingfish, or Wahoo, our ethical catch-and-release and sustainable fishing practices ensure an exhilarating and ecologically conscious voyage in paradise.',
+    price: 'From $150/person',
+    duration: 'Half Day (5 hrs)',
+    groupSize: '1–6 people',
+    includes: ['Professional fishing vessel', 'Master Captain & deckhand guides', 'High-end rods, lures, and live bait', 'Snacks, fresh fruit, and drinks', 'All licenses & safety gear'],
+    image: 'https://images.pexels.com/photos/1684187/pexels-photo-1684187.jpeg?auto=compress&cs=tinysrgb&w=800',
+    badge: 'Sport Fishing',
+    category: 'Ocean',
+    highlights: [
+      'Sailing the Indian Ocean on a rigged sport-fishing vessel',
+      'Trolling for prestigious game fish like Kingfish, Tuna, and Wahoo',
+      'Guided by a local Zanzibari master captain with decades of experience',
+      'Equipped with top-of-the-line Shimano and Penn rods and reels',
+      'Complimentary fresh sashimi preparation of your sustainable catch of the day'
+    ],
+    itinerary: [
+      { time: '06:00 AM', title: 'Early Morning Docking', activity: 'Meet your private crew at the Nungwi or Kendwa marina dock, receive safety briefing, and board our game boat.' },
+      { time: '06:30 AM', title: 'Setting the Trolling Lines', activity: 'Head out to deep water drop-offs where currents meet, setting up outriggers and lures for big game.' },
+      { time: '08:30 AM', title: 'Sport Fishing Action', activity: 'Experience the rush when a line screams. Work with our expert deckhand to safely land your prize.' },
+      { time: '10:30 AM', title: 'Tropical Refreshments on Board', activity: 'Cool down with chilled soft drinks, fresh Zanzibar pineapples, and freshly made snacks on deck.' },
+      { time: '11:00 AM', title: 'Return to Shore & Drop-off', activity: 'Steer back to the docks. Celebrate your catch with photos, and transfer back to your beach resort.' }
+    ],
+    included: [
+      'Private fully equipped sport-fishing boat and fuel',
+      'Certified local master captain and professional deckhand',
+      'State-of-the-art Penn and Shimano reels and high-quality lures',
+      'Chilled soda, spring water, fresh local seasonal fruits, and snacks'
+    ],
+    excluded: [
+      'Gratuities for captain and deck crew',
+      'Hotel pickup (can be added as an optional transfer extra)'
+    ],
+    whatToBring: [
+      'Sunglasses with polarized lenses (critical for spotting fish)',
+      'Sun protection cream, lip balm, and protective sun shirt',
+      'Seasickness medication (highly recommended to take 1 hour before departure)',
+      'Camera or phone with waterproof pouch for capture'
+    ],
+    bestTimeToVisit: 'September to March for Yellowfin Tuna and Billfish, year-round for Kingfish and giant Trevally.',
+    faq: [
+      { q: 'Do I need any prior fishing experience?', a: 'Not at all! Our professional deck crew and captain will handle all rod rigging, lure selection, and hook settings, helping beginners and kids land their first big ocean fish.' },
+      { q: 'Can we keep our catch?', a: 'Yes! While we encourage catch-and-release for endangered billfish, edible species like Yellowfin Tuna and Kingfish can be filleted and prepared for lunch, or shared with local fishing communities.' }
+    ],
+    gallery: [
+      'https://images.pexels.com/photos/1684187/pexels-photo-1684187.jpeg?auto=compress&cs=tinysrgb&w=600',
+      'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=600'
+    ],
+    pricingTable: [
+      { tier: 'Half-Day Private Boat (Up to 4 Pax)', price: '$550 total' },
+      { tier: 'Full-Day Deep Sea Charter (Up to 4 Pax)', price: '$850 total' },
+      { tier: 'Extra Angler Rate', price: '$75 / person' }
+    ],
+    seoMetadata: {
+      title: 'Zanzibar Deep Sea Sport Fishing | Traditional Big Game Charters',
+      desc: 'Book a professional deep sea fishing charter in Zanzibar. Troll the Indian Ocean drop-offs for Yellowfin Tuna, Wahoo, Sailfish, and Marlin with local captains.',
+      keywords: ['Zanzibar Fishing', 'Zanzibar Sport Fishing Charter', 'Deep Sea Fishing Zanzibar', 'Nungwi Fishing Boat', 'Shimano Rods Zanzibar']
+    },
+    relatedTours: ['safari-blue', 'mnemba-snorkeling', 'sunset-dhow']
+  },
+  {
+    id: 'blue-lagoon',
+    name: 'Blue Lagoon Snorkeling & Starfish Tour',
+    description: 'Explore the hidden underwater paradise of the Blue Lagoon at Michamvi, and spot vibrant giant starfish.',
+    longDescription: 'Discover the magical underwater world of Zanzibar’s eastern coastline. Located in the protected, crystal-clear mangrove-lined waters of Michamvi Peninsula, the Blue Lagoon is a shallow marine haven. Slip into serene, calm waters to explore thriving soft coral gardens home to clownfish, blue-striped snappers, and beautiful marine life. Following snorkeling, we visit the shallow sandbanks where giant, brightly colored starfish gather in abundance. Perfect for families, non-swimmers, and children, this tour offers some of the calmest water conditions on the island.',
+    price: 'From $35/person',
+    duration: 'Half Day (3 hrs)',
+    groupSize: '2–12 people',
+    includes: ['Professional snorkeling guide', 'Premium mask, snorkel, and life jacket', 'Traditional outrigger dhow boat', 'Cold water and fresh tropical fruits'],
+    image: 'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=800',
+    badge: 'Eco Marine',
+    category: 'Ocean',
+    highlights: [
+      'Snorkeling shallow coral gardens in calm, current-free waters',
+      'Discovering the natural starfish fields of Michamvi Peninsula',
+      'Exploring the unique mangrove lagoons and marine nursery ecosystems',
+      'Relaxing on the pristine, peaceful beaches of Michamvi',
+      'Excellent photography with massive red and orange starfish'
+    ],
+    itinerary: [
+      { time: '09:00 AM', title: 'Michamvi Gathering', activity: 'Meet our local beach guide on Michamvi beach and board a stable, traditional outrigger dhow.' },
+      { time: '09:30 AM', title: 'Blue Lagoon Snorkeling', activity: 'Slide into the warm, transparent waters. Marvel at soft corals, clownfish, and sea anemones.' },
+      { time: '10:45 AM', title: 'Starfish Sanctuary Walk', activity: 'Wade onto the shallow sandbars to observe and photograph majestic giant starfish in their natural habitat.' },
+      { time: '11:30 AM', title: 'Fresh Swahili Fruit Picnic', activity: 'Feast on sweet local fruits, fresh coconut juices, and traditional snacks under a beach umbrella.' },
+      { time: '12:00 PM', title: 'Return & Coast Resort Transit', activity: 'Sail back to the starting point. Private transfer back to your beach resort.' }
+    ],
+    included: [
+      'All marine conservation permissions and guide fees',
+      'Premium quality snorkeling masks, snorkels, and safety life vests',
+      'Traditional boat transit and skilled captain',
+      'Sweet local mangoes, watermelons, pineapples, and chilled bottled water'
+    ],
+    excluded: [
+      'Lunches or full dinners',
+      'Tips for guide and boat captain'
+    ],
+    whatToBring: [
+      'Swimsuit, rash guard, and dry clothes',
+      'Water shoes (highly recommended to protect feet near shallow corals)',
+      'Reef-safe biodegradable sunscreen',
+      'Waterproof camera or protective pouch'
+    ],
+    bestTimeToVisit: 'Highly dependent on the tides. Low-to-mid tide schedules provide the absolute best visibility and shallow sandbar exposure.',
+    faq: [
+      { q: 'Can I pick up or hold the starfish?', a: 'To protect these delicate marine creatures, we strictly request that you do not lift them out of the water, as they cannot breathe. Our guide will show you how to safely touch and photograph them while fully submerged.' },
+      { q: 'Is this tour suitable for non-swimmers?', a: 'Yes! The Blue Lagoon is very shallow and protected from rough ocean waves, and we provide comfortable high-buoyancy life vests. A guide is always by your side.' }
+    ],
+    gallery: [
+      'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=600',
+      'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=600'
+    ],
+    pricingTable: [
+      { tier: 'Solo Snorkeler', price: '$55' },
+      { tier: 'Standard Rate (2–4 Pax)', price: '$35 / person' },
+      { tier: 'Family Special (5+ Pax)', price: '$28 / person' }
+    ],
+    seoMetadata: {
+      title: 'Blue Lagoon Snorkeling Tour Zanzibar | Michamvi Starfish Adventure',
+      desc: 'Snorkel the serene, shallow Blue Lagoon in Michamvi, Zanzibar. Discover vibrant starfish fields, protected coral gardens, and calm mangrove channels with native guides.',
+      keywords: ['Blue Lagoon Zanzibar', 'Michamvi Starfish Tour', 'Zanzibar Starfish Snorkeling', 'Michamvi Lagoon', 'Zanzibar Snorkel Excursion']
+    },
+    relatedTours: ['mnemba-snorkeling', 'safari-blue', 'jozani-forest']
+  },
+  {
+    id: 'cave-experience',
+    name: 'Kuza Cave & Ancient Swahili Caves Experience',
+    description: 'Swim in the sacred, crystal-clear fresh waters of Kuza Cave and discover Swahili culture.',
+    longDescription: 'Discover the spiritual, geological, and historical wonder of Kuza Cave in Jambiani. Formed over 250,000 years of erosion, this ancient limestone cave houses a deep, subterranean pool of pure, mineral-rich fresh water. Regarded as sacred by local Swahili communities, swimming in the cave’s cool, crystal-clear waters is believed to have therapeutic and healing properties. Following your therapeutic swim, participate in an authentic Swahili cultural workshop. Join local musicians for a traditional drumming session, learn standard Swahili cooking with local organic herbs and spices, and listen to fascinating local history.',
+    price: 'From $40/person',
+    duration: 'Half Day (4 hrs)',
+    groupSize: '1–15 people',
+    includes: ['Cave entrance permits', 'Certified cultural guide', 'Traditional Swahili drumming workshop', 'Spiced tea and local snacks', 'Hotel transfers'],
+    image: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=800',
+    badge: 'Cultural Swim',
+    category: 'Culture',
+    highlights: [
+      'Swimming in the crystal-clear freshwater pools of Kuza Cave',
+      'Exploring deep limestone formations and stalactites dating back 250k years',
+      'Participating in an energetic Swahili drumming and dancing workshop',
+      'Learning Swahili cooking methods with native village chefs',
+      'Learning about Zanzibari culture, history, and ancient medicine'
+    ],
+    itinerary: [
+      { time: '09:00 AM', title: 'Jambiani Resort Pickup', activity: 'Board our comfortable air-conditioned transfer from your resort and travel to the historic village of Jambiani.' },
+      { time: '09:30 AM', title: 'Kuza Cave Guided Walk', activity: 'Wander down the lush nature trails to the limestone sinkhole entrance. Descend into the cavern with your local guide.' },
+      { time: '10:00 AM', title: 'Therapeutic Cave Swim', activity: 'Float in the deep, healing, mineral-rich fresh water pool. Enjoy the surreal acoustic echoes of the cave.' },
+      { time: '11:15 AM', title: 'Swahili Drumming & Cooking', activity: 'Gather at the cultural center for a hands-on workshop. Learn to cook coconut curry and play traditional Swahili drums.' },
+      { time: '12:30 PM', title: 'Spiced Tea Tasting & Departure', activity: 'Sip on local lemongrass tea, snap beautiful memories, and transfer back to your beach hotel.' }
+    ],
+    included: [
+      'All cave entry and conservation municipal tickets',
+      'Dedicated native Swahili guide and workshop hosts',
+      'Private air-conditioned vehicle resort transfers',
+      'Traditional drumming lesson instruments and food ingredients'
+    ],
+    excluded: [
+      'Souvenir purchases or external restaurant lunches',
+      'Voluntary tips for cave musicians and guides'
+    ],
+    whatToBring: [
+      'Swimwear and secure towel (changing rooms are available at the base)',
+      'Comfortable walking shoes with good grip for cave stone steps',
+      'Mosquito repellent for the jungle nature trail walk',
+      'Warm sweater or dry clothes for post-cave relaxation'
+    ],
+    bestTimeToVisit: 'Year-round. The cave pool maintains a cool, refreshing temperature of around 24°C regardless of external heat.',
+    faq: [
+      { q: 'Is the cave deep? Is it safe for children?', a: 'The freshwater pool reaches depths of 2-3 meters in the center, but has shallow ledges around the border. Life jackets and swimming rings are provided, making it highly secure for children and beginners under adult supervision.' },
+      { q: 'Can we take pictures inside the cave?', a: 'Yes! The cave is illuminated by natural sunlight filtering through the sinkhole, creating stunning, magical photo opportunities. Flash photography is allowed.' }
+    ],
+    gallery: [
+      'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=600',
+      'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=600'
+    ],
+    pricingTable: [
+      { tier: 'Solo Explorer', price: '$60' },
+      { tier: 'Standard Group (2–4 Pax)', price: '$40 / person' },
+      { tier: 'Large Group Discount (5+ Pax)', price: '$32 / person' }
+    ],
+    seoMetadata: {
+      title: 'Kuza Cave Tour Zanzibar | Jambiani Ancient Cave & Swahili Culture',
+      desc: 'Explore and swim in the crystal-clear freshwater pool of Kuza Cave in Jambiani, Zanzibar. Participate in Swahili cooking and drumming workshops with local guides.',
+      keywords: ['Kuza Cave Zanzibar', 'Jambiani Cave Swim', 'Zanzibar Caves Tour', 'Swahili Drumming Workshop', 'Zanzibar Cultural Experience']
+    },
+    relatedTours: ['jozani-forest', 'spice-farm', 'stone-town']
   }
 ];
 

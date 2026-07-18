@@ -200,18 +200,88 @@ export const allPackages: PackageItem[] = [
 
   // Kilimanjaro climbs
   {
-    id: 'machame-route-7-days',
-    name: 'Machame Route Mount Kilimanjaro',
+    id: 'machame-route',
+    name: 'Machame Route (Whiskey Route)',
     category: 'kilimanjaro',
     categoryLabel: 'Kilimanjaro Trek',
-    basePrice: 1650,
+    basePrice: 1350,
     duration: '7 Days / 6 Nights',
     includesPickup: true,
     image: 'https://images.pexels.com/photos/1645028/pexels-photo-1645028.jpeg?auto=compress&cs=tinysrgb&w=800',
     rating: 4.97,
     reviews: 220,
     badge: 'Summit Success',
-    description: 'Climb the snowy roof of Africa via the highly scenic Machame Route. Complete porter, safety, and delicious catering support.'
+    description: 'The Whiskey Route is celebrated as the most scenic, dramatic, and rewarding track to Uhuru Peak.'
+  },
+  {
+    id: 'marangu-route',
+    name: 'Marangu Route (Coca-Cola Route)',
+    category: 'kilimanjaro',
+    categoryLabel: 'Kilimanjaro Trek',
+    basePrice: 1290,
+    duration: '6 Days / 5 Nights',
+    includesPickup: true,
+    image: 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&w=600&q=80',
+    rating: 4.85,
+    reviews: 140,
+    badge: 'Classic Huts',
+    description: 'The classic pathwayup Mount Kilimanjaro, famous for solar-powered wooden sleeping huts instead of tents.'
+  },
+  {
+    id: 'lemosho-route',
+    name: 'Lemosho Route (Premium Route)',
+    category: 'kilimanjaro',
+    categoryLabel: 'Kilimanjaro Trek',
+    basePrice: 1690,
+    duration: '8 Days / 7 Nights',
+    includesPickup: true,
+    image: 'https://images.unsplash.com/photo-1501555088652-021faa106b9b?auto=format&fit=crop&w=600&q=80',
+    rating: 4.96,
+    reviews: 180,
+    badge: 'Highest Success',
+    description: 'Widely considered the ultimate premium trail starting from the quiet, wild western slopes.'
+  },
+  {
+    id: 'rongai-route',
+    name: 'Rongai Route (Northern Slopes)',
+    category: 'kilimanjaro',
+    categoryLabel: 'Kilimanjaro Trek',
+    basePrice: 1390,
+    duration: '7 Days / 6 Nights',
+    includesPickup: true,
+    image: 'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?auto=format&fit=crop&w=600&q=80',
+    rating: 4.88,
+    reviews: 95,
+    badge: 'Dry Passage',
+    description: 'The only trail approaching the mountain from the dry north side near the Kenyan border.'
+  },
+  {
+    id: 'northern-circuit-route',
+    name: 'Northern Circuit (Longest Route)',
+    category: 'kilimanjaro',
+    categoryLabel: 'Kilimanjaro Trek',
+    basePrice: 1890,
+    duration: '9 Days / 8 Nights',
+    includesPickup: true,
+    image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=600&q=80',
+    rating: 4.99,
+    reviews: 62,
+    badge: 'Maximum Acclimatization',
+    description: 'The longest and newest route, offering spectacular 360-degree scenery and complete quiet.'
+  },
+  {
+    id: 'umbwe-route',
+    name: 'Umbwe Route (Steep & Direct)',
+    category: 'kilimanjaro',
+    categoryLabel: 'Kilimanjaro Trek',
+    basePrice: 1190,
+    duration: '6 Days / 5 Nights',
+    includesPickup: true,
+    image: 'https://images.unsplash.com/photo-1589553460730-dfeb1e41d8e1?auto=format&fit=crop&w=600&q=80',
+    rating: 4.75,
+    reviews: 48,
+    badge: 'Extreme Climb',
+    description: 'The steepest, shortest, and most physically taxing trail on the mountain. Recommended for veteran climbers only.'
   },
 
   // Airport Transfers

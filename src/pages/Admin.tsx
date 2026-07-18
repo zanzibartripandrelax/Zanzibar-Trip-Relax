@@ -23,6 +23,7 @@ import AuthGuard from '../components/AuthGuard';
 import SeoAnalytics from '../components/SeoAnalytics';
 import CustomerDashboard from '../components/CustomerDashboard';
 import EmailSettingsManager from '../components/EmailSettingsManager';
+import { showToast } from '../components/ToastNotification';
 import HolidayPackageCMS from '../components/admin/HolidayPackageCMS';
 import { TourEditor } from '../components/admin/TourEditor';
 import { DestinationManager } from '../components/admin/DestinationManager';
@@ -10855,6 +10856,374 @@ Stone Town, Zanzibar, Tanzania`);
                       )}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+
+        {/* --- OWNER WORKSPACE 10: WEBSITE SETTINGS & EXIT POPUP CONFIG --- */}
+        {activeTab === 'settings' && (() => {
+          // Local states for settings form
+          const [popupEnabled, setPopupEnabled] = useState(() => localStorage.getItem('ztr_exit_popup_enabled') !== 'false');
+          const [popupDiscount, setPopupDiscount] = useState(() => localStorage.getItem('ztr_exit_popup_discount') || '10');
+          const [popupPromoCode, setPopupPromoCode] = useState(() => localStorage.getItem('ztr_exit_popup_promo_code') || 'PARADISE10');
+          const [popupHeadline, setPopupHeadline] = useState(() => localStorage.getItem('ztr_exit_popup_headline') || '🌴 Wait! Before You Leave Paradise...');
+          const [popupSubtitle, setPopupSubtitle] = useState(() => localStorage.getItem('ztr_exit_popup_subtitle') || "Don't miss your chance to experience Zanzibar with trusted local experts. Claim your exclusive traveler benefits before you leave.");
+          const [popupPdfUrl, setPopupPdfUrl] = useState(() => localStorage.getItem('ztr_exit_popup_pdf_url') || '/guides/Zanzibar_Insider_Guide.pdf');
+          const [popupBgImage, setPopupBgImage] = useState(() => localStorage.getItem('ztr_exit_popup_bg_image') || 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1200&q=80');
+          const [popupDelay, setPopupDelay] = useState(() => localStorage.getItem('ztr_exit_popup_delay') || '20');
+          const [popupScroll, setPopupScroll] = useState(() => localStorage.getItem('ztr_exit_popup_scroll_threshold') || '40');
+
+          // Analytics data loader
+          const [analytics, setAnalytics] = useState(() => {
+            try {
+              return JSON.parse(localStorage.getItem('ztr_exit_popup_analytics') || '{"viewed":0,"closed":0,"submitted":0,"guideDownloaded":0,"discountRedeemed":0,"whatsAppClicked":0,"bookingCompleted":0}');
+            } catch (e) {
+              return { viewed: 0, closed: 0, submitted: 0, guideDownloaded: 0, discountRedeemed: 0, whatsAppClicked: 0, bookingCompleted: 0 };
+            }
+          });
+
+          const handleSaveSettings = () => {
+            localStorage.setItem('ztr_exit_popup_enabled', popupEnabled ? 'true' : 'false');
+            localStorage.setItem('ztr_exit_popup_discount', popupDiscount);
+            localStorage.setItem('ztr_exit_popup_promo_code', popupPromoCode.toUpperCase());
+            localStorage.setItem('ztr_exit_popup_headline', popupHeadline);
+            localStorage.setItem('ztr_exit_popup_subtitle', popupSubtitle);
+            localStorage.setItem('ztr_exit_popup_pdf_url', popupPdfUrl);
+            localStorage.setItem('ztr_exit_popup_bg_image', popupBgImage);
+            localStorage.setItem('ztr_exit_popup_delay', popupDelay);
+            localStorage.setItem('ztr_exit_popup_scroll_threshold', popupScroll);
+            
+            showToast('Exit Concierge and Lead Settings updated successfully!', 'success');
+            addActivityLog(session?.name || 'Owner', session?.role || 'Administrator', 'Updated CRO exit-intent lead capture configuration settings.');
+          };
+
+          const handleResetDefaults = () => {
+            if (confirm('Are you sure you want to restore default settings?')) {
+              setPopupEnabled(true);
+              setPopupDiscount('10');
+              setPopupPromoCode('PARADISE10');
+              setPopupHeadline('🌴 Wait! Before You Leave Paradise...');
+              setPopupSubtitle("Don't miss your chance to experience Zanzibar with trusted local experts. Claim your exclusive traveler benefits before you leave.");
+              setPopupPdfUrl('/guides/Zanzibar_Insider_Guide.pdf');
+              setPopupBgImage('https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1200&q=80');
+              setPopupDelay('20');
+              setPopupScroll('40');
+              showToast('Restored luxury defaults. Remember to click Save Settings.', 'info');
+            }
+          };
+
+          const handleResetAnalytics = () => {
+            if (confirm('Clear all CRO popup conversion logs? This action is non-reversible.')) {
+              const fresh = { viewed: 0, closed: 0, submitted: 0, guideDownloaded: 0, discountRedeemed: 0, whatsAppClicked: 0, bookingCompleted: 0 };
+              localStorage.setItem('ztr_exit_popup_analytics', JSON.stringify(fresh));
+              setAnalytics(fresh);
+              showToast('Analytics cache successfully wiped.', 'success');
+            }
+          };
+
+          const handleTriggerTest = () => {
+            // Force clear suppression flag and trigger immediately
+            localStorage.removeItem('ztr_exit_popup_last_closed');
+            localStorage.removeItem('ztr_exit_popup_submitted');
+            showToast('Trigger reset. Close this panel and move mouse out of top window to see the popup immediately!', 'success');
+          };
+
+          const views = analytics.viewed || 0;
+          const leads = analytics.submitted || 0;
+          const convRate = views > 0 ? ((leads / views) * 100).toFixed(1) : '0.0';
+          const convRateNum = Number(convRate);
+          const revenueEstimate = (analytics.bookingCompleted || 0) * 450;
+
+          const imagesPresets = [
+            { id: 'pres-1', name: 'Zanzibar Sandbanks', url: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1200&q=80' },
+            { id: 'pres-2', name: 'Swahili Dhow Boat', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80' },
+            { id: 'pres-3', name: 'Luxury Sunset Resort', url: 'https://images.unsplash.com/photo-1584132967334-104028bd69fc?auto=format&fit=crop&w=1200&q=80' }
+          ];
+
+          return (
+            <div className="space-y-8 text-left">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>Website Settings</h2>
+                  <p className="text-xs text-slate-400">Optimize conversion rates, customize the luxury exit concierge, and monitor lead capture analytics</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleTriggerTest}
+                    className="bg-[#121B30] hover:bg-slate-800 text-[#D4A017] border border-[#D4A017]/20 text-xs font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer"
+                  >
+                    Test Popup Trigger
+                  </button>
+                  <button
+                    onClick={handleSaveSettings}
+                    className="bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] text-xs font-black uppercase py-2.5 px-5 rounded-xl transition-all shadow-lg cursor-pointer"
+                  >
+                    Save Settings
+                  </button>
+                </div>
+              </div>
+
+              {/* Grid 1: Analytics & Conversion Dashboard */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-[#0A1224] border border-white/5 rounded-2xl p-5 space-y-1">
+                  <p className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">Total Popup Impressions</p>
+                  <p className="text-2xl font-bold text-white">{views}</p>
+                  <p className="text-[10px] text-slate-500">Number of desktop & mobile visitors triggered</p>
+                </div>
+
+                <div className="bg-[#0A1224] border border-white/5 rounded-2xl p-5 space-y-1">
+                  <p className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">Leads Collected</p>
+                  <p className="text-2xl font-bold text-[#D4A017]">{leads}</p>
+                  <p className="text-[10px] text-slate-500">Contact forms fully submitted & synced</p>
+                </div>
+
+                <div className="bg-[#0A1224] border border-white/5 rounded-2xl p-5 space-y-1">
+                  <p className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">Conversion Rate (CVR)</p>
+                  <p className="text-2xl font-bold text-emerald-400">{convRate}%</p>
+                  {/* Small progress bar */}
+                  <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-1.5">
+                    <div className="bg-emerald-400 h-full" style={{ width: `${Math.min(convRateNum, 100)}%` }} />
+                  </div>
+                </div>
+
+                <div className="bg-[#0A1224] border border-white/5 rounded-2xl p-5 space-y-1">
+                  <p className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">Estimated Revenue Driven</p>
+                  <p className="text-2xl font-bold text-blue-400">${revenueEstimate.toLocaleString()} USD</p>
+                  <p className="text-[10px] text-slate-500">Based on average $450 base booking value</p>
+                </div>
+              </div>
+
+              {/* Grid 2: Detailed Conversion Telemetry */}
+              <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 space-y-4">
+                <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                  <h3 className="text-sm font-bold text-slate-200">CRO Funnel Drop-off Telemetry</h3>
+                  <button 
+                    onClick={handleResetAnalytics}
+                    className="text-[10px] text-red-400 hover:text-red-300 font-mono"
+                  >
+                    Clear Analytics Logs
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 pt-2">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-mono">
+                      <span className="text-slate-400">Guide PDF Downloads</span>
+                      <span className="text-white font-bold">{analytics.guideDownloaded || 0}</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-blue-500 h-full" style={{ width: `${leads > 0 ? Math.min(((analytics.guideDownloaded || 0) / leads) * 100, 100) : 0}%` }} />
+                    </div>
+                    <span className="text-[9px] text-slate-500 block">Download conversion: {leads > 0 ? (((analytics.guideDownloaded || 0) / leads) * 100).toFixed(0) : 0}% of leads</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-mono">
+                      <span className="text-slate-400">Coupon Code Copies</span>
+                      <span className="text-white font-bold">{analytics.discountRedeemed || 0}</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-[#D4A017] h-full" style={{ width: `${leads > 0 ? Math.min(((analytics.discountRedeemed || 0) / leads) * 100, 100) : 0}%` }} />
+                    </div>
+                    <span className="text-[9px] text-slate-500 block">Discount claims: {leads > 0 ? (((analytics.discountRedeemed || 0) / leads) * 100).toFixed(0) : 0}% of leads</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-mono">
+                      <span className="text-slate-400">WhatsApp Inquiries</span>
+                      <span className="text-white font-bold">{analytics.whatsAppClicked || 0}</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-emerald-500 h-full" style={{ width: `${leads > 0 ? Math.min(((analytics.whatsAppClicked || 0) / leads) * 100, 100) : 0}%` }} />
+                    </div>
+                    <span className="text-[9px] text-slate-500 block">Chats started: {leads > 0 ? (((analytics.whatsAppClicked || 0) / leads) * 100).toFixed(0) : 0}% of leads</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-mono">
+                      <span className="text-slate-400">Bookings Completed</span>
+                      <span className="text-white font-bold">{analytics.bookingCompleted || 0}</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-purple-500 h-full" style={{ width: `${leads > 0 ? Math.min(((analytics.bookingCompleted || 0) / leads) * 100, 100) : 0}%` }} />
+                    </div>
+                    <span className="text-[9px] text-slate-500 block">Overall checkout: {leads > 0 ? (((analytics.bookingCompleted || 0) / leads) * 100).toFixed(0) : 0}% end-to-end ROI</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid 3: Lead Pop-up Customizer Core Form */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 text-left">
+                {/* Inputs panel (8 columns) */}
+                <div className="md:col-span-8 bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6">
+                  <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                    <h3 className="text-base font-bold text-slate-200">Exit-Intent Luxury Concierge Panel</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400 font-bold">Popup Enabled:</span>
+                      <button
+                        type="button"
+                        onClick={() => setPopupEnabled(!popupEnabled)}
+                        className={`w-12 h-6 rounded-full p-0.5 transition-colors focus:outline-none ${popupEnabled ? 'bg-[#D4A017]' : 'bg-slate-700'}`}
+                      >
+                        <div className={`w-5 h-5 rounded-full bg-[#020712] transition-transform ${popupEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Form fields */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Promo Code */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-300">Discount Percentage (%)</label>
+                        <input
+                          type="number"
+                          placeholder="e.g. 10"
+                          value={popupDiscount}
+                          onChange={(e) => setPopupDiscount(e.target.value)}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
+                        />
+                      </div>
+
+                      {/* Promo Code string */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-300">Promo Coupon Code</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. PARADISE10"
+                          value={popupPromoCode}
+                          onChange={(e) => setPopupPromoCode(e.target.value)}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-mono uppercase"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Stay trigger delay */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-300">Stay delay trigger (seconds)</label>
+                        <input
+                          type="number"
+                          placeholder="e.g. 20"
+                          value={popupDelay}
+                          onChange={(e) => setPopupDelay(e.target.value)}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
+                        />
+                      </div>
+
+                      {/* Scroll trigger % */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-300">Scroll threshold trigger (%)</label>
+                        <input
+                          type="number"
+                          placeholder="e.g. 40"
+                          value={popupScroll}
+                          onChange={(e) => setPopupScroll(e.target.value)}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
+                        />
+                      </div>
+                    </div>
+
+                    {/* PDF Guide Link */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-300">Zanzibar Guide PDF download link / Path</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. /guides/Zanzibar_Insider_Guide.pdf"
+                        value={popupPdfUrl}
+                        onChange={(e) => setPopupPdfUrl(e.target.value)}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-mono"
+                      />
+                    </div>
+
+                    {/* Background image preset grid or custom */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-300 block">Cover Background Beach Imagery</label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {imagesPresets.map(p => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setPopupBgImage(p.url)}
+                            className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all ${popupBgImage === p.url ? 'border-[#D4A017]' : 'border-transparent'}`}
+                          >
+                            <img src={p.url} className="w-full h-full object-cover" alt={p.name} />
+                            <div className="absolute inset-0 bg-black/40 flex items-end p-1">
+                              <span className="text-[8px] text-white font-bold truncate block w-full">{p.name}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="space-y-1 mt-2">
+                        <label className="text-[10px] text-slate-400 block">Or enter custom Unsplash / CDN image URL:</label>
+                        <input
+                          type="text"
+                          placeholder="https://images.unsplash.com/photo-..."
+                          value={popupBgImage}
+                          onChange={(e) => setPopupBgImage(e.target.value)}
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Headline Copy */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-300 block">Concierge Headline Copy</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Wait! Before You Leave Paradise..."
+                        value={popupHeadline}
+                        onChange={(e) => setPopupHeadline(e.target.value)}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white"
+                      />
+                    </div>
+
+                    {/* Subtitle copy */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-300 block">Concierge Explainer Subtitle</label>
+                      <textarea
+                        rows={3}
+                        placeholder="e.g. Claim your exclusive travel benefits..."
+                        value={popupSubtitle}
+                        onChange={(e) => setPopupSubtitle(e.target.value)}
+                        className="w-full bg-[#121B30] border border-white/10 rounded-xl p-4 text-xs text-white leading-relaxed"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Info & preset guidelines (4 columns) */}
+                <div className="md:col-span-4 bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6 flex flex-col justify-between text-left">
+                  <div className="space-y-4">
+                    <div className="w-10 h-10 rounded-xl bg-[#D4A017]/10 flex items-center justify-center text-[#D4A017]">
+                      <Sparkles size={20} />
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-extrabold text-white">Conversion Architecture Guidance</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        The Zanzibar Trip & Relax exit concierge utilizes high-converting, friction-free lead capture pathways:
+                      </p>
+                      <ul className="text-xs text-slate-400 space-y-2 list-disc pl-4 mt-2">
+                        <li><strong>Incentivized offer</strong>: Exchanges a {popupDiscount}% promo code and premium local guidebook for user travel credentials.</li>
+                        <li><strong>Safe storage</strong>: Captured leads automatically route to the contact ledger database.</li>
+                        <li><strong>Zero intrusive layout shift</strong>: Implemented utilizing conditional off-thread GPU overlays, fully bypassing SEO penalty filters.</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-white/5 space-y-3">
+                    <button
+                      onClick={handleResetDefaults}
+                      className="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-3 rounded-xl transition-all cursor-pointer"
+                    >
+                      Restore Luxury Defaults
+                    </button>
+                    <p className="text-[9px] text-slate-500 text-center block">Version 2.4.1 (July 2026 Sandbox)</p>
+                  </div>
                 </div>
               </div>
             </div>

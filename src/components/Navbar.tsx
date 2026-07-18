@@ -34,8 +34,8 @@ const navigationMenu: MenuItem[] = [
     type: 'link'
   },
   {
-    label: 'Tours & Excursions',
-    swLabel: 'Ziara na Safari',
+    label: 'Tours',
+    swLabel: 'Ziara',
     page: 'tours',
     type: 'link'
   },
@@ -46,8 +46,8 @@ const navigationMenu: MenuItem[] = [
     type: 'link'
   },
   {
-    label: 'Tanzania Safaris',
-    swLabel: 'Safari za Tanzania',
+    label: 'Safaris',
+    swLabel: 'Safari',
     page: 'safaris',
     type: 'link'
   },
@@ -58,25 +58,13 @@ const navigationMenu: MenuItem[] = [
     type: 'link'
   },
   {
-    label: 'Airport Transfers',
-    swLabel: 'Uhamisho wa Uwanja',
+    label: 'Transfers',
+    swLabel: 'Uhamisho',
     page: 'transfers',
     type: 'link'
   },
   {
-    label: 'Hotels',
-    swLabel: 'Hoteli za Washirika',
-    page: 'hotels',
-    type: 'link'
-  },
-  {
-    label: 'Travel Guide',
-    swLabel: 'Mwongozo wa Safari',
-    page: 'best-time-to-visit',
-    type: 'link'
-  },
-  {
-    label: 'About Us',
+    label: 'About',
     swLabel: 'Kuhusu Sisi',
     page: 'about',
     type: 'link'
@@ -88,11 +76,17 @@ const navigationMenu: MenuItem[] = [
     type: 'link'
   },
   {
-    label: 'Plan My Trip',
-    swLabel: 'Panga Safari Yangu',
-    page: 'trip-builder',
+    label: 'Book Now',
+    swLabel: 'Weka Sasa',
+    page: 'booking',
     type: 'link'
   }
+];
+
+const moreMenuItems = [
+  { label: 'Hotels', swLabel: 'Hoteli za Washirika', page: 'hotels' as Page },
+  { label: 'Travel Guide', swLabel: 'Mwongozo wa Safari', page: 'best-time-to-visit' as Page },
+  { label: 'Plan My Trip', swLabel: 'Panga Safari Yangu', page: 'trip-builder' as Page }
 ];
 
 export default function Navbar({ currentPage, navigate }: NavbarProps) {
@@ -100,10 +94,23 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isPortalOpen, setIsPortalOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const portalRef = useRef<HTMLDivElement>(null);
   const { language, t } = useLanguage();
   const [session, setSession] = useState<any>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const syncSession = () => {
     const activeSesObj = localStorage.getItem('ztr_customer_session');
@@ -179,7 +186,7 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
   ];
 
   return (
-    <header ref={headerRef} className="sticky top-0 z-50 w-full bg-[#0A1224]/95 backdrop-blur-md border-b border-b-white/10 shadow-lg select-none">
+    <header ref={headerRef} className={`sticky top-0 z-50 w-full bg-[#0A1224]/95 backdrop-blur-md border-b border-b-white/10 shadow-lg select-none transition-all duration-300 ${isScrolled ? 'shadow-xl bg-[#080E1C]/98 py-1' : 'py-0'}`}>
       {/* Dynamic Top Announcement / Utility Row - Hidden on mobile/tablet for target header height */}
       <div className="hidden lg:block w-full bg-[#080F1D] border-b border-white/5 py-2 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between text-[11px] font-medium tracking-wide">
@@ -213,7 +220,7 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
       </div>
 
       {/* Main Navbar Row */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-17 lg:h-20 flex items-center justify-between gap-3 lg:gap-4">
+      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3 lg:gap-4 transition-all duration-300 ${isScrolled ? 'h-14 lg:h-16' : 'h-17 lg:h-20'}`}>
         {/* Left side: Premium High-Quality Logo & Brand Title */}
         <button 
           onClick={() => navigate('home')} 
@@ -238,30 +245,66 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
 
         {/* Center/Desktop Menu */}
         <div className="hidden lg:flex items-center justify-center flex-grow">
-          <nav className="flex items-center gap-1 xl:gap-2.5">
+          <nav className="flex items-center gap-0.5 xl:gap-2">
             {navigationMenu.map((item) => {
               const labelText = language === 'en' ? item.label : item.swLabel;
               const isActive = isItemActive(item);
+              const isBookNow = item.page === 'booking';
 
               return (
                 <button
                   key={item.label}
                   onClick={() => navigate(item.page)}
-                  className={`px-2 xl:px-3 py-2 text-[10px] xl:text-xs font-extrabold uppercase tracking-wider xl:tracking-widest cursor-pointer transition-colors relative bg-transparent border-none outline-none ${
-                    isActive ? 'text-[#D4A017]' : 'text-white/80 hover:text-[#D4A017]'
+                  className={`px-1.5 xl:px-2.5 py-2 text-[10px] xl:text-xs font-extrabold uppercase tracking-wider xl:tracking-widest cursor-pointer transition-colors relative bg-transparent border-none outline-none ${
+                    isBookNow 
+                      ? 'text-[#D4A017] hover:text-[#fff] font-black' 
+                      : isActive 
+                        ? 'text-[#D4A017]' 
+                        : 'text-white/80 hover:text-[#D4A017]'
                   }`}
                 >
                   <span>{labelText}</span>
-                  {isActive && (
+                  {isActive && !isBookNow && (
                     <motion.div
                       layoutId="activeIndicator"
-                      className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#D4A017]"
+                      className="absolute bottom-0 left-1.5 right-1.5 h-0.5 bg-[#D4A017]"
                       transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
+                  )}
+                  {isBookNow && (
+                    <span className="absolute -top-1 right-0 w-1.5 h-1.5 rounded-full bg-[#D4A017] animate-ping" />
                   )}
                 </button>
               );
             })}
+
+            {/* "More" Dropdown Menu */}
+            <div className="relative group ml-1">
+              <button
+                className="px-2 py-2 text-[10px] xl:text-xs font-extrabold uppercase tracking-wider xl:tracking-widest cursor-pointer text-white/80 hover:text-[#D4A017] flex items-center gap-1 transition-colors bg-transparent border-none outline-none"
+              >
+                <span>More</span>
+                <ChevronDown size={11} className="transition-transform duration-300 group-hover:rotate-180" />
+              </button>
+              
+              <div className="absolute left-0 mt-1 w-44 bg-[#0A1224] border border-white/10 rounded-xl shadow-2xl p-1.5 hidden group-hover:block hover:block z-50">
+                {moreMenuItems.map((subItem) => {
+                  const subLabelText = language === 'en' ? subItem.label : subItem.swLabel;
+                  const isSubActive = currentPage === subItem.page;
+                  return (
+                    <button
+                      key={subItem.label}
+                      onClick={() => navigate(subItem.page)}
+                      className={`w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-all text-[11px] font-bold flex items-center justify-between cursor-pointer ${
+                        isSubActive ? 'text-[#D4A017] bg-white/5' : 'text-white/80 hover:text-white'
+                      }`}
+                    >
+                      <span>{subLabelText}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </nav>
         </div>
 

@@ -8,6 +8,7 @@ import { Page } from '../hooks/useHashRouter';
 
 interface SmartSearchEngineProps {
   navigate: (page: Page, id?: string) => void;
+  initiallyOpenCalendar?: boolean;
 }
 
 const DESTINATIONS = [
@@ -34,7 +35,7 @@ const parseDateStr = (str: string): Date | null => {
   return new Date(y, m - 1, d, 12, 0, 0);
 };
 
-export default function SmartSearchEngine({ navigate }: SmartSearchEngineProps) {
+export default function SmartSearchEngine({ navigate, initiallyOpenCalendar = false }: SmartSearchEngineProps) {
   // Destination State
   const [selectedDest, setSelectedDest] = useState(DESTINATIONS[0]);
   const [showDestDropdown, setShowDestDropdown] = useState(false);
@@ -51,7 +52,7 @@ export default function SmartSearchEngine({ navigate }: SmartSearchEngineProps) 
     return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
   });
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
-  const [showCalendar, setShowCalendar] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(initiallyOpenCalendar);
 
   // Calendar Pagination (shows left and right months)
   const [calendarMonth, setCalendarMonth] = useState(() => {

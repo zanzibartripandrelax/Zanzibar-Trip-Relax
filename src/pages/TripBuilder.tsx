@@ -564,8 +564,8 @@ export default function TripBuilder({ navigate }: TripBuilderProps) {
               <p className="text-gray-500 mt-2">Choose your island experiences (optional)</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {tourOptions.map(tour => (
-                <button type="button" key={tour.id} onClick={() => toggleItem(tour.id, selectedTours, setSelectedTours)}
+              {tourOptions.map((tour, idx) => (
+                <button type="button" key={`${tour.id}-${idx}`} onClick={() => toggleItem(tour.id, selectedTours, setSelectedTours)}
                   className={`p-4 rounded-xl border-2 text-left transition-all ${selectedTours.includes(tour.id) ? 'border-[#D4A017] bg-[#D4A017]/5' : 'border-gray-200 hover:border-[#0B3B8C]'}`}>
                   <div className="font-semibold text-[#0B3B8C] text-sm">{tour.name}</div>
                   <div className="flex items-center justify-between mt-2 text-xs">

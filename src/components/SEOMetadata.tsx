@@ -282,6 +282,9 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
         if (staticTour.id === 'jozani-forest') seoSlug = 'jozani-forest';
         if (staticTour.id === 'dolphin-kizimkazi') seoSlug = 'dolphin-tour';
         if (staticTour.id === 'nakupenda-sandbank') seoSlug = 'nakupenda-island';
+        if (staticTour.id === 'fishing-experience') seoSlug = 'fishing-charter-zanzibar';
+        if (staticTour.id === 'blue-lagoon') seoSlug = 'blue-lagoon-starfish';
+        if (staticTour.id === 'cave-experience') seoSlug = 'kuza-cave-jambiani';
 
         let seoTitle = staticTour.seoMetadata?.title || staticTour.name;
         if (staticTour.id === 'safari-blue') seoTitle = 'Safari Blue Zanzibar Full Day Tour | Snorkeling, Lunch & Island Adventure';
@@ -292,6 +295,9 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
         if (staticTour.id === 'jozani-forest') seoTitle = 'Jozani Forest Guided Tour | Rare Red Colobus Monkeys & Mangroves';
         if (staticTour.id === 'dolphin-kizimkazi') seoTitle = 'Dolphin Tour Zanzibar Kizimkazi | Swim with Wild Dolphins at Sunrise';
         if (staticTour.id === 'nakupenda-sandbank') seoTitle = 'Nakupenda Sandbank Beach Day Tour | Snorkeling & Fresh Seafood Feast';
+        if (staticTour.id === 'fishing-experience') seoTitle = 'Zanzibar Deep Sea Sport Fishing | Traditional Big Game Charters';
+        if (staticTour.id === 'blue-lagoon') seoTitle = 'Blue Lagoon Snorkeling Tour Zanzibar | Michamvi Starfish Adventure';
+        if (staticTour.id === 'cave-experience') seoTitle = 'Kuza Cave Tour Zanzibar | Jambiani Ancient Cave & Swahili Culture';
 
         return {
           title: `${seoTitle} | Zanzibar Trip & Relax`,

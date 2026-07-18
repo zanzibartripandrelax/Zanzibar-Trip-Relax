@@ -212,10 +212,10 @@ export default function SmartTourRecommendations({ navigate, titleClassName }: S
       {/* Recommendations Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 relative z-10">
         <AnimatePresence mode="popLayout">
-          {recommendedTours.map((tour) => (
+          {recommendedTours.map((tour, idx) => (
             <motion.div
               layout
-              key={tour.id}
+              key={`${tour.id}-${idx}`}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}

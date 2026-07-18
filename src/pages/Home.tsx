@@ -344,7 +344,7 @@ export default function Home({ navigate }: HomeProps) {
 
       {/* SECTION 2 — QUICK SEARCH (MOST IMPORTANT) */}
       <section className="relative z-30 -mt-10 md:-mt-8 pb-10">
-        <SmartSearchEngine navigate={navigate} />
+        <SmartSearchEngine navigate={navigate} initiallyOpenCalendar={true} />
       </section>
 
       {/* SECTION 3 — WHY BOOK WITH US */}
@@ -509,7 +509,7 @@ export default function Home({ navigate }: HomeProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {popularTours.map((tour, idx) => (
-              <AnimatedSection key={tour.id}>
+              <AnimatedSection key={`${tour.id}-${idx}`}>
                 <div className="group bg-slate-50/50 rounded-2xl overflow-hidden border border-slate-100 hover:border-slate-200 hover:shadow-xl transition-all duration-300 flex flex-col justify-between h-[420px]">
                   <div className="relative h-48 overflow-hidden bg-slate-100">
                     <ProgressiveImage src={tour.img} alt={tour.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />

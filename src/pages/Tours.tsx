@@ -433,9 +433,9 @@ export default function Tours({ navigate, queryParams }: ToursProps) {
         {/* Dynamic Tours Discover List */}
         {filteredTours.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredTours.map(tour => (
+            {filteredTours.map((tour, idx) => (
               <div 
-                key={tour.id} 
+                key={`${tour.id}-${tour.category}-${idx}`} 
                 className="group bg-white rounded-3xl border border-slate-200/50 hover:border-slate-200 hover:shadow-2xl transition-all duration-300 flex flex-col justify-between h-[480px] overflow-hidden"
               >
                 
