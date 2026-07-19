@@ -20,14 +20,14 @@ export default function TourDetail({ navigate }: TourDetailProps) {
   const hash = window.location.hash.replace('#', '').toLowerCase();
   const slug = hash.replace('tour-detail/', '').replace('tours/', '');
 
-  const cmsContent = getSiteContent();
-  const dynamicTour = cmsContent.tours.find(
-    t => t.title.toLowerCase().replace(/\s+/g, '-') === slug || t.id === slug
+  const cmsContent = getSiteContent() || { tours: [] };
+  const dynamicTour = (cmsContent.tours || []).find(
+    t => (t?.title || '').toLowerCase().replace(/\s+/g, '-') === slug || t?.id === slug
   );
 
   const staticTour = tours.find(st => 
     st.id === slug || 
-    st.name.toLowerCase().replace(/\s+/g, '-') === slug ||
+    (st.name || '').toLowerCase().replace(/\s+/g, '-') === slug ||
     slug.includes(st.id) ||
     st.id.includes(slug) ||
     (slug.includes('safari-blue') && st.id === 'safari-blue') ||
@@ -693,7 +693,7 @@ export default function TourDetail({ navigate }: TourDetailProps) {
               <div
                 key={ot.id}
                 onClick={() => {
-                  navigate('tour-detail', ot.name.toLowerCase().replace(/\s+/g, '-'));
+                  navigate('tour-detail', (ot.name || (ot as any).title || '').toLowerCase().replace(/\s+/g, '-'));
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="group cursor-pointer bg-neutral-50 rounded-2xl overflow-hidden border border-neutral-100 hover:shadow-md transition-all flex flex-col"

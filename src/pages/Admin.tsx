@@ -2441,8 +2441,8 @@ Stone Town, Zanzibar, Tanzania`);
     const isGlobalAllowed = session.role === 'Administrator' || session.role === 'Manager' || session.role === 'Accountant' || session.role === 'Marketing';
     if (!isGlobalAllowed || dashboardViewType === 'personal') {
       return bookingsList.filter(b => 
-        b.staff_id === session.staff_id || 
-        b.created_by_id === session.staff_id || 
+        b.staff_id === (session as any).staff_id || 
+        b.created_by_id === (session as any).staff_id || 
         b.created_by_username === session.username ||
         b.staff_name?.toLowerCase() === session.name?.toLowerCase()
       );
@@ -2459,8 +2459,8 @@ Stone Town, Zanzibar, Tanzania`);
     }
     // Guide, Sales, or others: restrict to creator or assigned guide/driver
     return bookingsList.filter(b => 
-      b.staff_id === session.staff_id || 
-      b.created_by_id === session.staff_id || 
+      b.staff_id === (session as any).staff_id || 
+      b.created_by_id === (session as any).staff_id || 
       b.created_by_username === session.username ||
       b.staff_name?.toLowerCase() === session.name?.toLowerCase() ||
       (session.role === 'Guide' && (b.assigned_guide === session.name || b.details?.assigned_guide === session.name)) ||
@@ -2732,8 +2732,8 @@ Stone Town, Zanzibar, Tanzania`);
     
     // Filter bookings list to only those created or owned by this user
     const personalBookings = bookingsList.filter(b => 
-      b.staff_id === session.staff_id || 
-      b.created_by_id === session.staff_id || 
+      b.staff_id === (session as any).staff_id || 
+      b.created_by_id === (session as any).staff_id || 
       b.created_by_username === session.username ||
       b.staff_name?.toLowerCase() === session.name?.toLowerCase()
     );
@@ -4959,7 +4959,7 @@ Stone Town, Zanzibar, Tanzania`);
                     supervisor: newSupervisor.trim(),
                     profile_photo: newProfilePhoto.trim() || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=compress&cs=tinysrgb&w=150",
                     documents: [],
-                    requirePasswordChange: true,
+                    requirePasswordChange: false,
                     status: 'Active',
                     verified: true,
                     created_at: new Date().toISOString()

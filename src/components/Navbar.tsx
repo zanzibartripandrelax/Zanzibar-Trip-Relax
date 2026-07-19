@@ -64,6 +64,12 @@ const navigationMenu: MenuItem[] = [
     type: 'link'
   },
   {
+    label: 'Hotels',
+    swLabel: 'Hoteli za Washirika',
+    page: 'hotels',
+    type: 'link'
+  },
+  {
     label: 'About',
     swLabel: 'Kuhusu Sisi',
     page: 'about',
@@ -84,7 +90,6 @@ const navigationMenu: MenuItem[] = [
 ];
 
 const moreMenuItems = [
-  { label: 'Hotels', swLabel: 'Hoteli za Washirika', page: 'hotels' as Page },
   { label: 'Travel Guide', swLabel: 'Mwongozo wa Safari', page: 'best-time-to-visit' as Page },
   { label: 'Plan My Trip', swLabel: 'Panga Safari Yangu', page: 'trip-builder' as Page }
 ];

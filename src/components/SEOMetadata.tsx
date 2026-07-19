@@ -267,7 +267,7 @@ export default function SEOMetadata({ pageId }: SEOMetadataProps) {
       
       const staticTour = tours.find(st => 
         st.id === slug || 
-        st.name.toLowerCase().replace(/\s+/g, '-') === slug ||
+        (st.name || '').toLowerCase().replace(/\s+/g, '-') === slug ||
         slug.includes(st.id) ||
         st.id.includes(slug)
       );

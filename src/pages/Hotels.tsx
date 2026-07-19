@@ -34,9 +34,9 @@ export default function Hotels({ navigate }: HotelsProps) {
 
   const filteredHotels = useMemo(() => {
     return hotelsList.filter(h => {
-      const matchesSearch = h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (h.description && h.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (h.category && h.category.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesSearch = (h.name || '').toLowerCase().includes((searchQuery || '').toLowerCase()) ||
+        (h.description && (h.description || '').toLowerCase().includes((searchQuery || '').toLowerCase())) ||
+        (h.category && (h.category || '').toLowerCase().includes((searchQuery || '').toLowerCase()));
 
       const matchesDest = selectedDestination === 'all' || h.destinationId === selectedDestination;
 

@@ -167,7 +167,7 @@ export default function TransferMap({ pickup, destination }: TransferMapProps) {
                       <stop offset="100%" stopColor="#e2e8f0" />
                     </linearGradient>
                     <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-                      <dropShadow dx="0" dy="4" stdDeviation="5" floodOpacity="0.1" />
+                      <feDropShadow dx="0" dy="4" stdDeviation="5" floodOpacity="0.1" />
                     </filter>
                   </defs>
 

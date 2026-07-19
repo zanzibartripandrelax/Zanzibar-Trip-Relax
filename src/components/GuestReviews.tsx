@@ -218,7 +218,7 @@ export default function GuestReviews({ navigate }: GuestReviewsProps) {
       opacity: 1,
       scale: 1,
       transition: {
-        x: { type: 'spring', stiffness: 260, damping: 28 },
+        x: { type: 'spring' as const, stiffness: 260, damping: 28 },
         opacity: { duration: 0.25 }
       }
     },
@@ -227,7 +227,7 @@ export default function GuestReviews({ navigate }: GuestReviewsProps) {
       opacity: 0,
       scale: 0.96,
       transition: {
-        x: { type: 'spring', stiffness: 260, damping: 28 },
+        x: { type: 'spring' as const, stiffness: 260, damping: 28 },
         opacity: { duration: 0.2 }
       }
     })

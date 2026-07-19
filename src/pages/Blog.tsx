@@ -18,8 +18,8 @@ export default function Blog({ navigate }: BlogProps) {
 
   const filteredPosts = pList.filter(post => {
     const matchesCategory = selectedCategory === 'All' || post.category === selectedCategory;
-    const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          post.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (post?.title || '').toLowerCase().includes((searchQuery || '').toLowerCase()) ||
+                          (post?.excerpt || '').toLowerCase().includes((searchQuery || '').toLowerCase());
     return matchesCategory && matchesSearch;
   });
 

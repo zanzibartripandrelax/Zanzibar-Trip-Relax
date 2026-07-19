@@ -147,7 +147,7 @@ export default function Packages({ navigate, queryParams }: PackagesProps) {
       // 1. Destination Match
       if (finderDest !== 'all') {
         const dest = finderDest.toLowerCase();
-        if (!pkg.destinations.toLowerCase().includes(dest) && !pkg.title.toLowerCase().includes(dest)) {
+        if (!(pkg.destinations || '').toLowerCase().includes(dest) && !(pkg.title || '').toLowerCase().includes(dest)) {
           return false;
         }
       }
@@ -155,7 +155,7 @@ export default function Packages({ navigate, queryParams }: PackagesProps) {
       // 2. Holiday Style Match
       if (finderStyle !== 'all') {
         const style = finderStyle.toLowerCase();
-        const hasTag = pkg.tags.some(t => t.toLowerCase().includes(style)) || pkg.summary.toLowerCase().includes(style);
+        const hasTag = (pkg.tags || []).some(t => (t || '').toLowerCase().includes(style)) || (pkg.summary || '').toLowerCase().includes(style);
         if (!hasTag) return false;
       }
 

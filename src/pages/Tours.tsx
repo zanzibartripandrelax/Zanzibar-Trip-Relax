@@ -102,28 +102,29 @@ export default function Tours({ navigate, queryParams }: ToursProps) {
     }
   }, [queryParams]);
 
-  const cmsContent = getSiteContent();
+  const cmsContent = getSiteContent() || { tours: [] };
   const seenTitles = new Set<string>();
   const activeTours = [];
 
-  for (const t of cmsContent.tours) {
+  for (const t of (cmsContent.tours || [])) {
     if (t.visible === false) continue;
-    const normTitle = t.title.trim().toLowerCase();
+    const normTitle = (t.title || '').trim().toLowerCase();
+    if (!normTitle) continue;
     if (seenTitles.has(normTitle)) continue;
     seenTitles.add(normTitle);
 
     // Sync metadata with static tour library for high-fidelity content
     const staticWalk = staticTours.find(st => 
       st.id === t.id || 
-      st.name.toLowerCase() === t.title.toLowerCase() ||
-      t.title.toLowerCase().includes(st.name.toLowerCase()) ||
-      st.name.toLowerCase().includes(t.title.toLowerCase()) ||
-      (t.title.includes('Safari Blue') && st.id === 'safari-blue') ||
-      (t.title.includes('Mnemba') && st.id === 'mnemba-snorkeling') ||
-      (t.title.includes('Stone Town') && st.id === 'stone-town') ||
-      (t.title.includes('Prison Island') && st.id === 'prison-island') ||
-      (t.title.includes('Spice Farm') && st.id === 'spice-farm') ||
-      (t.title.includes('Jozani Forest') && st.id === 'jozani-forest')
+      (st.name || '').toLowerCase() === (t.title || '').toLowerCase() ||
+      (t.title || '').toLowerCase().includes((st.name || '').toLowerCase()) ||
+      (st.name || '').toLowerCase().includes((t.title || '').toLowerCase()) ||
+      ((t.title || '').includes('Safari Blue') && st.id === 'safari-blue') ||
+      ((t.title || '').includes('Mnemba') && st.id === 'mnemba-snorkeling') ||
+      ((t.title || '').includes('Stone Town') && st.id === 'stone-town') ||
+      ((t.title || '').includes('Prison Island') && st.id === 'prison-island') ||
+      ((t.title || '').includes('Spice Farm') && st.id === 'spice-farm') ||
+      ((t.title || '').includes('Jozani Forest') && st.id === 'jozani-forest')
     );
 
     activeTours.push({
@@ -171,7 +172,7 @@ export default function Tours({ navigate, queryParams }: ToursProps) {
     const catObj = visualCategories.find(c => c.id === categoryId);
     if (!catObj) return false;
     
-    const titleAndDesc = (tour.name + ' ' + tour.description + ' ' + (tour.category || '')).toLowerCase();
+    const titleAndDesc = ((tour.name || '') + ' ' + (tour.description || '') + ' ' + (tour.category || '')).toLowerCase();
     return catObj.keywords.some(kw => titleAndDesc.includes(kw));
   };
 
@@ -186,9 +187,9 @@ export default function Tours({ navigate, queryParams }: ToursProps) {
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesSearch = 
-          tour.name.toLowerCase().includes(query) ||
-          tour.description.toLowerCase().includes(query) ||
-          tour.location.toLowerCase().includes(query);
+          (tour.name || '').toLowerCase().includes(query) ||
+          (tour.description || '').toLowerCase().includes(query) ||
+          (tour.location || '').toLowerCase().includes(query);
         if (!matchesSearch) return false;
       }
 
@@ -481,7 +482,7 @@ export default function Tours({ navigate, queryParams }: ToursProps) {
                     </div>
 
                     <h3 
-                      onClick={() => navigate('tour-detail', tour.name.toLowerCase().replace(/\s+/g, '-'))}
+                      onClick={() => navigate('tour-detail', (tour.name || '').toLowerCase().replace(/\s+/g, '-'))}
                       className="font-extrabold text-base sm:text-lg text-[#0B3B8C] hover:text-[#D4A017] cursor-pointer transition-colors leading-snug line-clamp-1"
                       style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
                     >
@@ -513,7 +514,7 @@ export default function Tours({ navigate, queryParams }: ToursProps) {
                   <div className="flex gap-2.5 pt-4 border-t border-slate-100 shrink-0">
                     <button
                       type="button"
-                      onClick={() => navigate('tour-detail', tour.name.toLowerCase().replace(/\s+/g, '-'))}
+                      onClick={() => navigate('tour-detail', (tour.name || '').toLowerCase().replace(/\s+/g, '-'))}
                       className="flex-1 border border-slate-200 hover:border-[#0B3B8C] text-slate-600 hover:text-[#0B3B8C] font-bold text-xs uppercase tracking-wider py-3 rounded-full transition-colors cursor-pointer text-center bg-white"
                     >
                       Details

@@ -92,20 +92,13 @@ export function ProgressiveImage({
       </AnimatePresence>
 
       {/* 2. High-Res Image with elegant fade transition */}
-      <motion.img
+      <img
         src={src}
         alt={alt}
         onLoad={handleImageLoad}
-        initial={{ opacity: 0, scale: isLoaded ? 1 : 1.03 }}
-        animate={{ 
-          opacity: isLoaded ? 1 : 0,
-          scale: isLoaded ? 1 : 1.03
-        }}
-        transition={{ 
-          opacity: { duration: 0.5, ease: 'easeOut' },
-          scale: { duration: 0.65, ease: 'easeOut' }
-        }}
-        className={`w-full h-full object-cover ${className}`}
+        className={`w-full h-full object-cover transition-all duration-[650ms] ease-out ${
+          isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.03]'
+        } ${className}`}
         referrerPolicy="no-referrer"
         {...props}
       />

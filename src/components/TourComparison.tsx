@@ -27,7 +27,7 @@ export default function TourComparison({
   const activeTours = cmsContent.tours
     .filter(t => t.visible !== false)
     .map(t => {
-      const staticWalk = staticTours.find(st => st.id === t.id || st.name.toLowerCase() === t.title.toLowerCase());
+      const staticWalk = staticTours.find(st => st.id === t.id || (st?.name || '').toLowerCase() === (t?.title || '').toLowerCase());
       return {
         id: t.id,
         name: t.title,
@@ -226,7 +226,7 @@ export default function TourComparison({
                             <button
                               onClick={() => {
                                 setIsOpen(false);
-                                navigate('tour-detail', t.name.toLowerCase().replace(/\s+/g, '-'));
+                                navigate('tour-detail', (t?.name || '').toLowerCase().replace(/\s+/g, '-'));
                               }}
                               className="w-full bg-white/5 hover:bg-white/10 border border-white/5 text-white font-extrabold text-[10px] md:text-xs py-2 rounded-xl transition-colors uppercase tracking-wider cursor-pointer"
                             >

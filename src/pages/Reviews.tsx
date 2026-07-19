@@ -138,7 +138,7 @@ export default function Reviews({ navigate }: ReviewsProps) {
   const avgRating = (mergedReviews.reduce((acc, current) => acc + current.rating_stars, 0) / (mergedReviews.length || 1)).toFixed(1);
 
   const getSourceBadgeClass = (source: string) => {
-    switch (source.toLowerCase()) {
+    switch ((source || '').toLowerCase()) {
       case 'google':
         return 'bg-red-50 text-red-700 border-red-100';
       case 'tripadvisor':
