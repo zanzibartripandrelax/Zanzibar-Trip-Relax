@@ -57,13 +57,13 @@ interface AdminProps {
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
 
 export const INITIAL_SEED_USERS = [
-  { username: 'gerevas', passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', name: 'Gerevas Paulo Mtaki', role: 'Administrator', staff_id: 'STF-001', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // zanzibarpassword123
-  { username: 'manager', passwordHash: '322f98f6d72d24249a15cd388f8d9516ca4d0b13cf3e3b0e13915bc5fcf7ca6c', name: 'Manager Amin', role: 'Manager', staff_id: 'STF-002', office: 'Stone Town Desk', office_code: 'STN-DSK', branch_code: 'ST-02' }, // managerpassword123
-  { username: 'sales', passwordHash: '4f4fa1da80a9693e5066922cfb9b47e5ed7a1262d4e8b394efdc2fbf8ca58ea6', name: 'Sales Rep Salma', role: 'Sales', staff_id: 'STF-003', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // salespassword123
-  { username: 'accountant', passwordHash: '20eb81ec7d9834cbd2d8d87948cd122c81fb392a2a0ff9bb86cc5b1d4ef23b8f', name: 'Frank accountant', role: 'Accountant', staff_id: 'STF-004', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // accountantpassword123
-  { username: 'marketing', passwordHash: '36113bdf2292f39cbf8f8515c61a153835e5d1e2e92bc49692c81358d7e0099e', name: 'Neema Marketing', role: 'Marketing', staff_id: 'STF-005', office: 'Stone Town Desk', office_code: 'STN-DSK', branch_code: 'ST-02' }, // marketingpassword123
-  { username: 'guide', passwordHash: '2a28178a9c2401f8df9765e90eb21ddb97b1ca6dcff7cedc2826cf8438db06ff', name: 'Captain Guide Ali', role: 'Guide', staff_id: 'STF-006', office: 'Safari Field Office', office_code: 'SAF-FLD', branch_code: 'SF-04' }, // guidepassword123
-  { username: 'driver', passwordHash: '0142fa9559c5d0130db99e3ca893b86cb45e05d0e2e987f73967d1db0e987be7', name: 'Driver Juma', role: 'Driver', staff_id: 'STF-007', office: 'Transport Depot', office_code: 'TRN-DEP', branch_code: 'TD-05' }, // driverpassword123
+  { username: 'gerevas', passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', name: 'Gerevas Paulo Mtaki', role: 'ADMIN', staff_id: 'STF-001', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // zanzibarpassword123
+  { username: 'manager', passwordHash: '322f98f6d72d24249a15cd388f8d9516ca4d0b13cf3e3b0e13915bc5fcf7ca6c', name: 'Manager Amin', role: 'MANAGER', staff_id: 'STF-002', office: 'Stone Town Desk', office_code: 'STN-DSK', branch_code: 'ST-02' }, // managerpassword123
+  { username: 'sales', passwordHash: '4f4fa1da80a9693e5066922cfb9b47e5ed7a1262d4e8b394efdc2fbf8ca58ea6', name: 'Reservations Officer Salma', role: 'RESERVATION OFFICER', staff_id: 'STF-003', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // salespassword123
+  { username: 'accountant', passwordHash: '20eb81ec7d9834cbd2d8d87948cd122c81fb392a2a0ff9bb86cc5b1d4ef23b8f', name: 'Frank accountant', role: 'ACCOUNTANT', staff_id: 'STF-004', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // accountantpassword123
+  { username: 'marketing', passwordHash: '36113bdf2292f39cbf8f8515c61a153835e5d1e2e92bc49692c81358d7e0099e', name: 'Neema Creator', role: 'CONTENT CREATOR', staff_id: 'STF-005', office: 'Stone Town Desk', office_code: 'STN-DSK', branch_code: 'ST-02' }, // marketingpassword123
+  { username: 'guide', passwordHash: '2a28178a9c2401f8df9765e90eb21ddb97b1ca6dcff7cedc2826cf8438db06ff', name: 'Captain Guide Ali', role: 'GUIDE', staff_id: 'STF-006', office: 'Safari Field Office', office_code: 'SAF-FLD', branch_code: 'SF-04' }, // guidepassword123
+  { username: 'driver', passwordHash: '0142fa9559c5d0130db99e3ca893b86cb45e05d0e2e987f73967d1db0e987be7', name: 'Driver Juma', role: 'DRIVER', staff_id: 'STF-007', office: 'Transport Depot', office_code: 'TRN-DEP', branch_code: 'TD-05' }, // driverpassword123
   { username: 'customer', passwordHash: '4f880fdf8b10ef1f70a1f2fc5080c98f98ff1f6f1c4df821cfdfc6a3ff6e788e', name: 'Customer John Doe', role: 'Customer', staff_id: 'CUST-001', office: 'Online Portal', office_code: 'ONL-PRT', branch_code: 'OP-06' } // customerpassword123
 ];
 
@@ -102,6 +102,7 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
       }
     }
     return {
+      'ADMIN': { cms: 'write', media: 'write', bookings: 'write', finances: 'write', staff: 'write', vehicles: 'write', suppliers: 'write' },
       'Owner': { cms: 'write', media: 'write', bookings: 'write', finances: 'write', staff: 'write', vehicles: 'write', suppliers: 'write' },
       'Super Admin': { cms: 'write', media: 'write', bookings: 'write', finances: 'write', staff: 'write', vehicles: 'write', suppliers: 'write' },
       'Administrator': { cms: 'write', media: 'write', bookings: 'write', finances: 'write', staff: 'write', vehicles: 'write', suppliers: 'write' },
@@ -119,13 +120,13 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
   const [isSystemInitialized, setIsSystemInitialized] = useState<boolean>(() => {
     try {
       const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
-      const owners = storedUsers.filter((u: any) => u.role?.toLowerCase() === 'owner');
-      console.log('[AUTH-DEBUG] On Startup: Owner count =', owners.length);
+      const owners = storedUsers.filter((u: any) => u.role?.toUpperCase() === 'ADMIN' || u.role?.toLowerCase() === 'owner');
+      console.log('[AUTH-DEBUG] On Startup: Admin/Owner count =', owners.length);
       if (owners.length > 0) {
-        console.log('[AUTH-DEBUG] On Startup: Owner found = true, usernames:', owners.map((o: any) => o.username).join(', '));
+        console.log('[AUTH-DEBUG] On Startup: Admin/Owner found = true, usernames:', owners.map((o: any) => o.username).join(', '));
         return true;
       } else {
-        console.log('[AUTH-DEBUG] On Startup: Owner found = false');
+        console.log('[AUTH-DEBUG] On Startup: Admin/Owner found = false');
         return false;
       }
     } catch (e) {
@@ -1917,7 +1918,7 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
       await sleep(400);
 
       // --- TEST 1: Create Owner - Success ---
-      addTestLog('TEST 1: Creating Owner Account "test_owner_runner"', 'info');
+      addTestLog('TEST 1: Creating Admin Account "test_owner_runner"', 'info');
       
       const testOwnerUsername = 'test_owner_runner';
       const testOwnerPassword = 'TestPassword123!';
@@ -1929,7 +1930,7 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
         name: 'Automated Test Owner',
         phone: '+255 777 000 111',
         email: 'test_owner@zanzibartrip.com',
-        role: 'Owner',
+        role: 'ADMIN',
         status: 'Active',
         permissions: 'Full System Access',
         createdBy: 'System',
@@ -1940,17 +1941,17 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
 
       localStorage.setItem('ztr_admin_users', JSON.stringify([testOwner]));
       localStorage.setItem('system_initialized', 'true');
-      console.log('[AUTH-DEBUG] Owner created:', testOwner.username);
+      console.log('[AUTH-DEBUG] Admin created:', testOwner.username);
 
       // Verify exists
       const test1Users = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
-      const test1Exists = test1Users.some((u: any) => u.username === testOwnerUsername && u.role === 'Owner');
-      if (!test1Exists) throw new Error('TEST 1 FAILED: Owner record does not exist in storage after saving.');
+      const test1Exists = test1Users.some((u: any) => u.username === testOwnerUsername && u.role === 'ADMIN');
+      if (!test1Exists) throw new Error('TEST 1 FAILED: Admin record does not exist in storage after saving.');
       
-      addTestLog('TEST 1 SUCCESS: Owner created and hash generated.', 'success');
+      addTestLog('TEST 1 SUCCESS: Admin created and hash generated.', 'success');
       
       // Simulate session
-      const session1 = { username: testOwnerUsername, name: testOwner.name, role: 'Owner', staff_id: 'OWNER-1' };
+      const session1 = { username: testOwnerUsername, name: testOwner.name, role: 'ADMIN', staff_id: 'OWNER-1' };
       setSession(session1);
       localStorage.setItem('ztr_active_session', JSON.stringify({ user: session1, timestamp: Date.now() }));
       setIsSystemInitialized(true);
@@ -1986,13 +1987,13 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
       
       const storedUsers3 = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
       const userMatch3 = storedUsers3.find((u: any) => u.username === testOwnerUsername);
-      if (!userMatch3) throw new Error('TEST 3 FAILED: Owner not found in storage.');
-      console.log('[AUTH-DEBUG] Owner loaded:', userMatch3.username);
+      if (!userMatch3) throw new Error('TEST 3 FAILED: Admin not found in storage.');
+      console.log('[AUTH-DEBUG] Admin loaded:', userMatch3.username);
 
       const isPassCorrect3 = await comparePassword(testOwnerPassword, userMatch3.passwordHash);
       if (!isPassCorrect3) throw new Error('TEST 3 FAILED: Bcrypt comparison failed for correct credentials.');
 
-      const session3 = { username: userMatch3.username, name: userMatch3.name, role: 'Owner', staff_id: 'OWNER-1' };
+      const session3 = { username: userMatch3.username, name: userMatch3.name, role: 'ADMIN', staff_id: 'OWNER-1' };
       setSession(session3);
       localStorage.setItem('ztr_active_session', JSON.stringify({ user: session3, timestamp: Date.now() }));
       console.log('[AUTH-DEBUG] Session created:', session3.username);
@@ -2059,7 +2060,7 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
       await sleep(500);
 
       // --- TEST 6: Create another Owner - Success ---
-      addTestLog('TEST 6: Creating secondary Owner account "second_owner_auto"', 'info');
+      addTestLog('TEST 6: Creating secondary Admin account "second_owner_auto"', 'info');
 
       const testOwner2Username = 'second_owner_auto';
       const testOwner2Password = 'SecondPassword456!';
@@ -2071,7 +2072,7 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
         name: 'Final Production Owner',
         phone: '+255 777 999 999',
         email: 'final_owner@zanzibartrip.com',
-        role: 'Owner',
+        role: 'ADMIN',
         status: 'Active',
         permissions: 'Full System Access',
         createdBy: 'System',
@@ -2082,12 +2083,12 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
 
       localStorage.setItem('ztr_admin_users', JSON.stringify([testOwner2]));
       localStorage.setItem('system_initialized', 'true');
-      console.log('[AUTH-DEBUG] Owner created:', testOwner2.username);
+      console.log('[AUTH-DEBUG] Admin created:', testOwner2.username);
 
       const test6Users = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
       const test6Exists = test6Users.some((u: any) => u.username === testOwner2Username);
-      if (!test6Exists) throw new Error('TEST 6 FAILED: Secondary Owner did not save.');
-      addTestLog('TEST 6 SUCCESS: Secondary Owner successfully created.', 'success');
+      if (!test6Exists) throw new Error('TEST 6 FAILED: Secondary Admin did not save.');
+      addTestLog('TEST 6 SUCCESS: Secondary Admin successfully created.', 'success');
 
       setTestSuite(prev => ({
         ...prev,
@@ -2097,22 +2098,22 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
       await sleep(500);
 
       // --- TEST 7: Login - Success ---
-      addTestLog('TEST 7: Login verification with secondary Owner', 'info');
+      addTestLog('TEST 7: Login verification with secondary Admin', 'info');
 
       const storedUsers7 = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
       const userMatch7 = storedUsers7.find((u: any) => u.username === testOwner2Username);
-      if (!userMatch7) throw new Error('TEST 7 FAILED: Secondary Owner not loaded.');
-      console.log('[AUTH-DEBUG] Owner loaded:', userMatch7.username);
+      if (!userMatch7) throw new Error('TEST 7 FAILED: Secondary Admin not loaded.');
+      console.log('[AUTH-DEBUG] Admin loaded:', userMatch7.username);
 
       const isPassCorrect7 = await comparePassword(testOwner2Password, userMatch7.passwordHash);
       if (!isPassCorrect7) throw new Error('TEST 7 FAILED: Password comparison failed.');
 
-      const finalSession = { username: userMatch7.username, name: userMatch7.name, role: 'Owner', staff_id: 'OWNER-2' };
+      const finalSession = { username: userMatch7.username, name: userMatch7.name, role: 'ADMIN', staff_id: 'OWNER-2' };
       setSession(finalSession);
       localStorage.setItem('ztr_active_session', JSON.stringify({ user: finalSession, timestamp: Date.now() }));
       setIsSystemInitialized(true);
       console.log('[AUTH-DEBUG] Session created:', finalSession.username);
-      addTestLog('TEST 7 SUCCESS: Secondary Owner authenticated successfully.', 'success');
+      addTestLog('TEST 7 SUCCESS: Secondary Admin authenticated successfully.', 'success');
 
       addTestLog('🏁 DIAGNOSTIC COMPLETE: ALL 7 TESTS PASSED SUCCESSFULLY! ⚔️', 'success');
 
@@ -2186,16 +2187,16 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
       console.log('[AUTH-DEBUG] Username entered:', username.trim());
       
       const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
-      const ownersList = storedUsers.filter((u: any) => u.role?.toLowerCase() === 'owner');
-      console.log('[AUTH-DEBUG] Owner count:', ownersList.length);
+      const ownersList = storedUsers.filter((u: any) => u.role?.toUpperCase() === 'ADMIN' || u.role?.toLowerCase() === 'owner');
+      console.log('[AUTH-DEBUG] Admin/Owner count:', ownersList.length);
 
       const userMatch = storedUsers.find(
         (u: any) => u.username.toLowerCase() === username.trim().toLowerCase()
       );
 
       if (userMatch) {
-        const isOwnerFound = userMatch.role?.toLowerCase() === 'owner';
-        console.log('[AUTH-DEBUG] Owner found:', isOwnerFound ? 'true' : 'false', '(Role:', userMatch.role, ')');
+        const isOwnerFound = userMatch.role?.toUpperCase() === 'ADMIN' || userMatch.role?.toLowerCase() === 'owner';
+        console.log('[AUTH-DEBUG] Admin/Owner found:', isOwnerFound ? 'true' : 'false', '(Role:', userMatch.role, ')');
 
         if (userMatch.status === 'Inactive' || userMatch.isLocked || userMatch.status === 'Locked') {
           addActivityLog(userMatch.name, 'loginBlocked', `Blocked login attempt: Staff member identity is locked/deactivated.`);
@@ -2212,7 +2213,7 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
           const userInfo = {
             username: userMatch.username,
             name: userMatch.name,
-            role: (userMatch.role?.toLowerCase() === 'owner') ? 'Owner' : userMatch.role,
+            role: (userMatch.role?.toUpperCase() === 'ADMIN' || userMatch.role?.toLowerCase() === 'owner') ? 'ADMIN' : userMatch.role,
             staff_id: userMatch.staff_id,
             office: userMatch.office,
             office_code: userMatch.office_code,
@@ -2296,7 +2297,7 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
         profilePhoto: ownerProfilePhoto.trim() || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=compress&cs=tinysrgb&w=150',
         recoveryQuestion: ownerRecoveryQuestion,
         recoveryAnswer: ownerRecoveryAnswer.trim().toLowerCase() || 'default',
-        role: 'owner', // Automatically set OWNER
+        role: 'ADMIN', // Automatically set ADMIN
         status: 'Active',
         active: true, // Set active=true
         permissions: 'Full System Access',
@@ -2310,30 +2311,30 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
 
       // Save the record
       const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
-      // Filter out any legacy OWNER users
-      const cleanUsers = storedUsers.filter((u: any) => u.role?.toLowerCase() !== 'owner');
+      // Filter out any legacy OWNER / ADMIN users
+      const cleanUsers = storedUsers.filter((u: any) => u.role?.toLowerCase() !== 'owner' && u.role?.toUpperCase() !== 'ADMIN');
       const updatedUsers = [newOwner, ...cleanUsers];
       localStorage.setItem('ztr_admin_users', JSON.stringify(updatedUsers));
       
-      // Step 10 Debugging: Owner count, Owner found
-      const finalOwners = updatedUsers.filter((u: any) => u.role?.toLowerCase() === 'owner');
-      console.log('[AUTH-DEBUG] Owner created:', newOwner.username);
-      console.log('[AUTH-DEBUG] Owner count:', finalOwners.length);
-      console.log('[AUTH-DEBUG] Owner found: true, username:', newOwner.username);
+      // Step 10 Debugging: Admin count, Admin found
+      const finalOwners = updatedUsers.filter((u: any) => u.role?.toUpperCase() === 'ADMIN' || u.role?.toLowerCase() === 'owner');
+      console.log('[AUTH-DEBUG] Admin created:', newOwner.username);
+      console.log('[AUTH-DEBUG] Admin count:', finalOwners.length);
+      console.log('[AUTH-DEBUG] Admin found: true, username:', newOwner.username);
 
       // Double check that the record exists and is persisted
       const verifyUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
-      const ownerExists = verifyUsers.some((u: any) => u.role?.toLowerCase() === 'owner' && u.username === newOwner.username);
+      const ownerExists = verifyUsers.some((u: any) => (u.role?.toUpperCase() === 'ADMIN' || u.role?.toLowerCase() === 'owner') && u.username === newOwner.username);
       if (!ownerExists) {
-        throw new Error("Failed to verify storage persistence of Owner credentials.");
+        throw new Error("Failed to verify storage persistence of Admin credentials.");
       }
 
       // Save initialization flag
       localStorage.setItem('system_initialized', 'true');
       setIsSystemInitialized(true);
 
-      addActivityLog(newOwner.name, 'owner', 'Created system owner account.');
-      showToast('Owner account created successfully! Automatically logging in...', 'success');
+      addActivityLog(newOwner.name, 'ADMIN', 'Created system admin account.');
+      showToast('ADMIN account created successfully! Automatically logging in...', 'success');
 
       // Clear setup fields
       setOwnerFullName('');
@@ -2377,18 +2378,18 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
 
   // Reset Owner account & returns system to first-time setup (Phase 5)
   const handleResetOwner = () => {
-    if (window.confirm("WARNING: This is an emergency action. This will permanently remove the current Owner account, wipe all active session data, and return the system back to first-time onboarding. Continue?")) {
-      // Delete Owner account from ztr_admin_users
+    if (window.confirm("WARNING: This is an emergency action. This will permanently remove the current ADMIN account, wipe all active session data, and return the system back to first-time onboarding. Continue?")) {
+      // Delete Owner/ADMIN account from ztr_admin_users
       try {
         const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
-        const updatedUsers = storedUsers.filter((u: any) => u.role !== 'OWNER' && u.role !== 'Owner');
+        const updatedUsers = storedUsers.filter((u: any) => u.role !== 'OWNER' && u.role !== 'Owner' && u.role?.toUpperCase() !== 'ADMIN');
         localStorage.setItem('ztr_admin_users', JSON.stringify(updatedUsers));
         
         // Verify delete worked
         const verifyUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
-        const ownerExists = verifyUsers.some((u: any) => u.role === 'Owner' || u.role === 'OWNER');
+        const ownerExists = verifyUsers.some((u: any) => u.role === 'Owner' || u.role === 'OWNER' || u.role?.toUpperCase() === 'ADMIN');
         if (ownerExists) {
-          console.error("Owner account still exists after reset!");
+          console.error("ADMIN account still exists after reset!");
         }
       } catch (e) {
         // ignore
@@ -11582,7 +11583,7 @@ Stone Town, Zanzibar, Tanzania`);
                             </td>
                             <td className="py-3.5 px-4">
                               <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                                (u.role === 'Owner' || u.role === 'OWNER') ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                                (u.role?.toUpperCase() === 'ADMIN' || u.role?.toUpperCase() === 'OWNER' || u.role === 'Owner') ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                                 u.role === 'Administrator' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' :
                                 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
                               }`}>

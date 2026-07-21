@@ -84,7 +84,7 @@ export default function App() {
     let hasOwner = false;
     try {
       const storedUsers = JSON.parse(storedUsersStr || '[]');
-      hasOwner = storedUsers.some((u: any) => u.role?.toLowerCase() === 'owner');
+      hasOwner = storedUsers.some((u: any) => u.role?.toUpperCase() === 'ADMIN' || u.role?.toLowerCase() === 'owner');
     } catch (e) {
       // ignore
     }

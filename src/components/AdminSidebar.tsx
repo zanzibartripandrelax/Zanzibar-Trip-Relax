@@ -211,6 +211,11 @@ export default function AdminSidebar({
 
   // Specific role configurations (limit visible tabs depending on credentials to prevent leaks)
   const rolePermissions: Record<string, string[]> = {
+    'admin': [
+      'dashboard', 'profile', 'bookings', 'inquiries', 'zanzibarTours', 'holidayPackages', 
+      'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'suppliers', 
+      'customers', 'users', 'media', 'cms', 'logs', 'settings'
+    ],
     'owner': [
       'dashboard', 'profile', 'bookings', 'inquiries', 'zanzibarTours', 'holidayPackages', 
       'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'suppliers', 
@@ -229,6 +234,9 @@ export default function AdminSidebar({
     'reservation officer': ['dashboard', 'profile', 'bookings', 'inquiries', 'customers'],
     'sales': ['dashboard', 'profile', 'bookings', 'customers'],
     'accountant': ['dashboard', 'profile', 'logs', 'settings'],
+    'guide': ['dashboard', 'profile', 'bookings'],
+    'driver': ['dashboard', 'profile', 'bookings'],
+    'content creator': ['dashboard', 'profile', 'media', 'cms'],
     'marketing': ['dashboard', 'profile', 'customers', 'media', 'cms'],
     'customer support': ['dashboard', 'profile', 'customers', 'inquiries']
   };

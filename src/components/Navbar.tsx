@@ -22,18 +22,6 @@ interface MenuItem {
 
 const navigationMenu: MenuItem[] = [
   {
-    label: 'Home',
-    swLabel: 'Nyumbani',
-    page: 'home',
-    type: 'link'
-  },
-  {
-    label: 'Destinations',
-    swLabel: 'Destinasi',
-    page: 'destinations',
-    type: 'link'
-  },
-  {
     label: 'Tours',
     swLabel: 'Ziara',
     page: 'tours',
@@ -68,30 +56,18 @@ const navigationMenu: MenuItem[] = [
     swLabel: 'Hoteli za Washirika',
     page: 'hotels',
     type: 'link'
-  },
-  {
-    label: 'About',
-    swLabel: 'Kuhusu Sisi',
-    page: 'about',
-    type: 'link'
-  },
-  {
-    label: 'Contact',
-    swLabel: 'Mawasiliano',
-    page: 'contact',
-    type: 'link'
-  },
-  {
-    label: 'Book Now',
-    swLabel: 'Weka Sasa',
-    page: 'booking',
-    type: 'link'
   }
 ];
 
-const moreMenuItems = [
+const aboutUsDropdownItems = [
+  { label: 'About Zanzibar Trip & Relax', swLabel: 'Kuhusu Sisi', page: 'about' as Page },
   { label: 'Travel Guide', swLabel: 'Mwongozo wa Safari', page: 'best-time-to-visit' as Page },
-  { label: 'Plan My Trip', swLabel: 'Panga Safari Yangu', page: 'trip-builder' as Page }
+  { label: 'Contact Us', swLabel: 'Mawasiliano', page: 'contact' as Page },
+  { label: 'Reviews', swLabel: 'Maoni ya Wageni', page: 'reviews' as Page },
+  { label: 'Sustainability', swLabel: 'Uendelevu', page: 'sustainability' as Page },
+  { label: 'Careers', swLabel: 'Kazi', page: 'careers' as Page },
+  { label: 'FAQs', swLabel: 'Maswali ya Kawaida', page: 'faq' as Page },
+  { label: 'Policies', swLabel: 'Sera Zetu', page: 'policies' as Page }
 ];
 
 export default function Navbar({ currentPage, navigate }: NavbarProps) {
@@ -176,18 +152,21 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
   };
 
   const mobileMenuItems: Array<{ label: string; swLabel: string; page: Page; action?: () => void }> = [
-    { label: 'Home', swLabel: 'Nyumbani', page: 'home' as Page },
-    { label: 'Destinations', swLabel: 'Destinasi', page: 'destinations' as Page },
-    { label: 'Tours & Excursions', swLabel: 'Ziara na Safari', page: 'tours' as Page },
+    { label: 'Tours', swLabel: 'Ziara', page: 'tours' as Page },
     { label: 'Holiday Packages', swLabel: 'Vifurushi vya Likizo', page: 'packages' as Page },
-    { label: 'Tanzania Safaris', swLabel: 'Safari za Tanzania', page: 'safaris' as Page },
+    { label: 'Safaris', swLabel: 'Safari', page: 'safaris' as Page },
     { label: 'Kilimanjaro', swLabel: 'Mlima Kilimanjaro', page: 'kilimanjaro' as Page },
-    { label: 'Airport Transfers', swLabel: 'Uhamisho wa Uwanja', page: 'transfers' as Page },
+    { label: 'Transfers', swLabel: 'Uhamisho', page: 'transfers' as Page },
     { label: 'Hotels', swLabel: 'Hoteli za Washirika', page: 'hotels' as Page },
+    { label: 'About Zanzibar Trip & Relax', swLabel: 'Kuhusu Sisi', page: 'about' as Page },
     { label: 'Travel Guide', swLabel: 'Mwongozo wa Safari', page: 'best-time-to-visit' as Page },
-    { label: 'About Us', swLabel: 'Kuhusu Sisi', page: 'about' as Page },
-    { label: 'Contact', swLabel: 'Mawasiliano', page: 'contact' as Page },
-    { label: 'Plan My Trip', swLabel: 'Panga Safari Yangu', page: 'trip-builder' as Page }
+    { label: 'Contact Us', swLabel: 'Mawasiliano', page: 'contact' as Page },
+    { label: 'Reviews', swLabel: 'Maoni ya Wageni', page: 'reviews' as Page },
+    { label: 'Sustainability', swLabel: 'Uendelevu', page: 'sustainability' as Page },
+    { label: 'Careers', swLabel: 'Kazi', page: 'careers' as Page },
+    { label: 'FAQs', swLabel: 'Maswali ya Kawaida', page: 'faq' as Page },
+    { label: 'Policies', swLabel: 'Sera Zetu', page: 'policies' as Page },
+    { label: 'Book Now', swLabel: 'Weka Sasa', page: 'booking' as Page }
   ];
 
   return (
@@ -225,24 +204,24 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
       </div>
 
       {/* Main Navbar Row */}
-      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3 lg:gap-4 transition-all duration-300 ${isScrolled ? 'h-14 lg:h-16' : 'h-17 lg:h-20'}`}>
+      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3 lg:gap-4 transition-all duration-300 ${isScrolled ? 'h-16 lg:h-18' : 'h-20 lg:h-24'}`}>
         {/* Left side: Premium High-Quality Logo & Brand Title */}
         <button 
           onClick={() => navigate('home')} 
-          className="flex items-center gap-2.5 sm:gap-3 group shrink-0 select-none cursor-pointer text-left font-sans bg-transparent border-none p-0 outline-none"
+          className="flex items-center gap-3 group shrink-0 select-none cursor-pointer text-left font-sans bg-transparent border-none p-0 outline-none"
         >
-          <div className="h-[42px] w-[42px] relative flex-shrink-0">
+          <div className="h-[50px] w-[50px] sm:h-[60px] sm:w-[60px] relative flex-shrink-0">
             <ProgressiveImage
               src="/src/assets/images/logo.jpg"
               alt="Zanzibar Trip and Relax Logo"
-              className="h-full w-full object-cover rounded-full bg-white/10 p-0.5 border border-white/10 shadow-md group-hover:scale-105 transition-all duration-300 aspect-square"
+              className="h-full w-full object-cover rounded-full bg-white/10 p-0.5 border border-white/15 shadow-lg group-hover:scale-105 transition-all duration-300 aspect-square"
             />
           </div>
           <div className="hidden sm:flex flex-col leading-tight select-none">
-            <span className="text-white font-black text-xs lg:text-sm tracking-[0.14em] lg:tracking-[0.18em] uppercase group-hover:text-[#D4A017] transition-colors">
+            <span className="text-white font-black text-sm lg:text-base tracking-[0.14em] lg:tracking-[0.18em] uppercase group-hover:text-[#D4A017] transition-colors">
               ZANZIBAR
             </span>
-            <span className="text-[#D4A017] text-[8px] lg:text-xs font-bold uppercase tracking-[0.18em] lg:tracking-[0.22em] mt-0.5">
+            <span className="text-[#D4A017] text-[10px] lg:text-xs font-extrabold uppercase tracking-[0.18em] lg:tracking-[0.22em] mt-0.5">
               TRIP & RELAX
             </span>
           </div>
@@ -254,46 +233,44 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
             {navigationMenu.map((item) => {
               const labelText = language === 'en' ? item.label : item.swLabel;
               const isActive = isItemActive(item);
-              const isBookNow = item.page === 'booking';
 
               return (
                 <button
                   key={item.label}
                   onClick={() => navigate(item.page)}
                   className={`px-1.5 xl:px-2.5 py-2 text-[10px] xl:text-xs font-extrabold uppercase tracking-wider xl:tracking-widest cursor-pointer transition-colors relative bg-transparent border-none outline-none ${
-                    isBookNow 
-                      ? 'text-[#D4A017] hover:text-[#fff] font-black' 
-                      : isActive 
-                        ? 'text-[#D4A017]' 
-                        : 'text-white/80 hover:text-[#D4A017]'
+                    isActive 
+                      ? 'text-[#D4A017]' 
+                      : 'text-white/80 hover:text-[#D4A017]'
                   }`}
                 >
                   <span>{labelText}</span>
-                  {isActive && !isBookNow && (
+                  {isActive && (
                     <motion.div
                       layoutId="activeIndicator"
                       className="absolute bottom-0 left-1.5 right-1.5 h-0.5 bg-[#D4A017]"
                       transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
                   )}
-                  {isBookNow && (
-                    <span className="absolute -top-1 right-0 w-1.5 h-1.5 rounded-full bg-[#D4A017] animate-ping" />
-                  )}
                 </button>
               );
             })}
 
-            {/* "More" Dropdown Menu */}
+            {/* "About Us" Dropdown Menu */}
             <div className="relative group ml-1">
               <button
-                className="px-2 py-2 text-[10px] xl:text-xs font-extrabold uppercase tracking-wider xl:tracking-widest cursor-pointer text-white/80 hover:text-[#D4A017] flex items-center gap-1 transition-colors bg-transparent border-none outline-none"
+                className={`px-2 py-2 text-[10px] xl:text-xs font-extrabold uppercase tracking-wider xl:tracking-widest cursor-pointer flex items-center gap-1 transition-colors bg-transparent border-none outline-none ${
+                  ['about', 'best-time-to-visit', 'contact', 'reviews', 'sustainability', 'careers', 'faq', 'policies'].includes(currentPage)
+                    ? 'text-[#D4A017]'
+                    : 'text-white/80 hover:text-[#D4A017]'
+                }`}
               >
-                <span>More</span>
+                <span>About Us</span>
                 <ChevronDown size={11} className="transition-transform duration-300 group-hover:rotate-180" />
               </button>
               
-              <div className="absolute left-0 mt-1 w-44 bg-[#0A1224] border border-white/10 rounded-xl shadow-2xl p-1.5 hidden group-hover:block hover:block z-50">
-                {moreMenuItems.map((subItem) => {
+              <div className="absolute left-0 mt-1 w-60 bg-[#0A1224] border border-white/10 rounded-xl shadow-2xl p-1.5 hidden group-hover:block hover:block z-50">
+                {aboutUsDropdownItems.map((subItem) => {
                   const subLabelText = language === 'en' ? subItem.label : subItem.swLabel;
                   const isSubActive = currentPage === subItem.page;
                   return (
@@ -310,6 +287,26 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
                 })}
               </div>
             </div>
+
+            {/* Book Now link */}
+            <button
+              onClick={() => navigate('booking')}
+              className={`px-1.5 xl:px-2.5 py-2 text-[10px] xl:text-xs font-black uppercase tracking-wider xl:tracking-widest cursor-pointer transition-all relative bg-transparent border-none outline-none ${
+                currentPage === 'booking'
+                  ? 'text-[#D4A017]'
+                  : 'text-[#D4A017] hover:text-white'
+              }`}
+            >
+              <span>{language === 'en' ? 'Book Now' : 'Weka Sasa'}</span>
+              {currentPage === 'booking' && (
+                <motion.div
+                  layoutId="activeIndicator"
+                  className="absolute bottom-0 left-1.5 right-1.5 h-0.5 bg-[#D4A017]"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span className="absolute -top-1 right-0 w-1.5 h-1.5 rounded-full bg-[#D4A017] animate-ping" />
+            </button>
           </nav>
         </div>
 

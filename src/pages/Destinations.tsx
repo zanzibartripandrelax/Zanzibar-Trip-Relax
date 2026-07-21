@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   MapPin, Sparkles, ArrowRight, Info, Calendar, Globe, Star, 
   ChevronRight, ArrowLeft, Send, CheckCircle2, AlertCircle, 
-  Camera, HelpCircle, Briefcase, Compass
+  Camera, HelpCircle, Briefcase, Compass, Search
 } from 'lucide-react';
 import { Page } from '../hooks/useHashRouter';
 import { getSiteContent, getHotels, Destination, TourItem } from '../lib/cmsStore';
@@ -419,6 +419,66 @@ const DESTINATION_FALLBACKS: Record<string, {
     nearbyAttractions: ['Misali Island Marine Park', 'Ngezi Forest Reserve'],
     mapQuery: 'Pemba Island Tanzania'
   },
+  'stone-town': {
+    tagline: 'Step back in time inside Zanzibar\'s ancient heart',
+    bestTime: 'Year-round, dry months preferred',
+    duration: '1 - 2 Days',
+    wildlife: 'Swahili cultural heritage & vibrant street life',
+    overview: 'Stone Town is the historic heart of Zanzibar City, a stunning labyrinth of narrow winding alleyways, spice markets, grand carved wooden doors, and historic limestone architectures blending Arab, Persian, Indian, and European influences.',
+    highlights: [
+      'Wander the maze of historic, narrow coral-stone streets',
+      'Discover the House of Wonders and the Old Fort',
+      'Indulge in fresh seafood at the lively Forodhani Gardens night market'
+    ],
+    thingsToDo: [
+      'Guided historical architecture walking tour',
+      'Sunset rooftop dining with panoramic minaret views',
+      'Browse traditional fabric, jewelry, and local art bazaars'
+    ],
+    travelTips: [
+      'Dress conservatively out of respect for local Islamic culture (cover shoulders and knees)',
+      'Hire a licensed guide to avoid getting lost and to unlock rich historical contexts',
+      'Enjoy fresh local sugarcane juice at the waterfront parks'
+    ],
+    gallery: [
+      'https://images.unsplash.com/photo-1540206395-68808572332f?auto=format&fit=crop&w=600&q=80'
+    ],
+    faqs: [
+      { q: 'Is Stone Town walkable?', a: 'Completely. Cars are banned in the narrowest lanes, making walking the absolute best way to experience it.' }
+    ],
+    nearbyAttractions: ['Prison Island', 'Spice Farms', 'Jozani Forest'],
+    mapQuery: 'Stone Town Zanzibar'
+  },
+  'prison-island': {
+    tagline: 'Historic quarantine island and giant tortoise sanctuary',
+    bestTime: 'Year-round, morning visits are best',
+    duration: 'Half Day',
+    wildlife: '100+ year old Aldabra Giant Tortoises, Peacocks',
+    overview: 'Prison Island (Changuu Island) is a small, scenic tropical getaway located just 5.6 km off Stone Town. Originally built as a prison quarantine station, it is today a serene sanctuary for giant tortoises gifted from Seychelles.',
+    highlights: [
+      'Interact with and feed ancient Aldabra Giant Tortoises',
+      'Tour the historic ruins of the old quarantine jailhouse',
+      'Snorkel the vibrant shallow coral reef surrounding the island'
+    ],
+    thingsToDo: [
+      'Feed and photograph the giant Aldabra tortoises',
+      'Walk through the historical prison museum',
+      'Relax on the beautiful white sandbank spit'
+    ],
+    travelTips: [
+      'The traditional motorized dhow boat ride from Stone Town takes about 20-30 minutes',
+      'Combine this with a Stone Town city tour for a perfect full-day trip',
+      'Wear swimming gear as the snorkeling right off the boat is excellent'
+    ],
+    gallery: [
+      'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80'
+    ],
+    faqs: [
+      { q: 'Are the tortoises wild?', a: 'They live in a large, spacious sanctuary where you can walk amongst them under shady trees.' }
+    ],
+    nearbyAttractions: ['Stone Town', 'Nakupenda Sandbank'],
+    mapQuery: 'Changuu Island Zanzibar'
+  },
   mafia: {
     tagline: 'Swim with Majestic Whale Sharks & Protected Marine Havens',
     bestTime: 'October to February (Best whale shark sighting window)',
@@ -460,6 +520,8 @@ export default function Destinations({ navigate }: { navigate: (page: Page) => v
   const [currentDestId, setCurrentDestId] = useState<string | null>(null);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [bookingModalProduct, setBookingModalProduct] = useState({ name: '', category: '', price: 120 });
+  const [destSearchQuery, setDestSearchQuery] = useState('');
+  const [selectedDestTab, setSelectedDestTab] = useState<'all' | 'zanzibar' | 'safaris' | 'treks'>('all');
 
   useEffect(() => {
     const handleHash = () => {
@@ -531,6 +593,81 @@ export default function Destinations({ navigate }: { navigate: (page: Page) => v
       return hasDestId || titleMatch || descMatch;
     });
   }, [tours, currentDestId]);
+
+  const CARDS_DATA = useMemo(() => [
+    {
+      id: 'unguja',
+      name: 'Zanzibar Coast & Beaches',
+      tagline: 'Pristine white sands & turquoise Indian Ocean waters',
+      image: 'https://images.unsplash.com/photo-1583212292454-1fe6229603b7?auto=format&fit=crop&w=1200&q=80',
+      stat: 'From $399',
+      category: 'zanzibar',
+      gridClass: 'md:col-span-2 md:row-span-1'
+    },
+    {
+      id: 'stone-town',
+      name: 'Stone Town Cultural Hub',
+      tagline: 'Ancient Swahili architectures & exotic spice alleys',
+      image: 'https://images.unsplash.com/photo-1540206395-68808572332f?auto=format&fit=crop&w=1200&q=80',
+      stat: 'From $149',
+      category: 'zanzibar',
+      gridClass: 'md:col-span-1 md:row-span-1'
+    },
+    {
+      id: 'serengeti',
+      name: 'Serengeti National Park',
+      tagline: 'Classic wildlife safaris & the Great Wildebeest Migration',
+      image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=1200&q=80',
+      stat: 'From $899',
+      category: 'safaris',
+      gridClass: 'md:col-span-2 md:row-span-2'
+    },
+    {
+      id: 'ngorongoro',
+      name: 'Ngorongoro Crater',
+      tagline: 'The pristine Eden shelter of dense predator prides & rhinos',
+      image: 'https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&w=1200&q=80',
+      stat: 'From $799',
+      category: 'safaris',
+      gridClass: 'md:col-span-1 md:row-span-1'
+    },
+    {
+      id: 'kilimanjaro',
+      name: 'Mount Kilimanjaro',
+      tagline: 'Conquer the spectacular volcanic snowy roof of Africa',
+      image: 'https://images.unsplash.com/photo-1589553460730-1651fa2de0c7?auto=format&fit=crop&w=1200&q=80',
+      stat: 'From $1,499',
+      category: 'treks',
+      gridClass: 'md:col-span-2 md:row-span-1'
+    },
+    {
+      id: 'pemba',
+      name: 'Pemba Island Seclusion',
+      tagline: 'Lush clove hills and world-class vertical dive walls',
+      image: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200',
+      stat: 'From $699',
+      category: 'zanzibar',
+      gridClass: 'md:col-span-1 md:row-span-1'
+    },
+    {
+      id: 'prison-island',
+      name: 'Prison Island Sanctuary',
+      tagline: 'Meet Aldabra giant tortoises & tour the historic old quarantine station',
+      image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+      stat: 'From $99',
+      category: 'zanzibar',
+      gridClass: 'md:col-span-1 md:row-span-1'
+    }
+  ], []);
+
+  const filteredCards = useMemo(() => {
+    return CARDS_DATA.filter(card => {
+      const matchSearch = card.name.toLowerCase().includes(destSearchQuery.toLowerCase()) || 
+                          card.tagline.toLowerCase().includes(destSearchQuery.toLowerCase());
+      const matchTab = selectedDestTab === 'all' || card.category === selectedDestTab;
+      return matchSearch && matchTab;
+    });
+  }, [CARDS_DATA, destSearchQuery, selectedDestTab]);
 
   return (
     <div className="bg-slate-50 min-h-screen text-slate-900 pb-16 selection:bg-[#D4A017] selection:text-white mt-16 font-sans">
@@ -761,88 +898,158 @@ export default function Destinations({ navigate }: { navigate: (page: Page) => v
       ) : (
         
         // 2. MAIN CATEGORIES OVERVIEW PAGE VIEW
-        <div className="animate-fade-in space-y-12 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="animate-fade-in space-y-16 pb-20">
           
-          {/* Header section */}
-          <div className="text-center space-y-4 pt-10">
-            <span className="bg-[#D4A017]/10 text-[#D4A017] text-[9px] uppercase tracking-widest font-black px-4 py-1.5 rounded-full border border-[#D4A017]/25">
-              EXPLORE OUR KINGDOMS
-            </span>
-            <h1 className="text-3xl sm:text-5xl font-serif font-black tracking-tight text-slate-900 uppercase">
-              DESTINATIONS
-            </h1>
-            <p className="text-slate-500 text-xs sm:text-sm max-w-lg mx-auto font-light leading-relaxed">
-              Explore the iconic circuits of East Africa. Simply select any premium destination region beneath to inspect its custom local packages and visual trails.
-            </p>
+          {/* Stunning Hero Header section */}
+          <div className="relative w-full h-[45vh] min-h-[350px] flex items-center justify-center overflow-hidden bg-[#0A1224] rounded-b-[40px] shadow-lg">
+            <img 
+              src="https://images.unsplash.com/photo-1583212292454-1fe6229603b7?auto=format&fit=crop&w=1600&q=80" 
+              alt="Zanzibar Destination Hero" 
+              className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0A1224] via-[#0A1224]/55 to-black/10" />
+            
+            <div className="relative z-10 max-w-4xl mx-auto text-center px-4 space-y-6">
+              <div className="inline-flex items-center gap-1.5 bg-[#D4A017]/10 text-[#D4A017] text-[10px] uppercase tracking-widest font-black px-4 py-1.5 rounded-full border border-[#D4A017]/20 backdrop-blur-md">
+                <Sparkles size={11} className="animate-pulse" />
+                <span>Curated East Africa Kingdoms</span>
+              </div>
+              <h1 className="text-3xl sm:text-5xl font-serif font-black tracking-tight text-white uppercase leading-none">
+                OUR DESTINATIONS
+              </h1>
+              <p className="text-slate-300 text-xs sm:text-sm max-w-xl mx-auto font-light leading-relaxed">
+                Discover Zanzibar's turquoise coasts, historic stone alleys, and Tanzania's legendary wildlife plains. Start exploring our handpicked premium destination hubs below.
+              </p>
+
+              {/* Integrated Search Input in Hero */}
+              <div className="max-w-md mx-auto bg-white/95 rounded-2xl shadow-xl p-1.5 flex items-center border border-white/20 backdrop-blur-md">
+                <div className="flex items-center pl-3 text-slate-400">
+                  <Search size={16} />
+                </div>
+                <input 
+                  type="text" 
+                  placeholder="Search destinations (e.g. Serengeti, Stone Town...)" 
+                  value={destSearchQuery}
+                  onChange={(e) => setDestSearchQuery(e.target.value)}
+                  className="w-full bg-transparent border-0 text-xs font-semibold text-[#0A1224] placeholder:text-slate-450 focus:ring-0 outline-none px-2.5 py-2"
+                />
+                {destSearchQuery && (
+                  <button 
+                    type="button" 
+                    onClick={() => setDestSearchQuery('')}
+                    className="text-slate-400 hover:text-slate-600 px-2 text-xs font-black"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Region circuits loop */}
-          <div className="space-y-12 pt-6">
-            {REGIONS.map((region, idx) => (
-              <div key={region.id} className="space-y-6">
-                
-                {/* Region banner title */}
-                <div className="relative h-44 rounded-3xl overflow-hidden shadow-md flex items-end">
-                  <img src={region.image} alt={region.name} className="absolute inset-0 w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
-                  <div className="p-6 relative z-10 space-y-1 text-white">
-                    <span className="text-[#D4A017] text-[10px] uppercase font-black tracking-wider block">{region.tagline}</span>
-                    <h2 className="text-xl sm:text-2xl font-serif font-bold uppercase">{region.name}</h2>
-                  </div>
-                </div>
+          {/* Tab Filters section */}
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-wrap justify-center gap-2 border-b border-slate-100 pb-6">
+              {[
+                { id: 'all', label: 'All Circuits' },
+                { id: 'zanzibar', label: 'Zanzibar Archipelago' },
+                { id: 'safaris', label: 'Tanzania Safaris' },
+                { id: 'treks', label: 'Mountain Treks' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedDestTab(tab.id as any)}
+                  className={`px-5 py-2.5 rounded-full text-xs font-extrabold tracking-wider uppercase transition-all duration-300 border cursor-pointer ${
+                    selectedDestTab === tab.id
+                      ? 'bg-[#0B3B8C] border-[#0B3B8C] text-white shadow-md shadow-[#0B3B8C]/10'
+                      : 'bg-white border-slate-100 text-slate-500 hover:text-[#0B3B8C] hover:border-[#0B3B8C]/20'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-                {/* Grid of child destinations */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {region.destinations.map(destId => {
-                    const fallbackObj = DESTINATION_FALLBACKS[destId];
-                    const customDestName = destId.charAt(0).toUpperCase() + destId.slice(1);
-                    const niceName = destId === 'serengeti' ? 'Serengeti National Park'
-                                  : destId === 'ngorongoro' ? 'Ngorongoro Crater'
-                                  : destId === 'tarangire' ? 'Tarangire National Park'
-                                  : destId === 'manyara' ? 'Lake Manyara National Park'
-                                  : destId === 'kilimanjaro' ? 'Mount Kilimanjaro'
-                                  : destId === 'meru' ? 'Mount Meru Stratovolcano'
-                                  : destId === 'lengai' ? 'Ol Doinyo Lengai Volcano'
-                                  : destId === 'selous' ? 'Nyerere National Park (Selous)'
-                                  : destId === 'ruaha' ? 'Ruaha Wilderness Park'
-                                  : destId === 'mikumi' ? 'Mikumi National Park'
-                                  : destId === 'unguja' ? 'Unguja Main Island'
-                                  : destId === 'pemba' ? 'Pemba Coral Island'
-                                  : destId === 'mafia' ? 'Mafia Marine Island'
-                                  : customDestName;
-                                  
-                    const imgUrl = fallbackObj?.gallery[0] || 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=600&q=80';
-                    return (
-                      <div 
-                        key={destId}
-                        onClick={() => window.location.hash = `#destinations/${destId}`}
-                        className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-xs hover:shadow-md hover:border-[#D4A017]/30 transition-all cursor-pointer flex flex-col justify-between"
-                      >
-                        <div className="h-32 bg-slate-200 overflow-hidden relative">
-                          <img src={imgUrl} alt={niceName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        </div>
-                        <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                          <div>
-                            <h3 className="text-xs font-bold text-slate-900 leading-snug line-clamp-1">{niceName}</h3>
-                            <p className="text-[10px] text-slate-500 line-clamp-2 mt-1 leading-normal font-light">
-                              {fallbackObj?.overview || 'Curated high-tier travel trails and pristine safari coordinates.'}
-                            </p>
-                          </div>
-                          <div className="flex items-center justify-between border-t border-slate-50 pt-2 text-[10px] font-bold text-[#0B3B8C] uppercase tracking-wider">
-                            <span>{fallbackObj?.duration || '1-3 Days'}</span>
-                            <span className="text-[#D4A017] inline-flex items-center gap-0.5">
-                              <span>Explore</span>
-                              <ChevronRight size={10} />
-                            </span>
-                          </div>
-                        </div>
+          {/* Asymmetrical Masonry Grid Layout of Destination Cards */}
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            {filteredCards.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[240px] md:auto-rows-[280px]">
+                {filteredCards.map(card => (
+                  <div
+                    key={card.id}
+                    onClick={() => window.location.hash = `#destinations/${card.id}`}
+                    className={`group relative rounded-[24px] overflow-hidden shadow-md border border-slate-150/45 cursor-pointer transform hover:-translate-y-1.5 transition-all duration-500 flex flex-col justify-end ${card.gridClass}`}
+                  >
+                    {/* Background Image */}
+                    <img
+                      src={card.image}
+                      alt={card.name}
+                      className="absolute inset-0 w-full h-full object-cover transform scale-100 group-hover:scale-105 transition-all duration-700"
+                      referrerPolicy="no-referrer"
+                    />
+                    
+                    {/* Dark gradient overlay that shifts on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent group-hover:via-black/50 transition-all duration-500" />
+                    
+                    {/* Dynamic Floating Key Stat (e.g. From $399) */}
+                    <div className="absolute top-4 right-4 bg-[#D4A017] text-[#0A1224] text-[10px] font-black tracking-widest uppercase px-3 py-1.5 rounded-full shadow-md">
+                      {card.stat}
+                    </div>
+
+                    {/* Overlay Text Details */}
+                    <div className="p-6 relative z-10 space-y-2">
+                      <span className="text-[#D4A017] text-[9px] font-black uppercase tracking-widest block">
+                        {card.category === 'zanzibar' ? 'Zanzibar Circuit' : card.category === 'safaris' ? 'Wilderness Safari' : 'Volcano Trek'}
+                      </span>
+                      <h3 className="text-xl md:text-2xl font-serif font-black tracking-tight text-white uppercase leading-tight">
+                        {card.name}
+                      </h3>
+                      <p className="text-slate-300 text-xs font-light line-clamp-2 max-w-lg">
+                        {card.tagline}
+                      </p>
+                      
+                      {/* Interactive Button row that slides up on hover */}
+                      <div className="pt-2 flex flex-wrap gap-2 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300 transform sm:translate-y-2 sm:group-hover:translate-y-0">
+                        <span className="inline-flex items-center gap-1 bg-white/15 text-white hover:bg-white/25 text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-xl border border-white/10 backdrop-blur-md transition-all">
+                          <span>Explore Guide</span>
+                          <ChevronRight size={12} />
+                        </span>
+                        
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.hash = `#tours?search=${encodeURIComponent(card.name.split(' ')[0])}`;
+                          }}
+                          className="inline-flex items-center gap-1 bg-[#D4A017] hover:bg-[#c49010] text-[#0A1224] text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-xl transition-all shadow-md"
+                        >
+                          <span>See Tours</span>
+                          <ArrowRight size={12} />
+                        </button>
                       </div>
-                    );
-                  })}
-                </div>
-
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="text-center py-16 bg-white border border-slate-100 rounded-[32px] shadow-sm max-w-xl mx-auto space-y-4">
+                <div className="text-4xl text-slate-350">🗺️</div>
+                <h3 className="text-base font-serif font-bold text-[#0A1224] uppercase tracking-wide">No destinations found</h3>
+                <p className="text-xs text-slate-400 font-light max-w-sm mx-auto">
+                  We couldn't find any destination matching "{destSearchQuery}". Please try another search keyword or circuit filter.
+                </p>
+                <button
+                  onClick={() => {
+                    setDestSearchQuery('');
+                    setSelectedDestTab('all');
+                  }}
+                  className="px-5 py-2.5 bg-[#0B3B8C] text-white text-xs font-extrabold uppercase rounded-full shadow-md"
+                >
+                  Reset Filters
+                </button>
+              </div>
+            )}
           </div>
 
         </div>
