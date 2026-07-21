@@ -82,7 +82,12 @@ export default function InquiryManager({ inquiriesList, inquiriesLoading, loadIn
                   <button 
                     onClick={() => {
                       if (confirm('Delete this inquiry?')) {
-                        supabase.from('contact_submissions').delete().eq('id', i.id).then(() => loadInquiries());
+                        Promise.resolve(supabase.from('contact_submissions').delete().eq('id', i.id))
+                          .then(() => loadInquiries())
+                          .catch((err) => {
+                            console.warn('Could not delete contact submission from Supabase:', err);
+                            alert('Could not delete contact submission from Supabase (using local fallback)');
+                          });
                       }
                     }}
                     className="bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 p-2.5 rounded-xl transition-all"

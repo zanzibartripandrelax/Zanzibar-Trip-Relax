@@ -34,17 +34,12 @@ const FAQ = lazy(() => import('./pages/FAQ'));
 const TourDetail = lazy(() => import('./pages/TourDetail'));
 const Policies = lazy(() => import('./pages/Policies'));
 const Admin = lazy(() => import('./pages/Admin'));
-const AdminLogin = lazy(() => import('./pages/AdminLogin'));
-const OwnerLogin = lazy(() => import('./pages/OwnerLogin'));
-const MyAccount = lazy(() => import('./pages/MyAccount'));
 const ManageBooking = lazy(() => import('./pages/ManageBooking'));
 const Careers = lazy(() => import('./pages/Careers'));
 const Sustainability = lazy(() => import('./pages/Sustainability'));
 const BestTimeToVisit = lazy(() => import('./pages/BestTimeToVisit'));
 const Destinations = lazy(() => import('./pages/Destinations'));
 const Hotels = lazy(() => import('./pages/Hotels'));
-
-import AuthGuard from './components/AuthGuard';
 
 // Check if this window is an OAuth redirect popup
 if (typeof window !== 'undefined' && window.opener && (window.location.hash.includes('access_token') || window.location.hash.includes('token'))) {
@@ -64,26 +59,88 @@ export default function App() {
   const [cmsSynced, setCmsSynced] = useState(false);
   const { trackPageView } = useAnalytics();
 
-  // Intercept direct pathways like /admin or /admin/login or /dashboard
+  // Intercept direct pathways and map clean pathnames to hash routes
   useEffect(() => {
     const path = window.location.pathname.toLowerCase();
-    if (path === '/admin/login') {
-      window.location.hash = 'admin/login';
-      window.history.replaceState(null, '', '/');
-    } else if (path === '/owner' || path === '/owner/login') {
-      window.location.hash = 'owner/login';
-      window.history.replaceState(null, '', '/');
-    } else if (path === '/admin' || path === '/dashboard') {
+    if (path === '/admin' || path === '/dashboard' || path === '/admin/dashboard') {
       window.location.hash = 'admin';
+      window.history.replaceState(null, '', '/');
+    } else if (path === '/owner/setup' || path === '/create-owner') {
+      window.location.hash = 'create-owner';
+      window.history.replaceState(null, '', '/');
+    } else if (path === '/owner-login' || path === '/owner/login') {
+      window.location.hash = 'owner-login';
+      window.history.replaceState(null, '', '/');
+    } else if (path === '/admin-login' || path === '/admin/login') {
+      window.location.hash = 'admin-login';
       window.history.replaceState(null, '', '/');
     }
   }, []);
 
+  // Onboarding (Task 3) & Auth Guard (Task 4) Redirections
+  useEffect(() => {
+    // 1. Check if an Owner exists in local storage
+    const storedUsersStr = localStorage.getItem('ztr_admin_users');
+    let hasOwner = false;
+    try {
+      const storedUsers = JSON.parse(storedUsersStr || '[]');
+      hasOwner = storedUsers.some((u: any) => u.role?.toLowerCase() === 'owner');
+    } catch (e) {
+      // ignore
+    }
+
+    const isAdminRoute = [
+      'admin', 'dashboard', 'admin/dashboard', 'owner/setup', 
+      'create-owner', 'owner-login', 'admin-login'
+    ].includes(currentPage);
+
+    if (!hasOwner) {
+      // If no owner exists and the user is on any admin/login pages, automatically open /create-owner
+      if (isAdminRoute && currentPage !== 'create-owner') {
+        navigate('create-owner');
+      }
+    } else {
+      // Owner exists. If the user tries to access /create-owner or owner/setup, send them to owner-login
+      if (currentPage === 'create-owner' || currentPage === 'owner/setup') {
+        navigate('owner-login');
+      }
+
+      // 2. Check Authentication status
+      const sessionStr = localStorage.getItem('ztr_active_session');
+      let isAuthenticated = false;
+      try {
+        if (sessionStr) {
+          const parsed = JSON.parse(sessionStr);
+          if (Date.now() - parsed.timestamp < 2 * 60 * 60 * 1000) {
+            isAuthenticated = !!parsed.user;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      // Auth Guard: Only authenticated Owners can access /admin, /admin/dashboard, or /dashboard
+      const isRestrictedRoute = ['admin', 'dashboard', 'admin/dashboard'].includes(currentPage);
+      if (!isAuthenticated && isRestrictedRoute) {
+        navigate('owner-login');
+      }
+    }
+  }, [currentPage, navigate]);
+
   useEffect(() => {
     import('./lib/cmsStore').then(({ syncSiteContentFromDb }) => {
-      syncSiteContentFromDb().then(() => {
-        setCmsSynced(true);
-      });
+      syncSiteContentFromDb()
+        .then(() => {
+          setCmsSynced(true);
+        })
+        .catch((err) => {
+          console.warn('CMS content db sync failed:', err);
+          setCmsSynced(true);
+        });
+    })
+    .catch((err) => {
+      console.warn('Dynamic import of cmsStore failed:', err);
+      setCmsSynced(true);
     });
   }, []);
 
@@ -127,21 +184,14 @@ export default function App() {
         return <TourDetail navigate={navigate} />;
       case 'policies':
         return <Policies navigate={navigate} />;
-      case 'admin/login':
-        return <AdminLogin navigate={navigate} />;
-      case 'owner':
-      case 'owner/login':
-        return <OwnerLogin navigate={navigate} />;
-      case 'my-account':
-        return <MyAccount navigate={navigate} />;
       case 'admin':
       case 'dashboard':
       case 'admin/dashboard':
-        return (
-          <AuthGuard navigate={navigate}>
-            <Admin navigate={navigate} />
-          </AuthGuard>
-        );
+      case 'owner/setup':
+      case 'create-owner':
+      case 'owner-login':
+      case 'admin-login':
+        return <Admin navigate={navigate} currentPage={currentPage} />;
       case 'manage-booking':
         return <ManageBooking navigate={navigate} />;
       case 'careers':
@@ -159,7 +209,7 @@ export default function App() {
     }
   };
 
-  const isAdminPage = currentPage === 'admin' || currentPage === 'admin/login' || currentPage === 'owner' || currentPage === 'owner/login' || currentPage === 'dashboard' || currentPage === 'admin/dashboard';
+  const isAdminPage = ['admin', 'dashboard', 'admin/dashboard', 'owner/setup', 'create-owner', 'owner-login', 'admin-login'].includes(currentPage);
 
   return (
     <div className="flex flex-col min-h-screen text-gray-900 selection:bg-[#D4A017] selection:text-white">

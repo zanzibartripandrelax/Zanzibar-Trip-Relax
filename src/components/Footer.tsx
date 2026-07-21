@@ -328,14 +328,14 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
               &copy; {year} Zanzibar Trip and Relax. All rights reserved. Registered Tour Operator Lic No. TALA 98112-ZRT.
               <span className="mx-2">•</span>
               <button 
-                onClick={() => navigate('admin/login')} 
+                onClick={() => navigate('admin-login')} 
                 className="text-gray-500 hover:text-[#D4A017] transition-colors font-semibold underline cursor-pointer"
               >
                 Staff Login
               </button>
               <span className="mx-2 text-gray-700">•</span>
               <button 
-                onClick={() => navigate('owner/login')} 
+                onClick={() => navigate('owner-login')} 
                 className="text-gray-500 hover:text-[#D4A017] transition-colors font-semibold underline cursor-pointer"
               >
                 Owner Portal

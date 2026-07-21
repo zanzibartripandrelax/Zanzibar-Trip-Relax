@@ -254,7 +254,7 @@ export function generateEmailTemplate(
           
           <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; margin: 20px 0; border-radius: 8px;">
             <p style="margin: 0 0 10px 0; font-weight: bold; color: #0f172a;">Your Secure Account Details:</p>
-            <p style="margin: 0 0 6px 0;"><strong>Portal Login Url:</strong> <a href="${window.location.origin}${window.location.pathname}#/admin/login" style="color: ${secondaryColor};">${window.location.origin}${window.location.pathname}#/admin/login</a></p>
+            <p style="margin: 0 0 6px 0;"><strong>Portal Login Url:</strong> <a href="${window.location.origin}${window.location.pathname}#/admin-login" style="color: ${secondaryColor};">${window.location.origin}${window.location.pathname}#/admin-login</a></p>
             <p style="margin: 0 0 6px 0;"><strong>Email/Username:</strong> ${data.email}</p>
             <p style="margin: 0 0 6px 0;"><strong>Assigned Access Role:</strong> <span style="background-color: #eff6ff; color: #1e40af; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 4px;">${data.role}</span></p>
             <p style="margin: 0 0 6px 0;"><strong>Temporary Password:</strong> <code style="background-color: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${data.tempPassword}</code></p>

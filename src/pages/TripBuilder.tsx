@@ -132,29 +132,33 @@ export default function TripBuilder({ navigate }: TripBuilderProps) {
     const ref = generateReference();
     setBookingRef(ref);
 
-    await supabase.from('search_inquiries').insert([{
-      full_name: fullName.trim(),
-      email: email.trim(),
-      whatsapp: whatsapp.trim(),
-      destination: selectedDestination || null,
-      experience_type: selectedExperience || null,
-      arrival_date: arrivalDate || null,
-      departure_date: departureDate || null,
-      adults,
-      children,
-      budget_range: budget,
-      special_requests: JSON.stringify({
-        reference: ref,
-        country,
-        nights,
-        hotelCategory,
-        selectedTours,
-        selectedSafaris,
-        selectedTransfers,
-        specialRequests,
-        estimatedTotal: calculateTotal(),
-      }),
-    }]);
+    try {
+      await supabase.from('search_inquiries').insert([{
+        full_name: fullName.trim(),
+        email: email.trim(),
+        whatsapp: whatsapp.trim(),
+        destination: selectedDestination || null,
+        experience_type: selectedExperience || null,
+        arrival_date: arrivalDate || null,
+        departure_date: departureDate || null,
+        adults,
+        children,
+        budget_range: budget,
+        special_requests: JSON.stringify({
+          reference: ref,
+          country,
+          nights,
+          hotelCategory,
+          selectedTours,
+          selectedSafaris,
+          selectedTransfers,
+          specialRequests,
+          estimatedTotal: calculateTotal(),
+        }),
+      }]);
+    } catch (err) {
+      console.warn('Could not save search inquiry to Supabase:', err);
+    }
 
     // Track Custom Itinerary Request in GA4
     trackInquirySend('trip_builder', fullName.trim(), {

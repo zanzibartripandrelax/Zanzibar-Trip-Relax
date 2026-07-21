@@ -627,9 +627,12 @@ export function saveSiteContent(content: SiteContent, user = 'Super Admin', acti
   triggerCMSSync();
 
   // Sync to Supabase if config is set up
-  supabase.from('site_config').upsert([{ id: 'global_cms_state', data: content }])
+  Promise.resolve(supabase.from('site_config').upsert([{ id: 'global_cms_state', data: content }]))
     .then(({ error }) => {
       if (error) console.log('Supabase sync info:', error.message);
+    })
+    .catch((err) => {
+      console.warn('Supabase site content sync failed:', err);
     });
 }
 
@@ -668,9 +671,12 @@ export function saveMediaLibrary(media: MediaFile[]): void {
   localStorage.setItem('site_media_library', JSON.stringify(media));
   
   // Sync metadata and image references to Supabase table site_config
-  supabase.from('site_config').upsert([{ id: 'site_media_library_state', data: media }])
+  Promise.resolve(supabase.from('site_config').upsert([{ id: 'site_media_library_state', data: media }]))
     .then(({ error }) => {
       if (error) console.log('Supabase media sync info:', error.message);
+    })
+    .catch((err) => {
+      console.warn('Supabase media sync failed:', err);
     });
 }
 
@@ -947,9 +953,12 @@ export function saveHotels(hotels: HotelOption[]): void {
   localStorage.setItem('ztr_hotel_list_dynamic', JSON.stringify(hotels));
   
   // Sync to Supabase if config is set up
-  supabase.from('site_config').upsert([{ id: 'ztr_hotel_list_dynamic_state', data: hotels }])
+  Promise.resolve(supabase.from('site_config').upsert([{ id: 'ztr_hotel_list_dynamic_state', data: hotels }]))
     .then(({ error }) => {
       if (error) console.log('Supabase hotels sync info:', error.message);
+    })
+    .catch((err) => {
+      console.warn('Supabase hotels sync failed:', err);
     });
 }
 

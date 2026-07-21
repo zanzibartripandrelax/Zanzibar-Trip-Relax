@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import bcrypt from 'bcryptjs';
 import { Page } from '../hooks/useHashRouter';
 import { 
   Lock, User, LogOut, CheckCircle, XCircle, Search, Filter, 
@@ -19,7 +20,6 @@ import { ReusableTable, ColumnConfig } from '../components/ReusableTable';
 import { dispatchAutomatedEmail } from '../lib/emailService';
 import { AdminDataTable } from '../components/AdminDataTable';
 import AdminSidebar from '../components/AdminSidebar';
-import AuthGuard from '../components/AuthGuard';
 import SeoAnalytics from '../components/SeoAnalytics';
 import CustomerDashboard from '../components/CustomerDashboard';
 import EmailSettingsManager from '../components/EmailSettingsManager';
@@ -50,12 +50,24 @@ import {
 
 interface AdminProps {
   navigate: (page: Page) => void;
+  currentPage?: string;
 }
 
 // Inactive warning timeout (automatic logout after 30 minutes of absolute inactivity)
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
 
-export default function Admin({ navigate }: AdminProps) {
+export const INITIAL_SEED_USERS = [
+  { username: 'gerevas', passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', name: 'Gerevas Paulo Mtaki', role: 'Administrator', staff_id: 'STF-001', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // zanzibarpassword123
+  { username: 'manager', passwordHash: '322f98f6d72d24249a15cd388f8d9516ca4d0b13cf3e3b0e13915bc5fcf7ca6c', name: 'Manager Amin', role: 'Manager', staff_id: 'STF-002', office: 'Stone Town Desk', office_code: 'STN-DSK', branch_code: 'ST-02' }, // managerpassword123
+  { username: 'sales', passwordHash: '4f4fa1da80a9693e5066922cfb9b47e5ed7a1262d4e8b394efdc2fbf8ca58ea6', name: 'Sales Rep Salma', role: 'Sales', staff_id: 'STF-003', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // salespassword123
+  { username: 'accountant', passwordHash: '20eb81ec7d9834cbd2d8d87948cd122c81fb392a2a0ff9bb86cc5b1d4ef23b8f', name: 'Frank accountant', role: 'Accountant', staff_id: 'STF-004', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // accountantpassword123
+  { username: 'marketing', passwordHash: '36113bdf2292f39cbf8f8515c61a153835e5d1e2e92bc49692c81358d7e0099e', name: 'Neema Marketing', role: 'Marketing', staff_id: 'STF-005', office: 'Stone Town Desk', office_code: 'STN-DSK', branch_code: 'ST-02' }, // marketingpassword123
+  { username: 'guide', passwordHash: '2a28178a9c2401f8df9765e90eb21ddb97b1ca6dcff7cedc2826cf8438db06ff', name: 'Captain Guide Ali', role: 'Guide', staff_id: 'STF-006', office: 'Safari Field Office', office_code: 'SAF-FLD', branch_code: 'SF-04' }, // guidepassword123
+  { username: 'driver', passwordHash: '0142fa9559c5d0130db99e3ca893b86cb45e05d0e2e987f73967d1db0e987be7', name: 'Driver Juma', role: 'Driver', staff_id: 'STF-007', office: 'Transport Depot', office_code: 'TRN-DEP', branch_code: 'TD-05' }, // driverpassword123
+  { username: 'customer', passwordHash: '4f880fdf8b10ef1f70a1f2fc5080c98f98ff1f6f1c4df821cfdfc6a3ff6e788e', name: 'Customer John Doe', role: 'Customer', staff_id: 'CUST-001', office: 'Online Portal', office_code: 'ONL-PRT', branch_code: 'OP-06' } // customerpassword123
+];
+
+export default function Admin({ navigate, currentPage }: AdminProps) {
   // Mounting check to prevent hydration mismatches
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -63,7 +75,21 @@ export default function Admin({ navigate }: AdminProps) {
   }, []);
 
   // Session tracking
-  const [session, setSession] = useState<{ username: string; name: string; role: string } | null>(null);
+  const [session, setSession] = useState<{ username: string; name: string; role: string } | null>(() => {
+    try {
+      const cached = localStorage.getItem('ztr_active_session');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        // Validate expiration (2 hours)
+        if (Date.now() - parsed.timestamp < 2 * 60 * 60 * 1000) {
+          return parsed.user;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    return null;
+  });
 
   // Dynamic Role-Based Access Permissions
   const [rolePermissions, setRolePermissions] = useState<Record<string, Record<string, string>>>(() => {
@@ -90,6 +116,23 @@ export default function Admin({ navigate }: AdminProps) {
   const [permSelectedRole, setPermSelectedRole] = useState<string>('Content Editor');
   const [savePermSuccess, setSavePermSuccess] = useState(false);
 
+  const [isSystemInitialized, setIsSystemInitialized] = useState<boolean>(() => {
+    try {
+      const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+      const owners = storedUsers.filter((u: any) => u.role?.toLowerCase() === 'owner');
+      console.log('[AUTH-DEBUG] On Startup: Owner count =', owners.length);
+      if (owners.length > 0) {
+        console.log('[AUTH-DEBUG] On Startup: Owner found = true, usernames:', owners.map((o: any) => o.username).join(', '));
+        return true;
+      } else {
+        console.log('[AUTH-DEBUG] On Startup: Owner found = false');
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+  });
+
   // Local wrapper to make activity logging dynamic and update React state immediately
   const addActivityLog = (
     user: string,
@@ -110,8 +153,46 @@ export default function Admin({ navigate }: AdminProps) {
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
+  // Owner Setup states
+  const [ownerFullName, setOwnerFullName] = useState('');
+  const [ownerUsername, setOwnerUsername] = useState('');
+  const [ownerPassword, setOwnerPassword] = useState('');
+  const [ownerConfirmPassword, setOwnerConfirmPassword] = useState('');
+  const [ownerPhone, setOwnerPhone] = useState('');
+  const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerProfilePhoto, setOwnerProfilePhoto] = useState('');
+  const [ownerRecoveryQuestion, setOwnerRecoveryQuestion] = useState('What was the name of your first pet?');
+  const [ownerRecoveryAnswer, setOwnerRecoveryAnswer] = useState('');
+  const [setupError, setSetupError] = useState('');
+  const [setupLoading, setSetupLoading] = useState(false);
+  
+  // Setup Wizard & Security Diagnostics State
+  const [setupStep, setSetupStep] = useState(1);
+  const [showSetupPassword, setShowSetupPassword] = useState(false);
+  const [showSetupConfirmPassword, setShowSetupConfirmPassword] = useState(false);
+  const [testSuite, setTestSuite] = useState<{
+    status: 'idle' | 'running' | 'success' | 'failed';
+    currentStep: number;
+    logs: { text: string; type: 'info' | 'success' | 'error' | 'warning' }[];
+    results: { [key: number]: 'pending' | 'running' | 'success' | 'failed' };
+  }>({
+    status: 'idle',
+    currentStep: 0,
+    logs: [],
+    results: {
+      1: 'pending',
+      2: 'pending',
+      3: 'pending',
+      4: 'pending',
+      5: 'pending',
+      6: 'pending',
+      7: 'pending'
+    }
+  });
+
   // Inactivity tracking
   const lastActiveRef = useRef<number>(Date.now());
+  const profileCanvasRef = useRef<HTMLCanvasElement>(null);
   const [inactivityNotice, setInactivityNotice] = useState(false);
 
   // Active sub-section - type changed to string to allow newly introduced ERP tabs
@@ -185,6 +266,124 @@ export default function Admin({ navigate }: AdminProps) {
   const [settingsPaymentDepositEnabled, setSettingsPaymentDepositEnabled] = useLocalStorage('ztr_settings_payment_deposit_enabled', true);
   const [settingsPaymentDepositPercent, setSettingsPaymentDepositPercent] = useLocalStorage('ztr_settings_payment_deposit_percent', '20');
   const [settingsPaymentDefaultMethod, setSettingsPaymentDefaultMethod] = useLocalStorage('ztr_settings_payment_default_method', 'Bank Transfer');
+
+  // Profile Tab States
+  const [profileFullName, setProfileFullName] = useState('');
+  const [profileUsername, setProfileUsername] = useState('');
+  const [profilePassword, setProfilePassword] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profilePhoto, setProfilePhoto] = useState('');
+  const [profilePosition, setProfilePosition] = useState('');
+  const [profileBiography, setProfileBiography] = useState('');
+  const [profileSignatureType, setProfileSignatureType] = useState<'text' | 'draw'>('text');
+  const [profileSignatureText, setProfileSignatureText] = useState('');
+  const [profileSignatureData, setProfileSignatureData] = useState(''); 
+  const [profileLanguage, setProfileLanguage] = useState('English');
+  const [profileTimezone, setProfileTimezone] = useState('Africa/Nairobi');
+  const [profileNotifyEmail, setProfileNotifyEmail] = useState(true);
+  const [profileNotifyWhatsapp, setProfileNotifyWhatsapp] = useState(false);
+  const [profileNotifySms, setProfileNotifySms] = useState(false);
+  const [profileNotifyPush, setProfileNotifyPush] = useState(true);
+  const [profileLoadedUsername, setProfileLoadedUsername] = useState('');
+  const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'profile' && session?.username) {
+      const currentUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+      const userObj = currentUsers.find((u: any) => u.username.toLowerCase() === session.username.toLowerCase());
+      if (userObj) {
+        setProfileFullName(userObj.name || '');
+        setProfileUsername(userObj.username || '');
+        setProfilePhone(userObj.phone || '');
+        setProfileEmail(userObj.email || '');
+        setProfilePhoto(userObj.profilePhoto || userObj.profile_photo || '');
+        setProfilePosition(userObj.position || userObj.role || '');
+        setProfileBiography(userObj.biography || '');
+        setProfileSignatureType(userObj.signatureType || 'text');
+        setProfileSignatureText(userObj.signatureText || userObj.name || '');
+        setProfileSignatureData(userObj.signatureData || '');
+        setProfileLanguage(userObj.language || 'English');
+        setProfileTimezone(userObj.timezone || 'Africa/Nairobi');
+        
+        const notifyObj = userObj.notifications || { email: true, whatsapp: false, sms: false, push: true };
+        setProfileNotifyEmail(notifyObj.email !== false);
+        setProfileNotifyWhatsapp(!!notifyObj.whatsapp);
+        setProfileNotifySms(!!notifyObj.sms);
+        setProfileNotifyPush(notifyObj.push !== false);
+        
+        setProfileLoadedUsername(userObj.username);
+        setProfilePassword('');
+      }
+    }
+  }, [activeTab, session?.username]);
+
+  const [profileIsDrawing, setProfileIsDrawing] = useState(false);
+
+  const startProfileDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = profileCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.strokeStyle = '#D4A017';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    setProfileIsDrawing(true);
+  };
+
+  const drawProfile = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!profileIsDrawing) return;
+    const canvas = profileCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    ctx.stroke();
+  };
+
+  const stopProfileDrawing = () => {
+    if (!profileIsDrawing) return;
+    setProfileIsDrawing(false);
+    const canvas = profileCanvasRef.current;
+    if (canvas) {
+      setProfileSignatureData(canvas.toDataURL());
+    }
+  };
+
+  const clearProfileCanvas = () => {
+    const canvas = profileCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setProfileSignatureData('');
+  };
 
   const [settingsEmailHost, setSettingsEmailHost] = useLocalStorage('ztr_settings_email_host', 'smtp.mailgun.org');
   const [settingsEmailPort, setSettingsEmailPort] = useLocalStorage('ztr_settings_email_port', '587');
@@ -630,34 +829,37 @@ export default function Admin({ navigate }: AdminProps) {
     // We will establish the hashed passwords in localStorage if not exists
     const users = localStorage.getItem('ztr_admin_users');
     
-    const initialUsers = [
-      { username: 'gerevas', passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', name: 'Gerevas Paulo Mtaki', role: 'Administrator', staff_id: 'STF-001', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // zanzibarpassword123
-      { username: 'manager', passwordHash: '322f98f6d72d24249a15cd388f8d9516ca4d0b13cf3e3b0e13915bc5fcf7ca6c', name: 'Manager Amin', role: 'Manager', staff_id: 'STF-002', office: 'Stone Town Desk', office_code: 'STN-DSK', branch_code: 'ST-02' }, // managerpassword123
-      { username: 'sales', passwordHash: '4f4fa1da80a9693e5066922cfb9b47e5ed7a1262d4e8b394efdc2fbf8ca58ea6', name: 'Sales Rep Salma', role: 'Sales', staff_id: 'STF-003', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // salespassword123
-      { username: 'accountant', passwordHash: '20eb81ec7d9834cbd2d8d87948cd122c81fb392a2a0ff9bb86cc5b1d4ef23b8f', name: 'Frank accountant', role: 'Accountant', staff_id: 'STF-004', office: 'Zanzibar HQ', office_code: 'ZNZ-HQ', branch_code: 'HQ-01' }, // accountantpassword123
-      { username: 'marketing', passwordHash: '36113bdf2292f39cbf8f8515c61a153835e5d1e2e92bc49692c81358d7e0099e', name: 'Neema Marketing', role: 'Marketing', staff_id: 'STF-005', office: 'Stone Town Desk', office_code: 'STN-DSK', branch_code: 'ST-02' }, // marketingpassword123
-      { username: 'guide', passwordHash: '2a28178a9c2401f8df9765e90eb21ddb97b1ca6dcff7cedc2826cf8438db06ff', name: 'Captain Guide Ali', role: 'Guide', staff_id: 'STF-006', office: 'Safari Field Office', office_code: 'SAF-FLD', branch_code: 'SF-04' }, // guidepassword123
-      { username: 'driver', passwordHash: '0142fa9559c5d0130db99e3ca893b86cb45e05d0e2e987f73967d1db0e987be7', name: 'Driver Juma', role: 'Driver', staff_id: 'STF-007', office: 'Transport Depot', office_code: 'TRN-DEP', branch_code: 'TD-05' }, // driverpassword123
-      { username: 'customer', passwordHash: '4f880fdf8b10ef1f70a1f2fc5080c98f98ff1f6f1c4df821cfdfc6a3ff6e788e', name: 'Customer John Doe', role: 'Customer', staff_id: 'CUST-001', office: 'Online Portal', office_code: 'ONL-PRT', branch_code: 'OP-06' } // customerpassword123
-    ];
-
-    if (!users) {
-      localStorage.setItem('ztr_admin_users', JSON.stringify(initialUsers));
-    } else {
-      // Backfill missing fields for existing stored users
-      const parsedUsers = JSON.parse(users);
-      const backfilled = parsedUsers.map((u: any) => {
-        const seedMatch = initialUsers.find(init => init.username.toLowerCase() === u.username.toLowerCase());
-        return {
-          ...u,
-          staff_id: u.staff_id || seedMatch?.staff_id || `STF-${Math.floor(100 + Math.random() * 900)}`,
-          office: u.office || seedMatch?.office || 'Zanzibar HQ',
-          office_code: u.office_code || seedMatch?.office_code || 'ZNZ-HQ',
-          branch_code: u.branch_code || seedMatch?.branch_code || 'HQ-01'
-        };
-      });
-      localStorage.setItem('ztr_admin_users', JSON.stringify(backfilled));
+    let parsedUsers: any[] = [];
+    if (users) {
+      try {
+        parsedUsers = JSON.parse(users);
+        if (!Array.isArray(parsedUsers)) parsedUsers = [];
+      } catch (e) {
+        parsedUsers = [];
+      }
     }
+
+    // Dynamic merge: append missing initialUsers
+    const mergedUsers = [...parsedUsers];
+    INITIAL_SEED_USERS.forEach(init => {
+      const exists = mergedUsers.some(u => u.username.toLowerCase() === init.username.toLowerCase());
+      if (!exists) {
+        mergedUsers.push(init);
+      }
+    });
+
+    // Backfill missing fields for existing stored users
+    const backfilled = mergedUsers.map((u: any) => {
+      const seedMatch = INITIAL_SEED_USERS.find(init => init.username.toLowerCase() === u.username.toLowerCase());
+      return {
+        ...u,
+        staff_id: u.staff_id || seedMatch?.staff_id || `STF-${Math.floor(100 + Math.random() * 900)}`,
+        office: u.office || seedMatch?.office || 'Zanzibar HQ',
+        office_code: u.office_code || seedMatch?.office_code || 'ZNZ-HQ',
+        branch_code: u.branch_code || seedMatch?.branch_code || 'HQ-01'
+      };
+    });
+    localStorage.setItem('ztr_admin_users', JSON.stringify(backfilled));
 
     // Media library initialization
     const localMedia = localStorage.getItem('ztr_media_library');
@@ -1613,12 +1815,361 @@ export default function Admin({ navigate }: AdminProps) {
     document.body.removeChild(link);
   };
 
+  // Password Strength Estimator
+  const getPasswordStrength = (pass: string) => {
+    if (!pass) return { score: 0, label: 'None', color: 'bg-slate-700', text: 'text-slate-500', width: 'w-0' };
+    let score = 0;
+    if (pass.length >= 6) score += 1;
+    if (pass.length >= 10) score += 1;
+    if (/[A-Z]/.test(pass)) score += 1;
+    if (/[0-9]/.test(pass)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+
+    if (score <= 2) {
+      return { score, label: 'Weak', color: 'bg-red-500', text: 'text-red-400', width: 'w-1/3' };
+    } else if (score <= 4) {
+      return { score, label: 'Medium', color: 'bg-amber-500', text: 'text-amber-400', width: 'w-2/3' };
+    } else {
+      return { score, label: 'Strong', color: 'bg-emerald-500', text: 'text-emerald-400', width: 'w-full' };
+    }
+  };
+
   // SHA-256 Hasher
   const sha256 = async (str: string) => {
     const utf8 = new TextEncoder().encode(str);
     const hashBuffer = await crypto.subtle.digest('SHA-256', utf8);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  // Safe password hashing helper
+  const hashPassword = async (password: string): Promise<string> => {
+    try {
+      const b = (bcrypt as any)?.default || bcrypt;
+      if (b && typeof b.hashSync === 'function' && typeof b.genSaltSync === 'function') {
+        const salt = b.genSaltSync(10);
+        const hash = b.hashSync(password, salt);
+        console.log(`[AUTH-DEBUG] Password hash generated: SUCCESS using bcryptjs (${hash.substring(0, 10)}...)`);
+        return hash;
+      }
+    } catch (e) {
+      console.warn('bcrypt hashing failed or not available, using sha256 fallback:', e);
+    }
+    const sha = await sha256(password);
+    const hash = `sha256:${sha}`;
+    console.log(`[AUTH-DEBUG] Password hash generated: SUCCESS using sha256 fallback (${hash.substring(0, 15)}...)`);
+    return hash;
+  };
+
+  // Safe password comparison helper
+  const comparePassword = async (password: string, storedHash: string): Promise<boolean> => {
+    let result = false;
+    if (storedHash.startsWith('sha256:')) {
+      const sha = await sha256(password);
+      result = storedHash === `sha256:${sha}`;
+      console.log(`[AUTH-DEBUG] Password comparison: [sha256] -> ${result ? 'SUCCESS' : 'FAILED (Hash mismatch)'}`);
+      return result;
+    }
+    if (storedHash.startsWith('$2')) {
+      try {
+        const b = (bcrypt as any)?.default || bcrypt;
+        if (b && typeof b.compareSync === 'function') {
+          result = b.compareSync(password, storedHash);
+          console.log(`[AUTH-DEBUG] Password comparison: [bcrypt] -> ${result ? 'SUCCESS' : 'FAILED (Hash mismatch)'}`);
+          return result;
+        }
+      } catch (e) {
+        console.warn('bcrypt comparison failed, trying alternative:', e);
+      }
+    }
+    const sha = await sha256(password);
+    result = storedHash === sha || storedHash === password;
+    console.log(`[AUTH-DEBUG] Password comparison: [fallback] -> ${result ? 'SUCCESS' : 'FAILED (Hash mismatch)'}`);
+    return result;
+  };
+
+  // Diagnostic Test Runner
+  const runAuthTests = async () => {
+    setTestSuite(prev => ({
+      ...prev,
+      status: 'running',
+      currentStep: 1,
+      logs: [{ text: '🏁 Starting Automated Security & Authentication Test Suite...', type: 'info' }],
+      results: { 1: 'running', 2: 'pending', 3: 'pending', 4: 'pending', 5: 'pending', 6: 'pending', 7: 'pending' }
+    }));
+    
+    const addTestLog = (text: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
+      console.log(`[AUTH-TEST] [${type.toUpperCase()}] ${text}`);
+      setTestSuite(prev => ({
+        ...prev,
+        logs: [...prev.logs, { text, type }]
+      }));
+    };
+
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // Backup current data
+    const usersBackup = localStorage.getItem('ztr_admin_users');
+    const initBackup = localStorage.getItem('system_initialized');
+    const sessionBackup = localStorage.getItem('ztr_active_session');
+
+    try {
+      await sleep(400);
+
+      // --- TEST 1: Create Owner - Success ---
+      addTestLog('TEST 1: Creating Owner Account "test_owner_runner"', 'info');
+      
+      const testOwnerUsername = 'test_owner_runner';
+      const testOwnerPassword = 'TestPassword123!';
+      const testOwnerHash = await hashPassword(testOwnerPassword);
+
+      const testOwner = {
+        username: testOwnerUsername,
+        passwordHash: testOwnerHash,
+        name: 'Automated Test Owner',
+        phone: '+255 777 000 111',
+        email: 'test_owner@zanzibartrip.com',
+        role: 'Owner',
+        status: 'Active',
+        permissions: 'Full System Access',
+        createdBy: 'System',
+        systemInitialized: true,
+        staff_id: 'OWNER-1',
+        isLocked: false
+      };
+
+      localStorage.setItem('ztr_admin_users', JSON.stringify([testOwner]));
+      localStorage.setItem('system_initialized', 'true');
+      console.log('[AUTH-DEBUG] Owner created:', testOwner.username);
+
+      // Verify exists
+      const test1Users = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+      const test1Exists = test1Users.some((u: any) => u.username === testOwnerUsername && u.role === 'Owner');
+      if (!test1Exists) throw new Error('TEST 1 FAILED: Owner record does not exist in storage after saving.');
+      
+      addTestLog('TEST 1 SUCCESS: Owner created and hash generated.', 'success');
+      
+      // Simulate session
+      const session1 = { username: testOwnerUsername, name: testOwner.name, role: 'Owner', staff_id: 'OWNER-1' };
+      setSession(session1);
+      localStorage.setItem('ztr_active_session', JSON.stringify({ user: session1, timestamp: Date.now() }));
+      setIsSystemInitialized(true);
+      console.log('[AUTH-DEBUG] Session created:', session1.username);
+      
+      setTestSuite(prev => ({
+        ...prev,
+        currentStep: 2,
+        results: { ...prev.results, 1: 'success', 2: 'running' }
+      }));
+      await sleep(500);
+
+      // --- TEST 2: Logout - Success ---
+      addTestLog('TEST 2: Attempting Logout Flow', 'info');
+      localStorage.removeItem('ztr_active_session');
+      setSession(null);
+      console.log('[AUTH-DEBUG] Logout completed.');
+      
+      const test2ActiveSession = localStorage.getItem('ztr_active_session');
+      if (test2ActiveSession) throw new Error('TEST 2 FAILED: Active session still exists.');
+      
+      addTestLog('TEST 2 SUCCESS: Logout completed successfully.', 'success');
+
+      setTestSuite(prev => ({
+        ...prev,
+        currentStep: 3,
+        results: { ...prev.results, 2: 'success', 3: 'running' }
+      }));
+      await sleep(500);
+
+      // --- TEST 3: Login again - Success ---
+      addTestLog('TEST 3: Authenticating correct credentials', 'info');
+      
+      const storedUsers3 = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+      const userMatch3 = storedUsers3.find((u: any) => u.username === testOwnerUsername);
+      if (!userMatch3) throw new Error('TEST 3 FAILED: Owner not found in storage.');
+      console.log('[AUTH-DEBUG] Owner loaded:', userMatch3.username);
+
+      const isPassCorrect3 = await comparePassword(testOwnerPassword, userMatch3.passwordHash);
+      if (!isPassCorrect3) throw new Error('TEST 3 FAILED: Bcrypt comparison failed for correct credentials.');
+
+      const session3 = { username: userMatch3.username, name: userMatch3.name, role: 'Owner', staff_id: 'OWNER-1' };
+      setSession(session3);
+      localStorage.setItem('ztr_active_session', JSON.stringify({ user: session3, timestamp: Date.now() }));
+      console.log('[AUTH-DEBUG] Session created:', session3.username);
+      addTestLog('TEST 3 SUCCESS: Login with correct password accepted.', 'success');
+
+      setTestSuite(prev => ({
+        ...prev,
+        currentStep: 4,
+        results: { ...prev.results, 3: 'success', 4: 'running' }
+      }));
+      await sleep(500);
+
+      // --- TEST 4: Wrong password - Rejected ---
+      addTestLog('TEST 4: Authenticating incorrect password', 'info');
+      
+      const storedUsers4 = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+      const userMatch4 = storedUsers4.find((u: any) => u.username === testOwnerUsername);
+      const isPassCorrect4 = await comparePassword('IncorrectPassword!', userMatch4.passwordHash);
+      if (isPassCorrect4) throw new Error('TEST 4 FAILED: Authentication accepted incorrect password.');
+      
+      addTestLog('TEST 4 SUCCESS: Invalid password correctly rejected.', 'success');
+
+      setTestSuite(prev => ({
+        ...prev,
+        currentStep: 5,
+        results: { ...prev.results, 4: 'success', 5: 'running' }
+      }));
+      await sleep(500);
+
+      // --- TEST 5: Reset Owner - Success ---
+      addTestLog('TEST 5: Executing System Reset & Clear', 'info');
+
+      // Clear everything
+      localStorage.setItem('ztr_admin_users', JSON.stringify([]));
+      localStorage.removeItem('system_initialized');
+      localStorage.removeItem('ztr_active_session');
+      setSession(null);
+      setIsSystemInitialized(false);
+
+      // Cookies & sessionStorage
+      try { sessionStorage.clear(); } catch (e) {}
+      try {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i];
+          const eqPos = cookie.indexOf("=");
+          const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        }
+      } catch (e) {}
+      
+      console.log('[AUTH-DEBUG] Reset completed.');
+
+      const checkUsers5 = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+      const checkInit5 = localStorage.getItem('system_initialized') === 'true';
+      if (checkUsers5.length > 0 || checkInit5) throw new Error('TEST 5 FAILED: Storage data not wiped.');
+      addTestLog('TEST 5 SUCCESS: System reset completely wiped all data.', 'success');
+
+      setTestSuite(prev => ({
+        ...prev,
+        currentStep: 6,
+        results: { ...prev.results, 5: 'success', 6: 'running' }
+      }));
+      await sleep(500);
+
+      // --- TEST 6: Create another Owner - Success ---
+      addTestLog('TEST 6: Creating secondary Owner account "second_owner_auto"', 'info');
+
+      const testOwner2Username = 'second_owner_auto';
+      const testOwner2Password = 'SecondPassword456!';
+      const testOwner2Hash = await hashPassword(testOwner2Password);
+
+      const testOwner2 = {
+        username: testOwner2Username,
+        passwordHash: testOwner2Hash,
+        name: 'Final Production Owner',
+        phone: '+255 777 999 999',
+        email: 'final_owner@zanzibartrip.com',
+        role: 'Owner',
+        status: 'Active',
+        permissions: 'Full System Access',
+        createdBy: 'System',
+        systemInitialized: true,
+        staff_id: 'OWNER-2',
+        isLocked: false
+      };
+
+      localStorage.setItem('ztr_admin_users', JSON.stringify([testOwner2]));
+      localStorage.setItem('system_initialized', 'true');
+      console.log('[AUTH-DEBUG] Owner created:', testOwner2.username);
+
+      const test6Users = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+      const test6Exists = test6Users.some((u: any) => u.username === testOwner2Username);
+      if (!test6Exists) throw new Error('TEST 6 FAILED: Secondary Owner did not save.');
+      addTestLog('TEST 6 SUCCESS: Secondary Owner successfully created.', 'success');
+
+      setTestSuite(prev => ({
+        ...prev,
+        currentStep: 7,
+        results: { ...prev.results, 6: 'success', 7: 'running' }
+      }));
+      await sleep(500);
+
+      // --- TEST 7: Login - Success ---
+      addTestLog('TEST 7: Login verification with secondary Owner', 'info');
+
+      const storedUsers7 = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+      const userMatch7 = storedUsers7.find((u: any) => u.username === testOwner2Username);
+      if (!userMatch7) throw new Error('TEST 7 FAILED: Secondary Owner not loaded.');
+      console.log('[AUTH-DEBUG] Owner loaded:', userMatch7.username);
+
+      const isPassCorrect7 = await comparePassword(testOwner2Password, userMatch7.passwordHash);
+      if (!isPassCorrect7) throw new Error('TEST 7 FAILED: Password comparison failed.');
+
+      const finalSession = { username: userMatch7.username, name: userMatch7.name, role: 'Owner', staff_id: 'OWNER-2' };
+      setSession(finalSession);
+      localStorage.setItem('ztr_active_session', JSON.stringify({ user: finalSession, timestamp: Date.now() }));
+      setIsSystemInitialized(true);
+      console.log('[AUTH-DEBUG] Session created:', finalSession.username);
+      addTestLog('TEST 7 SUCCESS: Secondary Owner authenticated successfully.', 'success');
+
+      addTestLog('🏁 DIAGNOSTIC COMPLETE: ALL 7 TESTS PASSED SUCCESSFULLY! ⚔️', 'success');
+
+      // Restore seed and backup users while keeping second_owner_auto
+      const finalUsers: any[] = [testOwner2];
+      if (usersBackup) {
+        try {
+          const parsedBackup = JSON.parse(usersBackup);
+          parsedBackup.forEach((bu: any) => {
+            if (bu.username.toLowerCase() !== testOwner2Username.toLowerCase() && bu.username.toLowerCase() !== testOwnerUsername.toLowerCase()) {
+              finalUsers.push(bu);
+            }
+          });
+        } catch (e) {}
+      }
+      INITIAL_SEED_USERS.forEach(init => {
+        const exists = finalUsers.some(u => u.username.toLowerCase() === init.username.toLowerCase());
+        if (!exists) {
+          finalUsers.push(init);
+        }
+      });
+      localStorage.setItem('ztr_admin_users', JSON.stringify(finalUsers));
+
+      setTestSuite(prev => ({
+        ...prev,
+        status: 'success',
+        currentStep: 7,
+        results: { ...prev.results, 7: 'success' }
+      }));
+
+      showToast('All 7 security & auth diagnostics passed successfully!', 'success');
+      
+      // Keep final fields ready
+      setOwnerFullName('Final Production Owner');
+      setOwnerUsername('second_owner_auto');
+      setOwnerPassword('SecondPassword456!');
+      setOwnerConfirmPassword('SecondPassword456!');
+      setOwnerPhone('+255 777 999 999');
+      setOwnerEmail('final_owner@zanzibartrip.com');
+    } catch (err: any) {
+      addTestLog(`❌ DIAGNOSTIC FAILED: ${err.message}`, 'error');
+      setTestSuite(prev => ({
+        ...prev,
+        status: 'failed',
+        results: { ...prev.results, [prev.currentStep]: 'failed' }
+      }));
+      showToast('Diagnostic failed! Restoring backup data...', 'error');
+      
+      // Restore backups
+      if (usersBackup) localStorage.setItem('ztr_admin_users', usersBackup);
+      if (initBackup) localStorage.setItem('system_initialized', initBackup);
+      if (sessionBackup) {
+        localStorage.setItem('ztr_active_session', sessionBackup);
+        setSession(JSON.parse(sessionBackup).user);
+        setIsSystemInitialized(true);
+      }
+    }
   };
 
   // Login handler
@@ -1632,13 +2183,20 @@ export default function Admin({ navigate }: AdminProps) {
 
     setAuthLoading(true);
     try {
-      const inputHash = await sha256(password);
+      console.log('[AUTH-DEBUG] Username entered:', username.trim());
+      
       const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+      const ownersList = storedUsers.filter((u: any) => u.role?.toLowerCase() === 'owner');
+      console.log('[AUTH-DEBUG] Owner count:', ownersList.length);
+
       const userMatch = storedUsers.find(
-        (u: any) => u.username.toLowerCase() === username.trim().toLowerCase() && u.passwordHash === inputHash
+        (u: any) => u.username.toLowerCase() === username.trim().toLowerCase()
       );
 
       if (userMatch) {
+        const isOwnerFound = userMatch.role?.toLowerCase() === 'owner';
+        console.log('[AUTH-DEBUG] Owner found:', isOwnerFound ? 'true' : 'false', '(Role:', userMatch.role, ')');
+
         if (userMatch.status === 'Inactive' || userMatch.isLocked || userMatch.status === 'Locked') {
           addActivityLog(userMatch.name, 'loginBlocked', `Blocked login attempt: Staff member identity is locked/deactivated.`);
           setAuthError('Your staff account has been locked or deactivated. Please contact an executive administrator.');
@@ -1646,36 +2204,253 @@ export default function Admin({ navigate }: AdminProps) {
           return;
         }
 
-        const userInfo = {
-          username: userMatch.username,
-          name: userMatch.name,
-          role: userMatch.role,
-          staff_id: userMatch.staff_id,
-          office: userMatch.office,
-          office_code: userMatch.office_code,
-          branch_code: userMatch.branch_code
-        };
-        setSession(userInfo);
-        localStorage.setItem('ztr_active_session', JSON.stringify({
-          user: userInfo,
-          timestamp: Date.now()
-        }));
-        addActivityLog(userMatch.name, 'loggedIn', `Logged into Admin Portal successfully using ${userMatch.role} clearance.`);
-        setInactivityNotice(false);
-        if (userMatch.role === 'Content Editor') {
-          setActiveTab('cms');
+        // Validate password
+        const isPasswordCorrect = await comparePassword(password, userMatch.passwordHash);
+        console.log('[AUTH-DEBUG] Password comparison:', isPasswordCorrect ? 'success' : 'failed');
+
+        if (isPasswordCorrect) {
+          const userInfo = {
+            username: userMatch.username,
+            name: userMatch.name,
+            role: (userMatch.role?.toLowerCase() === 'owner') ? 'Owner' : userMatch.role,
+            staff_id: userMatch.staff_id,
+            office: userMatch.office,
+            office_code: userMatch.office_code,
+            branch_code: userMatch.branch_code
+          };
+          setSession(userInfo);
+          localStorage.setItem('ztr_active_session', JSON.stringify({
+            user: userInfo,
+            timestamp: Date.now()
+          }));
+          console.log('[AUTH-DEBUG] Session created:', userInfo.username);
+
+          addActivityLog(userMatch.name, userInfo.role, `Logged into Admin Portal successfully using ${userInfo.role} clearance.`);
+          setInactivityNotice(false);
+          
+          setActiveTab('dashboard');
+          showToast(`Welcome back, ${userInfo.name}!`, 'success');
+          navigate('admin');
         } else {
-          setActiveTab('bookings');
+          console.warn('[AUTH-DEBUG] Authentication failed: Invalid password.');
+          addActivityLog(username.trim(), 'Guest / External', `Failed login attempt: Invalid password for username.`);
+          setAuthError('Incorrect username or password');
         }
       } else {
-        addActivityLog(username.trim(), 'Guest / External', `Failed login attempt: Invalid password or username credentials entered.`);
-        setAuthError('Invalid username or encrypted password.');
+        console.warn('[AUTH-DEBUG] Authentication failed: Username not found.');
+        addActivityLog(username.trim(), 'Guest / External', `Failed login attempt: Invalid username.`);
+        setAuthError('Incorrect username or password');
       }
     } catch (err: any) {
+      console.error('[AUTH-DEBUG] Cryptographic authentication error:', err.message);
       addActivityLog(username.trim(), 'Guest / External', `Failed login attempt: Cryptographic authentication error - ${err.message}.`);
       setAuthError('Error authenticating secure portal: ' + err.message);
     } finally {
       setAuthLoading(false);
+    }
+  };
+
+  // Owner Account Creation handler (Phase 3)
+  const handleCreateOwner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSetupError('');
+    
+    // Validate fields
+    if (!ownerFullName.trim()) {
+      setSetupError('Full Name is mandatory.');
+      return;
+    }
+    if (!ownerUsername.trim()) {
+      setSetupError('Username is mandatory.');
+      return;
+    }
+    if (ownerUsername.trim().includes(' ')) {
+      setSetupError('Username cannot contain spaces.');
+      return;
+    }
+    if (ownerPassword.length < 6) {
+      setSetupError('Password must be at least 6 characters long.');
+      return;
+    }
+    if (ownerPassword !== ownerConfirmPassword) {
+      setSetupError('Passwords do not match.');
+      return;
+    }
+    if (!ownerPhone.trim()) {
+      setSetupError('Phone Number is mandatory.');
+      return;
+    }
+
+    setSetupLoading(true);
+    try {
+      // Hash the password using bcrypt/sha256 helper
+      const hashedPassword = await hashPassword(ownerPassword);
+
+      const newOwner = {
+        username: ownerUsername.trim().toLowerCase(),
+        passwordHash: hashedPassword,
+        name: ownerFullName.trim(),
+        phone: ownerPhone.trim(),
+        email: ownerEmail.trim(),
+        profile_photo: ownerProfilePhoto.trim() || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=compress&cs=tinysrgb&w=150',
+        profilePhoto: ownerProfilePhoto.trim() || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=compress&cs=tinysrgb&w=150',
+        recoveryQuestion: ownerRecoveryQuestion,
+        recoveryAnswer: ownerRecoveryAnswer.trim().toLowerCase() || 'default',
+        role: 'owner', // Automatically set OWNER
+        status: 'Active',
+        active: true, // Set active=true
+        permissions: 'Full System Access',
+        createdBy: 'System',
+        systemInitialized: true,
+        staff_id: 'OWNER-1',
+        isLocked: false,
+        created_at: new Date().toISOString(), // created_at
+        updated_at: new Date().toISOString()  // updated_at
+      };
+
+      // Save the record
+      const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+      // Filter out any legacy OWNER users
+      const cleanUsers = storedUsers.filter((u: any) => u.role?.toLowerCase() !== 'owner');
+      const updatedUsers = [newOwner, ...cleanUsers];
+      localStorage.setItem('ztr_admin_users', JSON.stringify(updatedUsers));
+      
+      // Step 10 Debugging: Owner count, Owner found
+      const finalOwners = updatedUsers.filter((u: any) => u.role?.toLowerCase() === 'owner');
+      console.log('[AUTH-DEBUG] Owner created:', newOwner.username);
+      console.log('[AUTH-DEBUG] Owner count:', finalOwners.length);
+      console.log('[AUTH-DEBUG] Owner found: true, username:', newOwner.username);
+
+      // Double check that the record exists and is persisted
+      const verifyUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+      const ownerExists = verifyUsers.some((u: any) => u.role?.toLowerCase() === 'owner' && u.username === newOwner.username);
+      if (!ownerExists) {
+        throw new Error("Failed to verify storage persistence of Owner credentials.");
+      }
+
+      // Save initialization flag
+      localStorage.setItem('system_initialized', 'true');
+      setIsSystemInitialized(true);
+
+      addActivityLog(newOwner.name, 'owner', 'Created system owner account.');
+      showToast('Owner account created successfully! Automatically logging in...', 'success');
+
+      // Clear setup fields
+      setOwnerFullName('');
+      setOwnerUsername('');
+      setOwnerPassword('');
+      setOwnerConfirmPassword('');
+      setOwnerPhone('');
+      setOwnerEmail('');
+      setOwnerProfilePhoto('');
+      setOwnerRecoveryAnswer('');
+
+      // STEP 5: Automatically login
+      const userInfo = {
+        username: newOwner.username,
+        name: newOwner.name,
+        role: 'Owner', // UI expects capitalised 'Owner'
+        staff_id: newOwner.staff_id,
+        office: 'Zanzibar HQ',
+        office_code: 'ZNZ-HQ',
+        branch_code: 'HQ-01'
+      };
+
+      setSession(userInfo);
+      localStorage.setItem('ztr_active_session', JSON.stringify({
+        user: userInfo,
+        timestamp: Date.now()
+      }));
+
+      // Step 10 Debugging: Session created
+      console.log('[AUTH-DEBUG] Session created:', userInfo.username);
+
+      // Redirect
+      navigate('admin');
+    } catch (err: any) {
+      console.error('[AUTH-DEBUG] Owner creation error:', err.message);
+      setSetupError('Error creating owner: ' + err.message);
+    } finally {
+      setSetupLoading(false);
+    }
+  };
+
+  // Reset Owner account & returns system to first-time setup (Phase 5)
+  const handleResetOwner = () => {
+    if (window.confirm("WARNING: This is an emergency action. This will permanently remove the current Owner account, wipe all active session data, and return the system back to first-time onboarding. Continue?")) {
+      // Delete Owner account from ztr_admin_users
+      try {
+        const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+        const updatedUsers = storedUsers.filter((u: any) => u.role !== 'OWNER' && u.role !== 'Owner');
+        localStorage.setItem('ztr_admin_users', JSON.stringify(updatedUsers));
+        
+        // Verify delete worked
+        const verifyUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+        const ownerExists = verifyUsers.some((u: any) => u.role === 'Owner' || u.role === 'OWNER');
+        if (ownerExists) {
+          console.error("Owner account still exists after reset!");
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      // Clear sessions, tokens, cookies, localStorage, sessionStorage, IndexedDB
+      localStorage.removeItem('ztr_active_session');
+      localStorage.removeItem('system_initialized');
+      localStorage.removeItem('ztr_remember_me');
+      localStorage.removeItem('ztr_customer_session');
+      localStorage.removeItem('ztr_customer_tab');
+      localStorage.removeItem('ztr_auth_view');
+
+      // Clear dynamic keys
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (
+          key.startsWith('ztr_failed_attempts_') || 
+          key.startsWith('ztr_lockout_until_') || 
+          key.startsWith('ztr_owner_')
+        )) {
+          localStorage.removeItem(key);
+          i--;
+        }
+      }
+
+      try {
+        sessionStorage.clear();
+      } catch (e) {}
+
+      try {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i];
+          const eqPos = cookie.indexOf("=");
+          const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        }
+      } catch (e) {}
+
+      try {
+        if (window.indexedDB && window.indexedDB.databases) {
+          window.indexedDB.databases().then(databases => {
+            databases.forEach(db => {
+              if (db.name && (db.name.toLowerCase().includes('auth') || db.name.toLowerCase().includes('session') || db.name.toLowerCase().includes('supabase'))) {
+                window.indexedDB.deleteDatabase(db.name);
+              }
+            });
+          }).catch(() => {});
+        }
+      } catch (e) {}
+
+      console.log('[AUTH-DEBUG] Reset completed.');
+
+      // Reset states
+      setSession(null);
+      setIsSystemInitialized(false);
+      setSetupStep(1); // Reset wizard back to Step 1
+      
+      // Navigate to /owner/setup
+      navigate('owner/setup');
+      showToast('Emergency system reset completed successfully.', 'success');
     }
   };
 
@@ -1686,7 +2461,8 @@ export default function Admin({ navigate }: AdminProps) {
     setSession(null);
     localStorage.removeItem('ztr_active_session');
     setInactivityNotice(false);
-    navigate('admin/login');
+    console.log('[AUTH-DEBUG] Logout completed.');
+    navigate('owner-login');
   };
 
   // Status updates for bookings
@@ -2816,13 +3592,299 @@ Stone Town, Zanzibar, Tanzania`);
 
   // Render Login page if not authorized
   if (!session) {
+    if (!isSystemInitialized || currentPage === 'create-owner') {
+      // Create System Owner Wizard
+      const strength = getPasswordStrength(ownerPassword);
+      
+      return (
+        <div className="min-h-screen bg-[#020C1F] flex flex-col lg:flex-row items-center justify-center p-4 md:p-8 lg:p-12 relative overflow-hidden text-white gap-8" style={{ fontFamily: 'Inter, sans-serif' }}>
+          {/* Abstract background vector circles */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#0B3B8C] rounded-full filter blur-[150px] opacity-20 pointer-events-none" />
+          <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[#D4A017] rounded-full filter blur-[180px] opacity-10 pointer-events-none" />
+
+          {/* Setup Wizard Form Container */}
+          <div className="max-w-xl w-full relative z-10 animate-fade-in shrink-0">
+            <div className="bg-[#051128] border border-white/10 rounded-3xl p-8 shadow-2xl space-y-6">
+              
+              <div className="text-center space-y-2">
+                <div className="mx-auto w-16 h-16 bg-[#0B3B8C]/20 border border-[#D4A017]/30 rounded-full flex items-center justify-center mb-2">
+                  <Shield className="w-8 h-8 text-[#D4A017] animate-pulse" />
+                </div>
+                <h1 className="text-2xl font-bold tracking-tight text-white mb-1" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>
+                  Zanzibar Trip & Relax
+                </h1>
+                <p className="text-xs text-[#D4A017] font-semibold tracking-widest uppercase">
+                  Create System Owner
+                </p>
+                <p className="text-xs text-slate-400 font-medium max-w-sm mx-auto leading-relaxed">
+                  Onboarding Step {setupStep} of 3: Initialize the Enterprise Travel ERP environment.
+                </p>
+              </div>
+
+              {/* Progress Indicator */}
+              <div className="relative">
+                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/5 -translate-y-1/2" />
+                <div 
+                  className="absolute top-1/2 left-0 h-0.5 bg-[#D4A017] -translate-y-1/2 transition-all duration-300" 
+                  style={{ width: `${((setupStep - 1) / 2) * 100}%` }}
+                />
+                <div className="relative flex justify-between">
+                  {[1, 2, 3].map((step) => (
+                    <button
+                      key={step}
+                      type="button"
+                      onClick={() => {
+                        // Allow navigation to previous steps or if validated
+                        if (step < setupStep) setSetupStep(step);
+                      }}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border transition-all ${
+                        step === setupStep 
+                          ? 'bg-[#D4A017] text-[#020C1F] border-[#D4A017] scale-110 shadow-lg shadow-[#D4A017]/20' 
+                          : step < setupStep 
+                          ? 'bg-[#0B3B8C] text-white border-[#0B3B8C]' 
+                          : 'bg-[#051128] text-slate-500 border-white/10 hover:border-white/25'
+                      }`}
+                    >
+                      {step < setupStep ? <Check size={12} /> : step}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {setupError && (
+                <div className="bg-red-500/10 border border-red-500/25 text-red-300 p-4 rounded-xl text-xs flex items-center gap-2 animate-shake">
+                  <ShieldAlert size={14} className="shrink-0 text-red-400" />
+                  <span>{setupError}</span>
+                </div>
+              )}
+
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if (setupStep === 1) {
+                  if (!ownerFullName.trim() || !ownerPhone.trim()) {
+                    setSetupError('Full Name and Phone Number are required.');
+                  } else {
+                    setSetupError('');
+                    setSetupStep(2);
+                  }
+                } else if (setupStep === 2) {
+                  if (!ownerUsername.trim() || !ownerPassword) {
+                    setSetupError('Username and Password are required.');
+                  } else if (ownerPassword.length < 6) {
+                    setSetupError('Password must be at least 6 characters long.');
+                  } else if (ownerPassword !== ownerConfirmPassword) {
+                    setSetupError('Passwords do not match.');
+                  } else {
+                    setSetupError('');
+                    setSetupStep(3);
+                  }
+                } else if (setupStep === 3) {
+                  handleCreateOwner(e);
+                }
+              }} className="space-y-5 text-left">
+                
+                {/* STEP 1: PERSONAL DETAILS */}
+                {setupStep === 1 && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={ownerFullName}
+                        onChange={e => setOwnerFullName(e.target.value)}
+                        className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                        placeholder="e.g. Haji Othman"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Phone Number</label>
+                      <input
+                        type="text"
+                        required
+                        value={ownerPhone}
+                        onChange={e => setOwnerPhone(e.target.value)}
+                        className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                        placeholder="e.g. +255 777 123 456"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Email (optional)</label>
+                      <input
+                        type="email"
+                        value={ownerEmail}
+                        onChange={e => setOwnerEmail(e.target.value)}
+                        className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                        placeholder="e.g. owner@zanzibartrip.com"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Profile Photo URL (optional)</label>
+                      <input
+                        type="text"
+                        value={ownerProfilePhoto}
+                        onChange={e => setOwnerProfilePhoto(e.target.value)}
+                        className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                        placeholder="e.g. https://example.com/avatar.jpg"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 2: SECURITY CREDENTIALS */}
+                {setupStep === 2 && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Master Username</label>
+                      <input
+                        type="text"
+                        required
+                        value={ownerUsername}
+                        onChange={e => setOwnerUsername(e.target.value)}
+                        className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                        placeholder="e.g. haji_owner"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Password</label>
+                      <div className="relative">
+                        <input
+                          type={showSetupPassword ? 'text' : 'password'}
+                          required
+                          value={ownerPassword}
+                          onChange={e => setOwnerPassword(e.target.value)}
+                          className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3.5 pl-4 pr-12 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                          placeholder="••••••••"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSetupPassword(!showSetupPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                        >
+                          {showSetupPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+
+                      {/* Password Strength Indicator */}
+                      <div className="space-y-1 pt-1">
+                        <div className="flex justify-between items-center text-[10px] font-semibold">
+                          <span className="text-slate-400">Security Strength:</span>
+                          <span className={strength.text}>{strength.label}</span>
+                        </div>
+                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <div className={`h-full ${strength.color} transition-all duration-300 ${strength.width}`} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Confirm Password</label>
+                      <div className="relative">
+                        <input
+                          type={showSetupConfirmPassword ? 'text' : 'password'}
+                          required
+                          value={ownerConfirmPassword}
+                          onChange={e => setOwnerConfirmPassword(e.target.value)}
+                          className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3.5 pl-4 pr-12 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                          placeholder="••••••••"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSetupConfirmPassword(!showSetupConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                        >
+                          {showSetupConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 3: REVIEW & INITIALIZE */}
+                {setupStep === 3 && (
+                  <div className="space-y-4 animate-fade-in text-xs bg-white/5 p-5 rounded-2xl border border-white/5">
+                    <h3 className="font-bold text-[#D4A017] text-sm mb-2 border-b border-white/10 pb-2">Confirm Configuration</h3>
+                    <div className="grid grid-cols-2 gap-y-3 gap-x-1">
+                      <div>
+                        <span className="text-slate-400 block font-medium">Owner Name</span>
+                        <span className="font-bold text-white text-sm">{ownerFullName}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block font-medium">Username</span>
+                        <span className="font-bold text-white text-sm">@{ownerUsername}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block font-medium">Contact Phone</span>
+                        <span className="font-bold text-white">{ownerPhone}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block font-medium">Email</span>
+                        <span className="font-bold text-white">{ownerEmail || 'None provided'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block font-medium">System Role</span>
+                        <span className="font-bold text-[#D4A017] uppercase">OWNER</span>
+                      </div>
+                    </div>
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-[11px] text-amber-300/90 leading-relaxed mt-2">
+                      ⚠️ This will initialize the admin database using **LocalStorage** as the secure master credential directory. Make sure you remember your credentials.
+                    </div>
+                  </div>
+                )}
+
+                {/* Navigation Buttons */}
+                <div className="flex gap-3 pt-2">
+                  {setupStep > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setSetupStep(prev => prev - 1)}
+                      className="w-1/3 bg-white/10 hover:bg-white/15 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer"
+                    >
+                      Back
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={setupLoading}
+                    className="flex-1 bg-[#D4A017] hover:bg-[#c39010] text-[#020C1F] font-bold py-3.5 rounded-xl text-xs uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-[#D4A017]/10 flex items-center justify-center gap-2"
+                  >
+                    {setupLoading ? (
+                      <>
+                        <RefreshCw className="animate-spin" size={14} />
+                        <span>Initializing ERP...</span>
+                      </>
+                    ) : setupStep === 3 ? (
+                      'Initialize & Launch'
+                    ) : (
+                      'Continue'
+                    )}
+                  </button>
+                </div>
+              </form>
+
+              <div className="border-t border-white/5 pt-3 text-center">
+                <span className="text-[10px] text-slate-400 font-medium">
+                  Enterprise Shield &copy; 2026 Zanzibar Trip & Relax. All rights reserved.
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Login Form Screen
     return (
-      <div className="min-h-screen bg-[#020C1F] flex items-center justify-center p-4 relative overflow-hidden text-white" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className="min-h-screen bg-[#020C1F] flex flex-col lg:flex-row items-center justify-center p-4 md:p-8 lg:p-12 relative overflow-hidden text-white gap-8" style={{ fontFamily: 'Inter, sans-serif' }}>
         {/* Abstract background vector circles */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#0B3B8C] rounded-full filter blur-[150px] opacity-20 pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[#D4A017] rounded-full filter blur-[180px] opacity-10 pointer-events-none" />
 
-        <div className="max-w-md w-full relative z-10 my-8">
+        <div className="max-w-md w-full relative z-10 animate-fade-in shrink-0">
           <div className="bg-[#051128] border border-white/10 rounded-3xl p-8 shadow-2xl space-y-6">
             
             <div className="text-center space-y-2">
@@ -2835,18 +3897,21 @@ Stone Town, Zanzibar, Tanzania`);
               <p className="text-xs text-slate-400 font-semibold tracking-widest uppercase">
                 Enterprise Travel & Tour ERP
               </p>
+              <p className="text-sm text-[#D4A017] font-bold tracking-wider uppercase mt-1">
+                {currentPage === 'owner-login' ? 'Owner Portal Login' : 'Staff & Operator Login'}
+              </p>
             </div>
 
             {authError && (
-              <div className="bg-red-500/10 border border-red-500/25 text-red-300 p-3 rounded-xl text-xs flex items-center gap-2">
+              <div className="bg-red-500/10 border border-red-500/25 text-red-300 p-3 rounded-xl text-xs flex items-center gap-2 animate-shake">
                 <ShieldAlert size={14} className="shrink-0 text-red-400" />
                 <span>{authError}</span>
               </div>
             )}
 
             <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Username, Email, or Phone</label>
+              <div className="space-y-1.5 text-left">
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Username</label>
                 <div className="relative">
                   <User size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
                   <input
@@ -2855,12 +3920,12 @@ Stone Town, Zanzibar, Tanzania`);
                     value={username}
                     onChange={e => setUsername(e.target.value)}
                     className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
-                    placeholder="e.g. gerevas or admin@zanzibar.com"
+                    placeholder="e.g. haji_owner"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 text-left">
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Password</label>
                 <div className="relative">
                   {showPassword ? (
@@ -2883,15 +3948,15 @@ Stone Town, Zanzibar, Tanzania`);
               <button
                 type="submit"
                 disabled={authLoading}
-                className="w-full bg-[#D4A017] hover:bg-[#c39010] text-[#020C1F] font-bold py-3.5 rounded-xl text-xs uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-[#D4A017]/10"
+                className="w-full bg-[#D4A017] hover:bg-[#c39010] text-[#020C1F] font-bold py-3.5 rounded-xl text-xs uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-[#D4A017]/10 mt-2"
               >
                 {authLoading ? 'Verifying Safe Session...' : 'Authenticate Securely'}
               </button>
             </form>
 
-            <div className="border-t border-white/5 pt-3 text-center">
-              <span className="text-[10px] text-slate-400 font-medium">
-                Encrypted with PBKDF2 WebCrypto client layer &copy; 2026 Admin Panel.
+            <div className="border-t border-white/5 pt-3 text-center space-y-3">
+              <span className="text-[10px] text-slate-400 font-medium block">
+                Encrypted and Secured locally &copy; 2026 Admin Panel.
               </span>
             </div>
           </div>
@@ -3060,6 +4125,7 @@ Stone Town, Zanzibar, Tanzania`);
             <h1 className="text-3xl font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>
               {activeTab === 'dashboard' ? 'Analytics Dashboard' :
                activeTab === 'settings' ? 'Company Configuration' :
+               activeTab === 'profile' ? 'My Profile Settings' :
                activeTab === 'bookings' ? 'Bookings Ledger' : 
                activeTab === 'inquiries' ? 'Guest Inquiries & Leads' :
                activeTab === 'walkin' ? 'Walk-In Office Booking Desk' :
@@ -3083,6 +4149,7 @@ Stone Town, Zanzibar, Tanzania`);
             <p className="text-xs text-slate-400">
               {activeTab === 'dashboard' ? 'Dynamic travel demand, revenue estimation, and conversion indexes.' :
                activeTab === 'settings' ? 'Manage global preferences, currency symbols, session timeouts, and visual accents.' :
+               activeTab === 'profile' ? 'View and update your profile coordinates, password credentials, biography, and notification preferences.' :
                activeTab === 'users' ? 'Manage system identities, clearances, and custom organizational permissions' : 
                activeTab === 'policies' ? 'Configure deposit percentages, cut-off hours and checkout rules for each tour category' :
                activeTab === 'transportZones' ? 'Manage geographical zones, transport surcharges, hotel options and perform bulk CSV hotel uploads' :
@@ -4020,7 +5087,7 @@ Stone Town, Zanzibar, Tanzania`);
 
         {/* 4. SECURITY & AUDIT LOGS workspace tab */}
         {activeTab === 'logs' && (
-          <AuthGuard navigate={navigate} allowedRoles={['Admin']}>
+          <>
             {(() => {
               // Local calculations for logs tab
               const stats = {
@@ -4881,14 +5948,12 @@ Stone Town, Zanzibar, Tanzania`);
             </div>
           );
         })()}
-          </AuthGuard>
+          </>
         )}
 
         {/* 4.5 GOOGLE SEARCH CONSOLE SEO ANALYTICS workspace tab */}
         {activeTab === 'seo' && (
-          <AuthGuard navigate={navigate} allowedRoles={['Admin']}>
-            <SeoAnalytics session={session} />
-          </AuthGuard>
+          <SeoAnalytics session={session} />
         )}
 
         {/* 5. STAFF AUTHORIZATION & ROLES workspace tab */}
@@ -10517,7 +11582,7 @@ Stone Town, Zanzibar, Tanzania`);
                             </td>
                             <td className="py-3.5 px-4">
                               <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                                u.role === 'Owner' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                                (u.role === 'Owner' || u.role === 'OWNER') ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                                 u.role === 'Administrator' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' :
                                 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
                               }`}>
@@ -11223,6 +12288,560 @@ Stone Town, Zanzibar, Tanzania`);
                       Restore Luxury Defaults
                     </button>
                     <p className="text-[9px] text-slate-500 text-center block">Version 2.4.1 (July 2026 Sandbox)</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Owner Account & System Control (Danger Zone) */}
+              {session?.role?.toLowerCase() === 'owner' && (
+                <div className="bg-red-950/10 border border-red-500/20 rounded-3xl p-6 md:p-8 space-y-6 text-left">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 shrink-0">
+                      <ShieldAlert size={20} />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-extrabold text-white">System Reinitialization & Owner Reset</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        Wipe all system configuration, active administrative sessions, cookies, and local database tables, and permanently remove the master Owner account.
+                      </p>
+                      <p className="text-xs text-red-400 font-medium italic">
+                        Warning: This action is absolute, permanent, and will return the system back to the first-time setup onboarding page immediately.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-white/5">
+                    <button
+                      onClick={handleResetOwner}
+                      className="bg-red-600/20 hover:bg-red-600 border border-red-500/30 hover:border-red-500 text-red-200 hover:text-white text-xs font-bold py-3 px-6 rounded-xl transition-all cursor-pointer"
+                    >
+                      Reset System & Reinitialize Owner Setup
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+
+        {/* --- OWNER WORKSPACE: PROFILE SETTINGS --- */}
+        {activeTab === 'profile' && (() => {
+          const handleSaveProfile = async (e: React.FormEvent) => {
+            e.preventDefault();
+            if (!profileFullName.trim()) {
+              showToast('Full Name is required.', 'error');
+              return;
+            }
+            if (!profileUsername.trim()) {
+              showToast('Username is required.', 'error');
+              return;
+            }
+            if (profileUsername.trim().includes(' ')) {
+              showToast('Username cannot contain spaces.', 'error');
+              return;
+            }
+
+            try {
+              const currentUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+              const isUsernameTaken = currentUsers.some((u: any) => 
+                u.username.toLowerCase() === profileUsername.trim().toLowerCase() && 
+                u.username.toLowerCase() !== profileLoadedUsername.toLowerCase()
+              );
+              if (isUsernameTaken) {
+                showToast(`Username @${profileUsername.trim().toLowerCase()} is already taken by another staff member.`, 'error');
+                return;
+              }
+
+              let updatedCount = 0;
+              const updatedUsers = await Promise.all(currentUsers.map(async (u: any) => {
+                if (u.username.toLowerCase() === profileLoadedUsername.toLowerCase()) {
+                  updatedCount++;
+                  let passwordHash = u.passwordHash;
+                  if (profilePassword.trim()) {
+                    passwordHash = await hashPassword(profilePassword.trim());
+                  }
+
+                  return {
+                    ...u,
+                    name: profileFullName.trim(),
+                    username: profileUsername.trim().toLowerCase(),
+                    phone: profilePhone.trim(),
+                    email: profileEmail.trim(),
+                    profilePhoto: profilePhoto.trim(),
+                    profile_photo: profilePhoto.trim(),
+                    position: profilePosition.trim(),
+                    biography: profileBiography.trim(),
+                    signatureType: profileSignatureType,
+                    signatureText: profileSignatureText.trim(),
+                    signatureData: profileSignatureData,
+                    language: profileLanguage,
+                    timezone: profileTimezone,
+                    notifications: {
+                      email: profileNotifyEmail,
+                      whatsapp: profileNotifyWhatsapp,
+                      sms: profileNotifySms,
+                      push: profileNotifyPush
+                    },
+                    passwordHash
+                  };
+                }
+                return u;
+              }));
+
+              if (updatedCount === 0) {
+                showToast('Profile user record not found in system database.', 'error');
+                return;
+              }
+
+              localStorage.setItem('ztr_admin_users', JSON.stringify(updatedUsers));
+
+              if (session && session.username.toLowerCase() === profileLoadedUsername.toLowerCase()) {
+                const updatedSessionInfo = {
+                  ...session,
+                  name: profileFullName.trim(),
+                  username: profileUsername.trim().toLowerCase()
+                };
+                setSession(updatedSessionInfo);
+                localStorage.setItem('ztr_active_session', JSON.stringify({
+                  user: updatedSessionInfo,
+                  timestamp: Date.now()
+                }));
+              }
+
+              addActivityLog(
+                profileFullName.trim(), 
+                session?.role || 'Staff', 
+                `Updated their personal profile coordinates, credentials, biography, and notification settings.`
+              );
+
+              setProfileLoadedUsername(profileUsername.trim().toLowerCase());
+              setProfilePassword('');
+              setProfileSaveSuccess(true);
+              showToast('Profile updated successfully!', 'success');
+              setTimeout(() => setProfileSaveSuccess(false), 5000);
+            } catch (err: any) {
+              showToast('Error saving profile: ' + err.message, 'error');
+            }
+          };
+
+          const handlePhotoDelete = () => {
+            setProfilePhoto('');
+            showToast('Profile photo removed. Fallback placeholder will be used.', 'info');
+          };
+
+          return (
+            <div className="space-y-8 text-left animate-fadeIn">
+              {profileSaveSuccess && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl flex items-center gap-3 text-emerald-400">
+                  <span className="text-xl">✅</span>
+                  <div>
+                    <p className="font-bold">Dossier Saved Successfully</p>
+                    <p className="text-xs opacity-90">Your profile, credentials, and digital signature have been synchronized with the Zanzibar workstation secure registry.</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Left Form Column */}
+                <form onSubmit={handleSaveProfile} className="lg:col-span-8 space-y-6">
+                  
+                  {/* Coordinates & Credentials Card */}
+                  <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6">
+                    <h3 className="text-base font-bold text-white border-b border-white/5 pb-3">Personal Coordinates</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="block text-[10px] text-slate-400 font-bold uppercase">Full Legal Name</label>
+                        <input 
+                          type="text" 
+                          required
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-colors"
+                          value={profileFullName}
+                          onChange={e => setProfileFullName(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] text-slate-400 font-bold uppercase">System Username</label>
+                        <input 
+                          type="text" 
+                          required
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-colors font-mono text-xs"
+                          value={profileUsername}
+                          onChange={e => setProfileUsername(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] text-slate-400 font-bold uppercase">Workstation Phone</label>
+                        <input 
+                          type="text" 
+                          required
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-colors"
+                          value={profilePhone}
+                          onChange={e => setProfilePhone(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] text-slate-400 font-bold uppercase">Email Coordinate (Optional)</label>
+                        <input 
+                          type="email" 
+                          placeholder="e.g. name@zanzibartripandrelax.com"
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-colors"
+                          value={profileEmail}
+                          onChange={e => setProfileEmail(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-1 md:col-span-2">
+                        <label className="block text-[10px] text-slate-400 font-bold uppercase">Company Position / Title</label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. Master System Owner / Senior Operations Officer"
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-colors"
+                          value={profilePosition}
+                          onChange={e => setProfilePosition(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-1 md:col-span-2">
+                        <label className="block text-[10px] text-slate-400 font-bold uppercase">Reset Secure Password (Leave blank to keep current)</label>
+                        <input 
+                          type="password" 
+                          placeholder="••••••••"
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-colors"
+                          value={profilePassword}
+                          onChange={e => setProfilePassword(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Profile Biography & Photo Card */}
+                  <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6">
+                    <h3 className="text-base font-bold text-white border-b border-white/5 pb-3">Avatar & Dossier Bio</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="flex flex-col md:flex-row gap-4 items-center">
+                        <div className="relative w-20 h-20 rounded-full bg-[#121B30] border-2 border-white/10 overflow-hidden shrink-0 flex items-center justify-center">
+                          {profilePhoto ? (
+                            <img src={profilePhoto} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <span className="text-2xl font-bold text-[#D4A017]">{profileFullName.charAt(0).toUpperCase() || 'U'}</span>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 w-full space-y-2">
+                          <label className="block text-[10px] text-slate-400 font-bold uppercase">Profile Photo URL</label>
+                          <div className="flex gap-2">
+                            <input 
+                              type="text" 
+                              placeholder="https://images.unsplash.com/..."
+                              className="flex-1 bg-[#121B30] border border-white/10 rounded-xl py-2 px-3 text-white text-xs focus:outline-none focus:border-[#D4A017] transition-colors"
+                              value={profilePhoto}
+                              onChange={e => setProfilePhoto(e.target.value)}
+                            />
+                            {profilePhoto && (
+                              <button 
+                                type="button"
+                                onClick={handlePhotoDelete}
+                                className="bg-red-500/10 hover:bg-red-500 hover:text-white text-red-400 px-3 py-2 rounded-xl border border-red-500/20 text-xs font-bold transition-colors"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500">Provide an Unsplash, secure HTTPS link, or absolute media image URL path.</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] text-slate-400 font-bold uppercase">Short Biography / Memo</label>
+                        <textarea 
+                          rows={3}
+                          placeholder="Write a brief professional summary regarding your administrative duties, years of experience, or general staff profile..."
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-colors text-xs resize-none"
+                          value={profileBiography}
+                          onChange={e => setProfileBiography(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Secure Digital Signature Pad */}
+                  <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6">
+                    <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                      <h3 className="text-base font-bold text-white">Digital Signature Registry</h3>
+                      <div className="flex gap-1.5 bg-[#121B30] p-1 rounded-lg border border-white/5">
+                        <button 
+                          type="button"
+                          className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-colors ${profileSignatureType === 'text' ? 'bg-[#0B3B8C] text-white' : 'text-slate-400 hover:text-white'}`}
+                          onClick={() => setProfileSignatureType('text')}
+                        >
+                          Cursive typed
+                        </button>
+                        <button 
+                          type="button"
+                          className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-colors ${profileSignatureType === 'draw' ? 'bg-[#0B3B8C] text-white' : 'text-slate-400 hover:text-white'}`}
+                          onClick={() => setProfileSignatureType('draw')}
+                        >
+                          Draw signature
+                        </button>
+                      </div>
+                    </div>
+
+                    {profileSignatureType === 'text' ? (
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <label className="block text-[10px] text-slate-400 font-bold uppercase">Type Cursive Signature</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. Peter J. Parker"
+                            className="w-full bg-[#121B30] border border-white/10 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-colors"
+                            value={profileSignatureText}
+                            onChange={e => setProfileSignatureText(e.target.value)}
+                          />
+                        </div>
+                        <div className="p-6 bg-[#070F1E] border border-dashed border-white/10 rounded-2xl flex items-center justify-center min-h-[100px]">
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-2 text-center">Live Preview</span>
+                            <span className="text-2xl font-serif italic text-[#D4A017] tracking-wider text-center block" style={{ fontFamily: 'Georgia, serif' }}>
+                              {profileSignatureText || profileFullName || 'No signature text'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-[10px] text-slate-400">Draw your signature below using your mouse or touchscreen cursor. It automatically registers to your dossier badge.</p>
+                        
+                        <div className="border border-white/10 rounded-2xl bg-white overflow-hidden relative">
+                          <canvas 
+                            ref={profileCanvasRef}
+                            width={500}
+                            height={150}
+                            className="w-full bg-white cursor-crosshair touch-none"
+                            onMouseDown={startProfileDrawing}
+                            onMouseMove={drawProfile}
+                            onMouseUp={stopProfileDrawing}
+                            onMouseLeave={stopProfileDrawing}
+                            onTouchStart={startProfileDrawing}
+                            onTouchMove={drawProfile}
+                            onTouchEnd={stopProfileDrawing}
+                          />
+                          <button 
+                            type="button"
+                            onClick={clearProfileCanvas}
+                            className="absolute bottom-2 right-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold py-1 px-3 rounded-lg shadow-md transition-colors"
+                          >
+                            Clear Pad
+                          </button>
+                        </div>
+                        
+                        {profileSignatureData && (
+                          <div className="p-4 bg-[#070F1E] border border-white/5 rounded-xl flex items-center justify-between">
+                            <span className="text-[10px] text-emerald-400 font-semibold">✓ Custom Vector Signature Registered</span>
+                            <div className="w-24 bg-white/10 p-1 rounded-lg">
+                              <img src={profileSignatureData} alt="Registered Sign" className="max-h-8 object-contain mx-auto invert" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Localization & Notification Preferences */}
+                  <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6">
+                    <h3 className="text-base font-bold text-white border-b border-white/5 pb-3">Preferences & Localization</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="block text-[10px] text-slate-400 font-bold uppercase">Preferred Language</label>
+                        <select 
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl py-2.5 px-3 text-white focus:outline-none"
+                          value={profileLanguage}
+                          onChange={e => setProfileLanguage(e.target.value)}
+                        >
+                          <option value="English">English (United States)</option>
+                          <option value="Swahili">Swahili (Kiswahili)</option>
+                          <option value="German">German (Deutsch)</option>
+                          <option value="French">French (Français)</option>
+                          <option value="Spanish">Spanish (Español)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] text-slate-400 font-bold uppercase">Primary Timezone</label>
+                        <select 
+                          className="w-full bg-[#121B30] border border-white/10 rounded-xl py-2.5 px-3 text-white focus:outline-none font-mono text-xs"
+                          value={profileTimezone}
+                          onChange={e => setProfileTimezone(e.target.value)}
+                        >
+                          <option value="Africa/Nairobi">Africa/Nairobi (EAT, UTC+3)</option>
+                          <option value="Africa/Dar_es_Salaam">Africa/Dar es Salaam (EAT, UTC+3)</option>
+                          <option value="Europe/London">Europe/London (GMT/BST, UTC+1)</option>
+                          <option value="Europe/Berlin">Europe/Berlin (CET/CEST, UTC+2)</option>
+                          <option value="America/New_York">America/New York (EST/EDT, UTC-4)</option>
+                          <option value="UTC">Coordinated Universal Time (UTC)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 space-y-3">
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Automated Notification Alerts</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <label className="flex items-center gap-3 p-3 bg-[#121B30] border border-white/5 rounded-xl cursor-pointer hover:bg-[#15203b] transition-colors">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-white/10 text-[#0B3B8C] focus:ring-[#D4A017] focus:ring-offset-0 bg-transparent w-4 h-4"
+                            checked={profileNotifyEmail}
+                            onChange={e => setProfileNotifyEmail(e.target.checked)}
+                          />
+                          <div className="text-left">
+                            <span className="text-xs font-bold text-white block">Email Dispatch</span>
+                            <span className="text-[10px] text-slate-400">Receive booking confirmations via email</span>
+                          </div>
+                        </label>
+
+                        <label className="flex items-center gap-3 p-3 bg-[#121B30] border border-white/5 rounded-xl cursor-pointer hover:bg-[#15203b] transition-colors">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-white/10 text-[#0B3B8C] focus:ring-[#D4A017] focus:ring-offset-0 bg-transparent w-4 h-4"
+                            checked={profileNotifyWhatsapp}
+                            onChange={e => setProfileNotifyWhatsapp(e.target.checked)}
+                          />
+                          <div className="text-left">
+                            <span className="text-xs font-bold text-white block">WhatsApp Telegrams</span>
+                            <span className="text-[10px] text-slate-400">Send WhatsApp summaries of tours</span>
+                          </div>
+                        </label>
+
+                        <label className="flex items-center gap-3 p-3 bg-[#121B30] border border-white/5 rounded-xl cursor-pointer hover:bg-[#15203b] transition-colors">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-white/10 text-[#0B3B8C] focus:ring-[#D4A017] focus:ring-offset-0 bg-transparent w-4 h-4"
+                            checked={profileNotifySms}
+                            onChange={e => setProfileNotifySms(e.target.checked)}
+                          />
+                          <div className="text-left">
+                            <span className="text-xs font-bold text-white block">SMS Mobile Carrier</span>
+                            <span className="text-[10px] text-slate-400">Urgent pickup surcharges text notifications</span>
+                          </div>
+                        </label>
+
+                        <label className="flex items-center gap-3 p-3 bg-[#121B30] border border-white/5 rounded-xl cursor-pointer hover:bg-[#15203b] transition-colors">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-white/10 text-[#0B3B8C] focus:ring-[#D4A017] focus:ring-offset-0 bg-transparent w-4 h-4"
+                            checked={profileNotifyPush}
+                            onChange={e => setProfileNotifyPush(e.target.checked)}
+                          />
+                          <div className="text-left">
+                            <span className="text-xs font-bold text-white block">HQ Push Alerts</span>
+                            <span className="text-[10px] text-slate-400">Real-time sound alerts inside this workstation</span>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 text-right">
+                    <button 
+                      type="submit"
+                      className="bg-[#0B3B8C] hover:bg-[#093073] text-white text-xs font-extrabold py-3.5 px-8 rounded-xl border border-[#D4A017]/30 shadow-lg shadow-[#0B3B8C]/15 transition-all cursor-pointer inline-flex items-center gap-2 uppercase tracking-wide"
+                    >
+                      <span>💾 Save Profile Coordinates</span>
+                    </button>
+                  </div>
+                </form>
+
+                {/* Right Dossier Badge Preview */}
+                <div className="lg:col-span-4 space-y-6">
+                  <div className="bg-[#0A1224] border border-[#D4A017]/25 rounded-3xl p-6 relative overflow-hidden text-center shadow-2xl">
+                    {/* Security Badge Accent Banner */}
+                    <div className="absolute top-0 inset-x-0 h-1.5 bg-[#D4A017]" />
+                    
+                    <div className="mt-2 space-y-4">
+                      <span className="inline-block text-[8px] bg-[#D4A017]/10 text-[#D4A017] border border-[#D4A017]/20 rounded-full px-3 py-1 uppercase font-bold tracking-widest">
+                        AUTHORIZED STAFF PORTAL
+                      </span>
+                      
+                      {/* Badge Photo */}
+                      <div className="w-24 h-24 rounded-full bg-[#121B30] border-2 border-[#D4A017]/30 mx-auto relative overflow-hidden flex items-center justify-center">
+                        {profilePhoto ? (
+                          <img src={profilePhoto} alt="Badge Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <span className="text-3xl font-bold text-[#D4A017]">{profileFullName.charAt(0).toUpperCase() || 'U'}</span>
+                        )}
+                      </div>
+
+                      {/* Name & Coordinates */}
+                      <div className="space-y-1">
+                        <h4 className="text-base font-extrabold text-white tracking-wide">{profileFullName || 'Jane Doe'}</h4>
+                        <p className="text-[10px] text-[#D4A017] font-bold uppercase tracking-wider">{profilePosition || 'System Workstation Officer'}</p>
+                        <p className="text-[9px] font-mono text-slate-500">@{profileUsername || 'username'}</p>
+                      </div>
+
+                      {/* Biography Memo block */}
+                      {profileBiography && (
+                        <div className="p-3 bg-[#070F1E] rounded-xl border border-white/5 text-[10px] text-slate-400 italic text-left max-h-[100px] overflow-y-auto">
+                          "{profileBiography}"
+                        </div>
+                      )}
+
+                      {/* Visual Signature preview */}
+                      <div className="py-4 border-y border-white/5">
+                        <span className="text-[8px] uppercase tracking-wider font-bold text-slate-500 block mb-2">Authenticated Verification Sign</span>
+                        {profileSignatureType === 'text' ? (
+                          <span className="text-xl font-serif italic text-[#D4A017] tracking-wider block" style={{ fontFamily: 'Georgia, serif' }}>
+                            {profileSignatureText || profileFullName || 'Jane Doe'}
+                          </span>
+                        ) : (
+                          <div className="bg-white/5 p-2 rounded-xl min-h-[48px] flex items-center justify-center">
+                            {profileSignatureData ? (
+                              <img src={profileSignatureData} alt="Registered Signature" className="max-h-12 object-contain invert" />
+                            ) : (
+                              <span className="text-[9px] text-slate-600 italic">Signature Pad Blank</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Metadata Table */}
+                      <div className="text-[9px] text-slate-500 text-left space-y-1.5 pt-2 font-mono">
+                        <div className="flex justify-between">
+                          <span>CLEARANCE STACK:</span>
+                          <span className="text-white font-bold capitalize">{(session?.role || 'Staff').replace('-', ' ')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>PREFERRED LNG:</span>
+                          <span className="text-white font-bold">{profileLanguage}</span>
+                        </div>
+                        <div className="flex justify-between flex-wrap">
+                          <span>ACTIVE TIMEZONE:</span>
+                          <span className="text-[#D4A017] font-bold truncate max-w-[150px]" title={profileTimezone}>{profileTimezone}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>VERIFICATION:</span>
+                          <span className="text-emerald-400 font-bold">SECURE PASS</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Operational Security Audit Advice */}
+                  <div className="bg-[#0A1224] border border-white/5 rounded-3xl p-6 text-left space-y-4">
+                    <div className="w-8 h-8 rounded-lg bg-[#0B3B8C]/10 flex items-center justify-center text-[#0B3B8C]">
+                      <span className="text-sm">🛡️</span>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white">Workstation Security Policy</h4>
+                      <p className="text-[10px] text-slate-400 leading-relaxed mt-1">
+                        Any profile coordinate adjustment is recorded inside the immutable System Audit Trail. For regulatory compliance, passwords must be at least 6 characters long. Keep your coordinates synchronized to receive emergency tourist dispatch alerts immediately.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>

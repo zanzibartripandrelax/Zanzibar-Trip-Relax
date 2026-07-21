@@ -287,34 +287,8 @@ export default function Home({ navigate }: HomeProps) {
             Luxury safaris, Zanzibar holidays, Mount Kilimanjaro trekking, island excursions, and private airport transfers — professionally planned by local travel experts.
           </p>
 
-          {/* Call-to-action Hero Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-10 w-full max-w-md sm:max-w-xl">
-            <button 
-              type="button" 
-              onClick={() => navigate('trip-builder')} 
-              className="w-full sm:w-auto px-8 py-4 bg-[#D4A017] hover:bg-[#c49010] text-[#0A1224] font-black rounded-full transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] duration-200 cursor-pointer text-xs uppercase tracking-wider border-0"
-            >
-              <Compass size={16} />
-              Plan My Trip
-            </button>
-            <button 
-              type="button" 
-              onClick={() => navigate('tours')} 
-              className="w-full sm:w-auto px-8 py-4 border-2 border-white/80 text-white font-extrabold rounded-full hover:bg-white/15 hover:border-white transition-all flex items-center justify-center gap-2 shadow-md hover:scale-[1.02] active:scale-[0.98] duration-200 cursor-pointer text-xs uppercase tracking-wider bg-black/10 backdrop-blur-sm"
-            >
-              Explore Tours
-            </button>
-            <a 
-              href="https://wa.me/255629506063" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              onClick={() => trackWhatsAppClick('Home Hero Section', 'General Chat')}
-              className="w-full sm:w-auto px-8 py-4 bg-[#25D366] hover:bg-[#1ebd5a] text-white font-black rounded-full transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] duration-200 text-xs uppercase tracking-wider"
-            >
-              <MessageCircle size={16} fill="white" />
-              WhatsApp Us
-            </a>
-          </div>
+          {/* Floating search is located right below the hero card */}
+          <div className="mb-6" />
 
           {/* Premium trust factors */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-8 pt-6 border-t border-white/10 w-full max-w-4xl text-white/95 text-[11px] font-bold uppercase tracking-wider">
@@ -344,7 +318,7 @@ export default function Home({ navigate }: HomeProps) {
 
       {/* SECTION 2 — QUICK SEARCH (MOST IMPORTANT) */}
       <section className="relative z-30 -mt-10 md:-mt-8 pb-10">
-        <SmartSearchEngine navigate={navigate} initiallyOpenCalendar={true} />
+        <SmartSearchEngine navigate={navigate} initiallyOpenCalendar={false} />
       </section>
 
       {/* SECTION 3 — WHY BOOK WITH US */}

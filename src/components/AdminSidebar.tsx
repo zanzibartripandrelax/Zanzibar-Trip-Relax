@@ -73,6 +73,14 @@ export default function AdminSidebar({
       isActive: activeTab === 'dashboard'
     },
     { 
+      id: 'profile', 
+      label: 'My Profile', 
+      icon: User,
+      section: 'overview',
+      action: () => { setActiveTab('profile'); setIsMobileOpen(false); },
+      isActive: activeTab === 'profile'
+    },
+    { 
       id: 'bookings', 
       label: 'Bookings', 
       icon: Calendar,
@@ -204,25 +212,25 @@ export default function AdminSidebar({
   // Specific role configurations (limit visible tabs depending on credentials to prevent leaks)
   const rolePermissions: Record<string, string[]> = {
     'owner': [
-      'dashboard', 'bookings', 'inquiries', 'zanzibarTours', 'holidayPackages', 
+      'dashboard', 'profile', 'bookings', 'inquiries', 'zanzibarTours', 'holidayPackages', 
       'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'suppliers', 
       'customers', 'users', 'media', 'cms', 'logs', 'settings'
     ],
     'super admin': [
-      'dashboard', 'bookings', 'inquiries', 'zanzibarTours', 'holidayPackages', 
+      'dashboard', 'profile', 'bookings', 'inquiries', 'zanzibarTours', 'holidayPackages', 
       'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'suppliers', 
       'customers', 'users', 'media', 'cms', 'logs', 'settings'
     ],
     'manager': [
-      'dashboard', 'bookings', 'inquiries', 'zanzibarTours', 'holidayPackages', 
+      'dashboard', 'profile', 'bookings', 'inquiries', 'zanzibarTours', 'holidayPackages', 
       'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'suppliers', 
       'customers', 'media', 'cms', 'logs', 'settings'
     ],
-    'reservation officer': ['dashboard', 'bookings', 'inquiries', 'customers'],
-    'sales': ['dashboard', 'bookings', 'customers'],
-    'accountant': ['dashboard', 'logs', 'settings'],
-    'marketing': ['dashboard', 'customers', 'media', 'cms'],
-    'customer support': ['dashboard', 'customers', 'inquiries']
+    'reservation officer': ['dashboard', 'profile', 'bookings', 'inquiries', 'customers'],
+    'sales': ['dashboard', 'profile', 'bookings', 'customers'],
+    'accountant': ['dashboard', 'profile', 'logs', 'settings'],
+    'marketing': ['dashboard', 'profile', 'customers', 'media', 'cms'],
+    'customer support': ['dashboard', 'profile', 'customers', 'inquiries']
   };
 
   const allowedIds = rolePermissions[normalizedRole] || ['dashboard'];
@@ -297,12 +305,16 @@ export default function AdminSidebar({
         </div>
         
         {/* User Profile Info Card */}
-        <div className="mt-4 flex items-center gap-2.5 bg-[#121B30] border border-white/5 rounded-xl p-2.5">
-          <div className="w-7 h-7 rounded-full bg-[#D4A017]/15 border border-[#D4A017]/25 flex items-center justify-center font-bold text-xs text-[#D4A017] shrink-0">
+        <div 
+          onClick={() => { setActiveTab('profile'); setIsMobileOpen(false); }}
+          className="mt-4 flex items-center gap-2.5 bg-[#121B30] border border-white/5 rounded-xl p-2.5 hover:bg-[#1a2745] hover:border-[#D4A017]/30 transition-all cursor-pointer group"
+          title="Click to view/edit your profile"
+        >
+          <div className="w-7 h-7 rounded-full bg-[#D4A017]/15 border border-[#D4A017]/25 flex items-center justify-center font-bold text-xs text-[#D4A017] shrink-0 group-hover:scale-105 transition-transform">
             {session.name.charAt(0).toUpperCase()}
           </div>
           <div className="truncate flex-1">
-            <p className="text-xs font-bold text-slate-200 truncate">{session.name}</p>
+            <p className="text-xs font-bold text-slate-200 truncate group-hover:text-white">{session.name}</p>
             <p className="text-[9px] font-semibold text-slate-500 capitalize">{session.role.replace('-', ' ')}</p>
           </div>
         </div>

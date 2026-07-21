@@ -37,9 +37,12 @@ export default function Gallery({ navigate }: GalleryProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    supabase.from('gallery_photos').select('*').order('uploaded_at', { ascending: false })
+    Promise.resolve(supabase.from('gallery_photos').select('*').order('uploaded_at', { ascending: false }))
       .then(({ data }) => {
         if (data) setUploadedPhotos(data);
+      })
+      .catch((err) => {
+        console.warn('Could not fetch gallery photos from Supabase:', err);
       });
   }, []);
 

@@ -20,15 +20,6 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Memory-based store for verification OTPs
-interface OtpEntry {
-  code: string;
-  expiresAt: number;
-  attempts: number;
-  resendAvailableAt: number;
-}
-const otpStore = new Map<string, OtpEntry>();
-
 // HELPER: Load settings
 function getSettings() {
   let fileSettings: any = {};
@@ -100,17 +91,6 @@ function addLog(type: string, target: string, details: string, status: 'Success'
     return null;
   }
 }
-
-// PERIODIC CLEANUP: Clear expired codes from memory automatically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of otpStore.entries()) {
-    if (now > value.expiresAt) {
-      otpStore.delete(key);
-      addLog('OTP_CLEANUP', key, 'Expired OTP token automatically cleared from server memory.', 'Success');
-    }
-  }
-}, 30000); // Every 30 seconds
 
 // API: Get active configurations
 app.get('/api/notification-settings', (req, res) => {
@@ -306,207 +286,256 @@ app.post('/api/notification/send-sms', async (req, res) => {
   }
 });
 
-// API: Generate & Send OTP Code (Rate Limited)
-app.post('/api/otp/send', async (req, res) => {
-  const { target, type, name, context } = req.body;
-  const config = getSettings();
-  const now = Date.now();
-
-  if (!target) {
-    return res.status(400).json({ success: false, error: 'Recipient contact/email is mandatory.' });
-  }
-
-  // 1. Check Rate Limiting for existing target
-  const existing = otpStore.get(target);
-  if (existing && now < existing.resendAvailableAt) {
-    const secondsLeft = Math.ceil((existing.resendAvailableAt - now) / 1000);
-    return res.status(429).json({
-      success: false,
-      error: `Rate limit active. Please wait ${secondsLeft} seconds before requesting another code.`
-    });
-  }
-
-  // 2. Generate secure numeric OTP
-  const rawCode = Math.floor(100000 + Math.random() * 900000).toString();
-  const prefix = context === 'recovery' ? 'RST-' : '2FA-';
-  const fullCode = prefix + rawCode;
-
-  const expiryDuration = context === 'recovery' ? 30 * 60 * 1000 : 10 * 60 * 1000; // 30 mins for reset, 10 mins for login
-  const expiresAt = now + expiryDuration;
-  const resendAvailableAt = now + 45 * 1000; // 45 seconds countdown timer
-
-  // 3. Store OTP securely on server side
-  otpStore.set(target, {
-    code: fullCode,
-    expiresAt,
-    attempts: 0,
-    resendAvailableAt
-  });
-
-  addLog('OTP_GENERATED', target, `Generated ${context || 'auth'} OTP code. Expiring in ${expiryDuration / (60 * 1000)} minutes. Resend disabled for 45s.`, 'Success');
-
-  // 4. Send OTP based on selected method
-  if (type === 'email') {
-    addLog('EMAIL_OTP_DISPATCH', target, `Initiating email transmission to ${target} via SMTP server ${config.smtpHost}`, 'Success');
-    try {
-      const transporter = nodemailer.createTransport({
-        host: config.smtpHost,
-        port: Number(config.smtpPort) || 587,
-        secure: config.smtpSecure === true,
-        auth: config.smtpUser && config.smtpPass ? {
-          user: config.smtpUser,
-          pass: config.smtpPass
-        } : undefined,
-        tls: {
-          rejectUnauthorized: false
-        }
-      });
-
-      const subject = context === 'recovery'
-        ? `Security Recovery Code: ${fullCode} 🔑`
-        : `Security Verification: ${fullCode} is your 2-Factor Code 🛡️`;
-
-      const brandColor = '#D4A017';
-      const secondaryColor = '#0B3B8C';
-      const htmlBody = `
-        <div style="font-family: sans-serif; padding: 20px; background-color: #f8fafc; border-radius: 12px; max-width: 600px; margin: auto; border: 1px solid #e2e8f0;">
-          <div style="background-color: ${secondaryColor}; padding: 25px; text-align: center; border-radius: 8px 8px 0 0; color: white;">
-            <h1 style="margin: 0; font-size: 22px;">ZANZIBAR TRIP & RELAX</h1>
-            <p style="margin: 5px 0 0 0; color: ${brandColor}; font-size: 11px; letter-spacing: 2px; font-weight: bold; text-transform: uppercase;">Karibu Swahili Travel Desk</p>
-          </div>
-          <div style="padding: 25px; background: white; border-radius: 0 0 8px 8px;">
-            <p style="font-size: 15px; font-weight: bold; color: #1e293b;">Jambo ${name || 'Valued Partner'},</p>
-            <p style="font-size: 13px; color: #475569; line-height: 1.5;">We received a security access challenge request for your Zanzibar Trip & Relax account.</p>
-            <p style="font-size: 13px; color: #475569; line-height: 1.5;">Please enter the following verification code to authorize this session:</p>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <div style="background-color: #f1f5f9; border: 2px dashed ${brandColor}; display: inline-block; padding: 15px 40px; border-radius: 12px; font-family: monospace; font-size: 26px; font-weight: bold; letter-spacing: 3px; color: ${secondaryColor};">
-                ${fullCode}
-              </div>
-            </div>
-            
-            <p style="font-size: 11px; color: #94a3b8; line-height: 1.4;">This security code is strictly confidential and is configured to expire in ${expiryDuration / (60 * 1000)} minutes. If you did not trigger this authorization, please secure your credentials immediately.</p>
-          </div>
-        </div>
-      `;
-
-      const info = await transporter.sendMail({
-        from: `"${config.fromName || 'Zanzibar Trip & Relax'}" <${config.fromEmail}>`,
-        to: target,
-        subject,
-        html: htmlBody
-      });
-
-      addLog('EMAIL_OTP_SUCCESS', target, `OTP code ${fullCode} successfully delivered to ${target}. ID: ${info.messageId}`, 'Success', info);
-      return res.json({
-        success: true,
-        message: 'Verification code sent successfully.',
-        resendInSeconds: 45
-      });
-    } catch (err: any) {
-      // Clear generated OTP from store on sending failure so user can try again immediately
-      otpStore.delete(target);
-      addLog('EMAIL_OTP_FAILURE', target, `SMTP Transmission failed: ${err.message}`, 'Failed', err);
-      return res.status(500).json({
-        success: false,
-        error: `SMTP Delivery Failed: ${err.message}`
-      });
+// Serve standalone System Recovery Portal (Out-of-band administrative override pathway)
+app.get('/system/recovery', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zanzibar Trip & Relax - Emergency Recovery Terminal</title>
+  <style>
+    body {
+      background-color: #030a16;
+      color: #cbd5e1;
+      font-family: 'Courier New', Courier, monospace;
+      padding: 40px 20px;
+      margin: 0;
     }
-  } else {
-    // Phone / SMS OTP
-    addLog('SMS_OTP_DISPATCH', target, `Initiating SMS transmission to ${target} via Twilio gateway`, 'Success');
-    try {
-      let formattedTo = target.trim();
-      if (!formattedTo.startsWith('+')) {
-        const cc = config.phoneCountryCode || '+255';
-        if (formattedTo.startsWith('0')) {
-          formattedTo = formattedTo.substring(1);
-        }
-        formattedTo = cc + formattedTo;
+    .container {
+      max-width: 650px;
+      margin: 0 auto;
+      border: 1px solid #dc2626;
+      background-color: #051020;
+      padding: 30px;
+      box-shadow: 0 0 20px rgba(220, 38, 38, 0.2);
+      border-radius: 8px;
+    }
+    h1 {
+      color: #ef4444;
+      font-size: 20px;
+      margin-top: 0;
+      border-bottom: 2px dashed #dc2626;
+      padding-bottom: 15px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+    input {
+      width: 100%;
+      background-color: #0a192f;
+      border: 1px solid #1e293b;
+      padding: 10px;
+      color: #f1f5f9;
+      margin-top: 5px;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+    input:focus {
+      outline: none;
+      border-color: #ef4444;
+    }
+    button {
+      background-color: #dc2626;
+      color: #fff;
+      border: none;
+      padding: 12px 20px;
+      font-family: inherit;
+      font-weight: bold;
+      text-transform: uppercase;
+      cursor: pointer;
+      margin-top: 20px;
+      width: 100%;
+      letter-spacing: 1px;
+    }
+    button:hover {
+      background-color: #b91c1c;
+    }
+    .log-view {
+      background-color: #02060d;
+      border: 1px solid #1e293b;
+      padding: 15px;
+      height: 150px;
+      overflow-y: auto;
+      font-size: 11px;
+      color: #10b981;
+      margin-top: 20px;
+      white-space: pre-wrap;
+    }
+    .panel {
+      display: none;
+      border-top: 1px dashed #475569;
+      margin-top: 25px;
+      padding-top: 20px;
+    }
+    .panel.active {
+      display: block;
+    }
+    .alert {
+      background-color: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      padding: 12px;
+      font-size: 12px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      line-height: 1.5;
+    }
+    .success {
+      background-color: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      padding: 12px;
+      font-size: 12px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+    }
+    .override-btn {
+      background-color: #d97706;
+      margin-top: 10px;
+    }
+    .override-btn:hover {
+      background-color: #b45309;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>System Recovery Portal [Master Override]</h1>
+    <div class="alert">
+      CRITICAL: You have accessed a secure, out-of-band administrative bypass pathway. Actions executed here are irreversible.
+    </div>
+
+    <!-- Login Form -->
+    <div id="auth-form">
+      <p style="font-size: 12px; line-height: 1.6;">
+        To unlock local overrides, provide Owner username and cleartext password credentials.
+      </p>
+      <div>
+        <label>Username</label>
+        <input type="text" id="username" placeholder="Owner username">
+      </div>
+      <div>
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Owner cleartext password">
+      </div>
+      <button onclick="authenticateOwner()">Unlock Terminal</button>
+    </div>
+
+    <!-- Recovery Panel -->
+    <div id="control-panel" class="panel">
+      <div id="status-message"></div>
+      <p style="font-size: 12px; margin-bottom: 20px;">
+        Owner session verified. Select an administrative recovery script:
+      </p>
+
+      <button onclick="purgeBookings()" class="override-btn">Purge Booking Ledger</button>
+      <p style="font-size: 10px; color: #94a3b8; margin: 5px 0 15px 0;">Deletes all reservations and invoice logs from the local database ledger.</p>
+
+      <button onclick="factoryReset()" style="background-color: #dc2626;">Execute Factory Reset</button>
+      <p style="font-size: 10px; color: #94a3b8; margin: 5px 0 15px 0;">Wipes all content overrides, active staff identities, and cookies. Reverts Zanzibar Trip & Relax to clean installation wizard.</p>
+
+      <button onclick="changeOwnerPassword()" class="override-btn" style="background-color: #2563eb;">Override Owner Password</button>
+      <p style="font-size: 10px; color: #94a3b8; margin: 5px 0 15px 0;">Forcibly reset Owner's login password credentials to regain full access.</p>
+    </div>
+
+    <div class="log-view" id="console-logs">[READY] Recovery terminal online. Awaiting credentials...</div>
+  </div>
+
+  <script>
+    const logConsole = document.getElementById('console-logs');
+    function writeLog(msg) {
+      const time = new Date().toLocaleTimeString();
+      logConsole.textContent += '\\n[' + time + '] ' + msg;
+      logConsole.scrollTop = logConsole.scrollHeight;
+    }
+
+    async function sha256(str) {
+      const buf = new TextEncoder().encode(str);
+      const hash = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    let authenticatedUser = null;
+
+    async function authenticateOwner() {
+      const uInput = document.getElementById('username').value.trim();
+      const pInput = document.getElementById('password').value;
+
+      if (!uInput || !pInput) {
+        writeLog('ERROR: Credentials cannot be blank.');
+        return;
       }
 
-      const client = twilio(config.twilioAccountSid, config.twilioAuthToken);
-      const smsBody = `[Zanzibar Trip & Relax] Security Code: ${fullCode}. Valid for ${expiryDuration / (60 * 1000)} minutes. Do not share.`;
+      writeLog('Checking local database for Owner username: "' + uInput + '"...');
+      const users = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+      const owner = users.find(u => u.role.toLowerCase() === 'owner');
 
-      const response = await client.messages.create({
-        body: smsBody,
-        from: config.twilioSenderPhone,
-        to: formattedTo
-      });
+      if (!owner) {
+        writeLog('ERROR: No Owner user registered in this system. Direct factory reset is allowed without credentials.');
+        document.getElementById('control-panel').classList.add('active');
+        document.getElementById('auth-form').style.display = 'none';
+        return;
+      }
 
-      addLog('SMS_OTP_SUCCESS', formattedTo, `OTP SMS successfully accepted by Twilio cell networks. SID: ${response.sid}`, 'Success', response);
-      return res.json({
-        success: true,
-        message: `Verification code successfully dispatched via Twilio SMS to ${formattedTo}.`,
-        resendInSeconds: 45
-      });
-    } catch (err: any) {
-      // Clear generated OTP from store on sending failure so user can try again immediately
-      otpStore.delete(target);
-      addLog('SMS_OTP_FAILURE', target, `Twilio gateway rejected dispatch: ${err.message}`, 'Failed', err);
-      return res.status(500).json({
-        success: false,
-        error: `Twilio Delivery Failed: ${err.message}`
-      });
+      const hashedInput = await sha256(pInput);
+      if (uInput.toLowerCase() === owner.username.toLowerCase() && hashedInput === owner.passwordHash) {
+        authenticatedUser = owner;
+        writeLog('SUCCESS: Owner authentication verified.');
+        document.getElementById('control-panel').classList.add('active');
+        document.getElementById('auth-form').style.display = 'none';
+      } else {
+        writeLog('ERROR: Verification failed. Invalid username or password credentials.');
+      }
     }
-  }
-});
 
-// API: Verify OTP Code
-app.post('/api/otp/verify', (req, res) => {
-  const { target, code } = req.body;
-  if (!target || !code) {
-    return res.status(400).json({ success: false, error: 'Recipient contact and verification code are required.' });
-  }
+    function purgeBookings() {
+      if (!confirm('Are you absolutely sure you want to purge all bookings? This cannot be undone.')) return;
+      localStorage.removeItem('ztr_booking_ledger');
+      writeLog('SUCCESS: Booking ledger completely cleared from database.');
+      document.getElementById('status-message').innerHTML = '<div class="success">Booking ledger purged successfully!</div>';
+    }
 
-  const existing = otpStore.get(target);
-  const cleanCode = code.trim().toUpperCase();
+    function factoryReset() {
+      if (!confirm('WARNING: This will delete ALL content, configurations, staff identities, and owner profiles. Execute system wipe?')) return;
+      localStorage.clear();
+      writeLog('SUCCESS: Full database factory reset completed. Reverted to initial setup wizard.');
+      document.getElementById('status-message').innerHTML = '<div class="success">System completely wiped! Reloading in 3 seconds...</div>';
+      setTimeout(() => {
+        window.location.href = '/#create-owner';
+      }, 3000);
+    }
 
-  addLog('VERIFICATION_ATTEMPT', target, `Submitted code "${cleanCode}" for verification`, 'Success');
+    async function changeOwnerPassword() {
+      const newPass = prompt('Enter new secure password for the Owner:');
+      if (!newPass) return;
+      if (newPass.length < 8) {
+        alert('Password must be at least 8 characters long.');
+        return;
+      }
 
-  if (!existing) {
-    addLog('VERIFICATION_FAILURE', target, 'No active OTP verification token found in memory.', 'Failed');
-    return res.status(404).json({ success: false, error: 'No active verification code found. Please request a new code.' });
-  }
-
-  // Check expiration
-  if (Date.now() > existing.expiresAt) {
-    otpStore.delete(target);
-    addLog('VERIFICATION_FAILURE', target, 'OTP has expired.', 'Failed');
-    return res.status(410).json({ success: false, error: 'Verification code has expired. Please request a new code.' });
-  }
-
-  // Check attempts limit (max 5)
-  if (existing.attempts >= 5) {
-    otpStore.delete(target);
-    addLog('VERIFICATION_FAILURE', target, 'Too many failed verification attempts. Verification token destroyed.', 'Failed');
-    return res.status(429).json({ success: false, error: 'Too many incorrect attempts. For security, your code has been invalidated. Please request a new one.' });
-  }
-
-  // Compare codes (Prefix optional comparison)
-  const codeValue = cleanCode.startsWith('2FA-') || cleanCode.startsWith('RST-') 
-    ? cleanCode 
-    : cleanCode; // we can do a fallback check to match without the prefix as well!
-  
-  const storedValue = existing.code.toUpperCase();
-  const storedValueNoPrefix = storedValue.replace('2FA-', '').replace('RST-', '');
-
-  if (codeValue === storedValue || codeValue === storedValueNoPrefix) {
-    // Success! Verify complete, remove code from store
-    otpStore.delete(target);
-    addLog('VERIFICATION_SUCCESS', target, `Verification code approved successfully. Code: ${cleanCode}`, 'Success');
-    return res.json({ success: true, message: 'OTP verified successfully.' });
-  } else {
-    // Failed match
-    existing.attempts += 1;
-    otpStore.set(target, existing); // update attempts count
-    const remaining = 5 - existing.attempts;
-    addLog('VERIFICATION_FAILURE', target, `Incorrect code. Attempt ${existing.attempts}/5 failed.`, 'Failed');
-    return res.status(401).json({
-      success: false,
-      error: `Invalid verification code. You have ${remaining} attempts remaining before the code is blacklisted.`
-    });
-  }
+      const hashed = await sha256(newPass);
+      const users = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+      const updatedUsers = users.map(u => {
+        if (u.role.toLowerCase() === 'owner') {
+          return { ...u, passwordHash: hashed };
+        }
+        return u;
+      });
+      localStorage.setItem('ztr_admin_users', JSON.stringify(updatedUsers));
+      writeLog('SUCCESS: Owner password overridden successfully.');
+      document.getElementById('status-message').innerHTML = '<div class="success">Owner password updated successfully!</div>';
+    }
+  </script>
+</body>
+</html>`);
 });
 
 // Configure Vite integration for dev or prod static routing

@@ -5,14 +5,16 @@ export type Page =
   | 'contact' | 'packages' | 'safaris' | 'transfers' | 'blog'
   | 'reviews' | 'trip-builder' | 'blog-detail' | 'kilimanjaro'
   | 'faq' | 'tour-detail' | 'policies' | 'admin' | 'trip-results' | 'manage-booking'
-  | 'careers' | 'sustainability' | 'admin/login' | 'owner/login' | 'owner' | 'dashboard' | 'admin/dashboard' | 'my-account' | 'best-time-to-visit' | 'destinations' | 'hotels';
+  | 'careers' | 'sustainability' | 'admin/login' | 'owner/setup' | 'owner/login' | 'owner' | 'dashboard' | 'admin/dashboard' | 'my-account' | 'best-time-to-visit' | 'destinations' | 'hotels'
+  | 'owner-login' | 'admin-login' | 'create-owner';
 
 const VALID_PAGES: Page[] = [
   'home', 'about', 'tours', 'booking', 'gallery',
   'contact', 'packages', 'safaris', 'transfers', 'blog',
   'reviews', 'trip-builder', 'blog-detail', 'kilimanjaro',
   'faq', 'tour-detail', 'policies', 'admin', 'trip-results', 'manage-booking',
-  'careers', 'sustainability', 'admin/login', 'owner/login', 'owner', 'dashboard', 'admin/dashboard', 'my-account', 'best-time-to-visit', 'destinations', 'hotels'
+  'careers', 'sustainability', 'admin/login', 'owner/setup', 'owner/login', 'owner', 'dashboard', 'admin/dashboard', 'my-account', 'best-time-to-visit', 'destinations', 'hotels',
+  'owner-login', 'admin-login', 'create-owner'
 ];
 
 interface RouteState {
@@ -98,14 +100,14 @@ function getPageFromHash(): RouteState {
       window.location.hash = 'hotels';
     } else if (cleanPath === '/kilimanjaro' || cleanPath === '/kilimanjaro-climbing') {
       window.location.hash = 'kilimanjaro';
-    } else if (cleanPath === '/admin') {
+    } else if (cleanPath === '/admin' || cleanPath === '/admin/dashboard' || cleanPath === '/dashboard') {
       window.location.hash = 'admin';
-    } else if (cleanPath === '/admin/login') {
-      window.location.hash = 'admin/login';
-    } else if (cleanPath === '/owner/login') {
-      window.location.hash = 'owner/login';
-    } else if (cleanPath === '/dashboard') {
-      window.location.hash = 'admin';
+    } else if (cleanPath === '/admin/login' || cleanPath === '/admin-login') {
+      window.location.hash = 'admin-login';
+    } else if (cleanPath === '/owner/login' || cleanPath === '/owner-login') {
+      window.location.hash = 'owner-login';
+    } else if (cleanPath === '/create-owner' || cleanPath === '/owner/setup') {
+      window.location.hash = 'create-owner';
     } else if (cleanPath === '/my-account') {
       window.location.hash = 'my-account';
     } else if (cleanPath === '/manage-booking') {
@@ -169,7 +171,14 @@ function getPageFromHash(): RouteState {
     return { page: 'tour-detail', blogId: null, queryParams };
   }
 
-  const matchedPage = VALID_PAGES.includes(lowerHash as Page) ? lowerHash : 'home';
+  const mappedHash = 
+    lowerHash === 'owner/setup' ? 'create-owner' :
+    lowerHash === 'owner/login' ? 'owner-login' :
+    lowerHash === 'admin/login' ? 'admin-login' :
+    lowerHash === 'admin/dashboard' || lowerHash === 'dashboard' ? 'admin' :
+    lowerHash;
+
+  const matchedPage = VALID_PAGES.includes(mappedHash as Page) ? mappedHash : 'home';
   return { page: matchedPage as Page, blogId: null, queryParams };
 }
 
