@@ -511,7 +511,7 @@ const DESTINATION_FALLBACKS: Record<string, {
   }
 };
 
-export default function Destinations({ navigate }: { navigate: (page: Page) => void }) {
+export default function Destinations({ navigate }: { navigate: (page: Page, id?: string) => void }) {
   const [siteContent] = useState(getSiteContent());
   const [tours] = useState<TourItem[]>(siteContent.tours || []);
   const [hotels] = useState(getHotels());
@@ -774,12 +774,10 @@ export default function Destinations({ navigate }: { navigate: (page: Page) => v
                   </p>
                   <button 
                     onClick={() => {
-                      setBookingModalProduct({
-                        name: `${currentDestObj.name} Explorer`,
-                        category: 'tour',
-                        price: 150
-                      });
-                      setBookingModalOpen(true);
+                      const title = `${currentDestObj.name} Explorer`;
+                      localStorage.setItem('booking_prefilled_tour', title);
+                      localStorage.setItem('booking_prefilled_category', 'tour');
+                      navigate('booking', `package=${encodeURIComponent(title)}`);
                     }}
                     className="w-full bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] font-black uppercase text-xs py-3.5 rounded-xl transition-all shadow-md cursor-pointer"
                   >
@@ -836,12 +834,9 @@ export default function Destinations({ navigate }: { navigate: (page: Page) => v
                           <p className="text-[10px] text-slate-500 line-clamp-1">{tour.duration || 'Flexible'} • ${tourPrice} USD</p>
                           <button
                             onClick={() => {
-                              setBookingModalProduct({
-                                name: tourTitle,
-                                category: tour.category || 'tour',
-                                price: tourPrice
-                              });
-                              setBookingModalOpen(true);
+                              localStorage.setItem('booking_prefilled_tour', tourTitle);
+                              localStorage.setItem('booking_prefilled_category', tour.category || 'tour');
+                              navigate('booking', `package=${encodeURIComponent(tourTitle)}`);
                             }}
                             className="text-[#0B3B8C] hover:text-[#D4A017] text-[10px] font-bold mt-1 inline-flex items-center gap-1 cursor-pointer"
                           >

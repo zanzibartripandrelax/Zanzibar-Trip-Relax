@@ -45,9 +45,9 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
         <div className={`grid grid-cols-1 ${currentPage === 'home' ? '' : 'lg:grid-cols-12'} gap-8 items-center pb-12 mb-12 border-b border-white/10`}>
           <div className={`${currentPage === 'home' ? 'w-full' : 'lg:col-span-5'} flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left`}>
             <ProgressiveImage
-              src="/src/assets/images/logo.jpg"
+              src="/src/assets/images/logo.png"
               alt="Zanzibar Trip and Relax Logo"
-              className="h-16 w-16 object-cover bg-white/5 rounded-full p-1 border border-white/10 shrink-0 shadow-lg"
+              className="h-16 w-16 object-contain shrink-0 filter drop-shadow-md"
             />
             <div>
               <div className="font-extrabold text-2xl text-white tracking-wide uppercase" style={{ fontFamily: 'Playfair Display, serif' }}>

@@ -102,30 +102,30 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
     }));
   }, []);
 
-  // Sync state with URL parameters
+  // Sync state with URL parameters or localStorage
   useEffect(() => {
-    if (queryParams && Object.keys(queryParams).length > 0) {
-      const packageParam = queryParams.package || queryParams.id || queryParams.product || queryParams.tour || queryParams.safari;
-      if (packageParam) {
-        const decodedParam = decodeURIComponent(packageParam).trim().toLowerCase();
-        const matched = allExperiences.find(exp => 
-          (exp?.id || '').toLowerCase() === decodedParam || 
-          (exp?.name || '').toLowerCase() === decodedParam
-        );
-        if (matched) {
-          setSelectedPackage(matched);
-        } else {
-          // If no direct ID matches, create custom prefilled option
-          setSelectedPackage({
-            id: 'custom-package',
-            name: decodeURIComponent(packageParam),
-            basePrice: 150,
-            duration: 'Custom Request',
-            image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=600&q=80',
-            category: queryParams.category || 'tour',
-            description: 'Custom selected Zanzibar itinerary request.'
-          });
-        }
+    const prefilledFromStorage = localStorage.getItem('booking_prefilled_tour');
+    const packageParam = queryParams?.package || queryParams?.id || queryParams?.product || queryParams?.tour || queryParams?.safari || prefilledFromStorage;
+    
+    if (packageParam) {
+      const decodedParam = decodeURIComponent(packageParam).trim().toLowerCase();
+      const matched = allExperiences.find(exp => 
+        (exp?.id || '').toLowerCase() === decodedParam || 
+        (exp?.name || '').toLowerCase() === decodedParam
+      );
+      if (matched) {
+        setSelectedPackage(matched);
+      } else {
+        // If no direct ID matches, create custom prefilled option
+        setSelectedPackage({
+          id: 'custom-package',
+          name: decodeURIComponent(packageParam),
+          basePrice: 150,
+          duration: 'Custom Request',
+          image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=600&q=80',
+          category: queryParams?.category || localStorage.getItem('booking_prefilled_category') || 'tour',
+          description: 'Custom selected Zanzibar itinerary request.'
+        });
       }
     }
   }, [queryParams, allExperiences]);

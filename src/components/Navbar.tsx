@@ -212,9 +212,9 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
         >
           <div className="h-[50px] w-[50px] sm:h-[60px] sm:w-[60px] relative flex-shrink-0">
             <ProgressiveImage
-              src="/src/assets/images/logo.jpg"
+              src="/src/assets/images/logo.png"
               alt="Zanzibar Trip and Relax Logo"
-              className="h-full w-full object-cover rounded-full bg-white/10 p-0.5 border border-white/15 shadow-lg group-hover:scale-105 transition-all duration-300 aspect-square"
+              className="h-full w-full object-contain group-hover:scale-105 transition-all duration-300 aspect-square"
             />
           </div>
           <div className="hidden sm:flex flex-col leading-tight select-none">
@@ -500,9 +500,9 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
               <div className="flex items-center gap-2.5">
                 <div className="h-[42px] w-[42px] relative flex-shrink-0">
                   <ProgressiveImage
-                    src="/src/assets/images/logo.jpg"
+                    src="/src/assets/images/logo.png"
                     alt="Zanzibar Trip and Relax Logo"
-                    className="h-full w-full object-cover rounded-full bg-white/10 p-0.5 border border-white/10 aspect-square"
+                    className="h-full w-full object-contain aspect-square"
                   />
                 </div>
                 <div className="flex flex-col leading-tight">

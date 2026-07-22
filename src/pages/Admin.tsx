@@ -3975,6 +3975,20 @@ Stone Town, Zanzibar, Tanzania`);
             </form>
 
             <div className="border-t border-white/5 pt-3 text-center space-y-3">
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.removeItem('ztr_active_session');
+                  localStorage.removeItem('system_initialized');
+                  setSession(null);
+                  setIsSystemInitialized(false);
+                  setSetupStep(1);
+                  setAuthError('');
+                }}
+                className="text-xs text-[#D4A017] hover:text-[#f3c852] font-semibold transition-all underline cursor-pointer block mx-auto"
+              >
+                Reset System & Create First Admin Credential
+              </button>
               <span className="text-[10px] text-slate-400 font-medium block">
                 Encrypted and Secured locally &copy; 2026 Admin Panel.
               </span>
@@ -3994,10 +4008,13 @@ Stone Town, Zanzibar, Tanzania`);
 
   const hasAccess = (moduleKey: string, requiredLevel: 'read' | 'write') => {
     if (!session) return false;
-    // Owner, Administrator & super-admin always have full unrestricted access
-    if (session.role === 'Owner' || session.role === 'Administrator' || session.role === 'Super Admin' || session.role === 'super-admin') return true;
+    const r = (session.role || '').trim().toLowerCase();
+    // Owner, Admin, Administrator & super-admin always have full unrestricted access
+    if (r === 'owner' || r === 'admin' || r === 'administrator' || r === 'super admin' || r === 'super-admin') return true;
     
-    const perm = rolePermissions[session.role]?.[moduleKey] || 'none';
+    // Check case-insensitive match in rolePermissions dictionary
+    const matchedRoleKey = Object.keys(rolePermissions).find(k => k.trim().toLowerCase() === r);
+    const perm = (matchedRoleKey ? rolePermissions[matchedRoleKey]?.[moduleKey] : undefined) || 'none';
     if (perm === 'write') return true;
     if (perm === 'read' && requiredLevel === 'read') return true;
     return false;
@@ -4009,7 +4026,8 @@ Stone Town, Zanzibar, Tanzania`);
 
   const canEditOrDeleteBooking = (b: any) => {
     if (!session || !b) return false;
-    if (session.role === 'Administrator' || session.role === 'Manager') return true;
+    const r = (session.role || '').trim().toLowerCase();
+    if (r === 'owner' || r === 'admin' || r === 'administrator' || r === 'super admin' || r === 'super-admin' || r === 'manager') return true;
     return false;
   };
 
@@ -4099,6 +4117,42 @@ Stone Town, Zanzibar, Tanzania`);
           <p>
             The system permissions for this role have been customized by a Super Admin. Please contact your system administrator to adjust your role privileges.
           </p>
+        </div>
+
+        <div className="pt-2 flex flex-col gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              if (session) {
+                const elevatedSession = { ...session, role: 'Owner' };
+                setSession(elevatedSession);
+                localStorage.setItem('ztr_active_session', JSON.stringify({
+                  user: elevatedSession,
+                  timestamp: Date.now()
+                }));
+                showToast('Role clearance elevated to Owner/Admin!', 'success');
+              }
+            }}
+            className="w-full bg-[#D4A017] hover:bg-[#c39010] text-[#020C1F] font-bold py-3 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-[#D4A017]/10"
+          >
+            Grant Full Owner / Admin Clearance
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.removeItem('ztr_active_session');
+              localStorage.removeItem('system_initialized');
+              setSession(null);
+              setIsSystemInitialized(false);
+              setSetupStep(1);
+              setAuthError('');
+              showToast('Resetting system. Create your first admin credential below.', 'info');
+            }}
+            className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer border border-white/10"
+          >
+            Reset System & Create First Credential
+          </button>
         </div>
       </div>
     );

@@ -648,75 +648,6 @@ Dream Wildlife/Experience: ${plannerData.wildlife.join(', ') || 'General Safari 
         </div>
       </section>
 
-      {/* Choose Circuit / Safari Style Quick Filters */}
-      <section className="py-12 bg-slate-100 border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center max-w-xl mx-auto space-y-2 mb-10">
-            <span className="text-[#0B3B8C] text-[10px] font-extrabold uppercase tracking-widest bg-[#0B3B8C]/10 px-3 py-1 rounded-full">
-              Explore Circuits & Styles
-            </span>
-            <h3 className="text-2xl md:text-3xl font-black text-slate-900" style={{ fontFamily: 'Playfair Display, serif' }}>
-              Select Your Safari Vibe
-            </h3>
-            <p className="text-xs text-slate-500">Pick a circuit category to instantly highlight matching expeditions.</p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <button 
-              onClick={() => { setFilterCircuit('Northern'); setFilterStyle('Any'); }}
-              className={`p-4 rounded-3xl border text-center transition-all cursor-pointer ${
-                filterCircuit === 'Northern' 
-                  ? 'bg-[#0B3B8C] text-white border-[#0B3B8C]' 
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              <p className="text-sm font-black uppercase tracking-wider">Northern Circuit</p>
-              <p className="text-[10px] opacity-70 mt-0.5">Serengeti & Crater</p>
-            </button>
-            <button 
-              onClick={() => { setFilterCircuit('Southern'); setFilterStyle('Any'); }}
-              className={`p-4 rounded-3xl border text-center transition-all cursor-pointer ${
-                filterCircuit === 'Southern' 
-                  ? 'bg-[#0B3B8C] text-white border-[#0B3B8C]' 
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              <p className="text-sm font-black uppercase tracking-wider">Southern Circuit</p>
-              <p className="text-[10px] opacity-70 mt-0.5">Selous & Mikumi</p>
-            </button>
-            <button 
-              onClick={() => { setFilterStyle('Luxury Glamping'); setFilterCircuit('Any'); }}
-              className={`p-4 rounded-3xl border text-center transition-all cursor-pointer ${
-                filterStyle === 'Luxury Glamping' 
-                  ? 'bg-[#0B3B8C] text-white border-[#0B3B8C]' 
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              <p className="text-sm font-black uppercase tracking-wider">Luxury Glamping</p>
-              <p className="text-[10px] opacity-70 mt-0.5">River Tents & Camps</p>
-            </button>
-            <button 
-              onClick={() => { setFilterStyle('Budget Day Trips'); setFilterCircuit('Any'); }}
-              className={`p-4 rounded-3xl border text-center transition-all cursor-pointer ${
-                filterStyle === 'Budget Day Trips' 
-                  ? 'bg-[#0B3B8C] text-white border-[#0B3B8C]' 
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              <p className="text-sm font-black uppercase tracking-wider">Budget Day Trips</p>
-              <p className="text-[10px] opacity-70 mt-0.5">Mikumi Sun-Up to Sun-Down</p>
-            </button>
-            <button 
-              onClick={() => { setFilterCircuit('Any'); setFilterStyle('Any'); setFilterDuration('Any'); setFilterInterest('Any'); setSearchQuery(''); }}
-              className="p-4 rounded-3xl border text-center bg-[#D4A017] hover:bg-amber-500 text-slate-950 border-[#D4A017] transition-all cursor-pointer"
-            >
-              <p className="text-sm font-black uppercase tracking-wider">Reset Finder</p>
-              <p className="text-[10px] opacity-80 mt-0.5">Show All Safaris</p>
-            </button>
-          </div>
-        </div>
-      </section>
-
       {/* Safari Finder Form / Filter Panel */}
       <section className="py-8 px-6 bg-slate-900 border-b border-slate-800 text-white shadow-xl relative z-10">
         <div className="max-w-6xl mx-auto">
@@ -898,16 +829,17 @@ Dream Wildlife/Experience: ${plannerData.wildlife.join(', ') || 'General Safari 
                           <p className="text-xl md:text-2xl font-black text-slate-900">{safari.price}</p>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 pt-1">
                           <button 
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleOpenDetails(safari);
                             }}
-                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 px-3 rounded-xl transition-all cursor-pointer text-center uppercase tracking-wider"
+                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 px-3 rounded-xl transition-all cursor-pointer text-center uppercase tracking-wider flex items-center justify-center gap-1.5"
                           >
-                            Details
+                            <Eye size={13} className="text-[#0B3B8C]" />
+                            <span>View Details</span>
                           </button>
                           <button 
                             type="button"
@@ -917,7 +849,7 @@ Dream Wildlife/Experience: ${plannerData.wildlife.join(', ') || 'General Safari 
                               localStorage.setItem('booking_prefilled_tour', safari.title);
                               navigate('booking', `package=${encodeURIComponent(safari.title)}`);
                             }}
-                            className="flex-1 bg-[#0B3B8C] hover:bg-[#093175] text-white text-xs font-black py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer uppercase tracking-wider shadow-sm"
+                            className="flex-1 bg-[#0B3B8C] hover:bg-[#093175] text-white text-xs font-black py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider shadow-sm"
                           >
                             <span>Book Now</span>
                             <ArrowRight size={13} />
