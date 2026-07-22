@@ -1250,16 +1250,30 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
   const loadInquiries = async () => {
     setInquiriesLoading(true);
     try {
+      const localInquiries = JSON.parse(localStorage.getItem('ztr_local_inquiries') || '[]');
+      
       const { data, error } = await supabase
         .from('contact_submissions')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (!error && data) {
-        setInquiriesList(data);
+        // Merge Supabase and Local Storage backups uniquely
+        const combined = [...data];
+        localInquiries.forEach((loc: any) => {
+          if (!combined.some(item => (item.id && item.id === loc.id) || (item.email === loc.email && item.created_at === loc.created_at))) {
+            combined.push(loc);
+          }
+        });
+        combined.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        setInquiriesList(combined);
+      } else {
+        setInquiriesList(localInquiries);
       }
     } catch (e) {
       console.error('Inquiries load error:', e);
+      const localInquiries = JSON.parse(localStorage.getItem('ztr_local_inquiries') || '[]');
+      setInquiriesList(localInquiries);
     } finally {
       setInquiriesLoading(false);
     }
@@ -2190,8 +2204,13 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
       const ownersList = storedUsers.filter((u: any) => u.role?.toUpperCase() === 'ADMIN' || u.role?.toLowerCase() === 'owner');
       console.log('[AUTH-DEBUG] Admin/Owner count:', ownersList.length);
 
+      const searchInput = username.trim().toLowerCase();
       const userMatch = storedUsers.find(
-        (u: any) => u.username.toLowerCase() === username.trim().toLowerCase()
+        (u: any) =>
+          (u.username && u.username.toLowerCase() === searchInput) ||
+          (u.name && u.name.toLowerCase() === searchInput) ||
+          (u.name && u.name.toLowerCase().includes(searchInput)) ||
+          (u.username && u.username.toLowerCase().includes(searchInput))
       );
 
       if (userMatch) {
@@ -13548,23 +13567,72 @@ Stone Town, Zanzibar, Tanzania`);
               <div className="space-y-1">
                 <label className="text-slate-400 font-bold">Booking Status <span className="text-red-500">*</span></label>
                 <select 
-                  value={editingBooking.status} 
+                  value={editingBooking.status || 'Pending Confirmation'} 
                   onChange={e => setEditingBooking({ ...editingBooking, status: e.target.value })}
-                  className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#D4A017] transition-all font-bold capitalize"
+                  className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#D4A017] transition-all font-bold"
                 >
+                  <option value="Pending Confirmation">Pending Confirmation</option>
+                  <option value="Confirmed">Confirmed</option>
+                  <option value="Cancelled">Cancelled</option>
                   <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
                   <option value="approved">Approved</option>
                   <option value="rejected">Rejected</option>
-                  <option value="cancelled">Cancelled</option>
                 </select>
               </div>
 
-              <div className="space-y-1 md:col-span-2">
-                <label className="text-slate-400 font-bold">Pickup details & Meeting Point</label>
+              {/* Manual Pickup Time Entry (Rule 4) */}
+              <div className="space-y-1">
+                <label className="text-slate-400 font-bold">Manual Pickup Time (Rule 4) <span className="text-amber-400 text-[10px]">(e.g. 08:30 AM)</span></label>
                 <input 
                   type="text" 
-                  value={editingBooking.pickup_location || ''} 
+                  value={editingBooking.pickup_time || ''} 
+                  onChange={e => setEditingBooking({ ...editingBooking, pickup_time: e.target.value })}
+                  placeholder="e.g. 08:30 AM"
+                  className="w-full bg-[#121B30] border border-amber-500/30 rounded-xl p-2.5 text-amber-300 outline-none focus:border-[#D4A017] font-mono font-bold" 
+                />
+              </div>
+
+              {/* Driver Assignment (Rule 4 & 11) */}
+              <div className="space-y-1">
+                <label className="text-slate-400 font-bold">Assigned Driver (Rule 11)</label>
+                <input 
+                  type="text" 
+                  value={editingBooking.driver || editingBooking.driver_name || ''} 
+                  onChange={e => setEditingBooking({ ...editingBooking, driver: e.target.value, driver_name: e.target.value })}
+                  placeholder="e.g. Captain Rashid"
+                  className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#D4A017]" 
+                />
+              </div>
+
+              {/* Guide Assignment (Rule 4 & 11) */}
+              <div className="space-y-1">
+                <label className="text-slate-400 font-bold">Assigned Guide (Rule 11)</label>
+                <input 
+                  type="text" 
+                  value={editingBooking.guide || editingBooking.guide_name || ''} 
+                  onChange={e => setEditingBooking({ ...editingBooking, guide: e.target.value, guide_name: e.target.value })}
+                  placeholder="e.g. Guide Juma"
+                  className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#D4A017]" 
+                />
+              </div>
+
+              {/* Vehicle Assignment (Rule 4 & 11) */}
+              <div className="space-y-1 md:col-span-2">
+                <label className="text-slate-400 font-bold">Assigned Vehicle (Rule 4 & 11)</label>
+                <input 
+                  type="text" 
+                  value={editingBooking.vehicle || editingBooking.vehicle_number || ''} 
+                  onChange={e => setEditingBooking({ ...editingBooking, vehicle: e.target.value, vehicle_number: e.target.value })}
+                  placeholder="e.g. Toyota Alphard 4WD (Reg Z 482 AB)"
+                  className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#D4A017]" 
+                />
+              </div>
+
+              <div className="space-y-1 md:col-span-2">
+                <label className="text-slate-400 font-bold">Pickup details & Hotel Location</label>
+                <input 
+                  type="text" 
+                  value={editingBooking.pickup_location || editingBooking.pickup_hotel || ''} 
                   onChange={e => setEditingBooking({ ...editingBooking, pickup_location: e.target.value })}
                   className="w-full bg-[#121B30] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#D4A017] transition-all" 
                 />

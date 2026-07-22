@@ -37,7 +37,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'nav.tours': 'Zanzibar Tours',
     'nav.safaris': 'Tanzania Safaris',
     'nav.kilimanjaro': 'Kilimanjaro',
-    'nav.tripBuilder': 'Trip Builder',
+    'nav.tripBuilder': 'Custom Booking',
     'nav.gallery': 'Gallery',
     'nav.reviews': 'Reviews',
     'nav.blog': 'Blog',

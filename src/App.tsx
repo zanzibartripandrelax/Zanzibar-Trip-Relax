@@ -20,7 +20,6 @@ import Contact from './pages/Contact';
 
 // Pages - Lazy Loaded (Heavy/Secondary)
 const Gallery = lazy(() => import('./pages/Gallery'));
-const TripBuilder = lazy(() => import('./pages/TripBuilder'));
 const Tours = lazy(() => import('./pages/Tours'));
 const Booking = lazy(() => import('./pages/Booking'));
 const Packages = lazy(() => import('./pages/Packages'));
@@ -172,8 +171,6 @@ export default function App() {
         return <Blog navigate={navigate} />;
       case 'reviews':
         return <Reviews navigate={navigate} />;
-      case 'trip-builder':
-        return <TripBuilder navigate={navigate} />;
       case 'blog-detail':
         return <BlogDetail navigate={navigate} blogId={blogId} />;
       case 'kilimanjaro':

@@ -241,19 +241,35 @@ WhatsApp/Phone: ${whatsapp}
 Special Requests: ${specialRequests || 'None'}
     `;
 
+    const inquiryPayload = {
+      id: 'inq_' + Date.now(),
+      full_name: fullName,
+      email: email,
+      phone: whatsapp,
+      subject: `🏝️ Package Enquiry: ${activePackage?.title || 'Zanzibar Escape'}`,
+      category: 'package',
+      source_page: 'holiday_packages',
+      message: formattedMessage,
+      created_at: new Date().toISOString()
+    };
+
     try {
-      const { error } = await supabase
+      // Local backup saving
+      const existingInquiries = JSON.parse(localStorage.getItem('ztr_local_inquiries') || '[]');
+      localStorage.setItem('ztr_local_inquiries', JSON.stringify([inquiryPayload, ...existingInquiries]));
+
+      await supabase
         .from('contact_submissions')
         .insert([{
           full_name: fullName,
           email: email,
           phone: whatsapp,
           subject: `🏝️ Package Enquiry: ${activePackage?.title || 'Zanzibar Escape'}`,
+          category: 'package',
+          source_page: 'holiday_packages',
           message: formattedMessage,
-          created_at: new Date().toISOString()
+          created_at: inquiryPayload.created_at
         }]);
-
-      if (error) throw error;
 
       setIsSuccess(true);
       // Reset form fields
@@ -585,7 +601,8 @@ Special Requests: ${specialRequests || 'None'}
             {filteredData.map(pkg => (
               <div 
                 key={pkg.id}
-                className={`bg-white rounded-3xl border border-zinc-200/80 overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group ${
+                onClick={() => handleSelectPackage(pkg.id, 'overview')}
+                className={`bg-white rounded-3xl border border-zinc-200/80 overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group cursor-pointer ${
                   selectedPackageId === pkg.id ? 'ring-2 ring-[#D4A017]' : ''
                 }`}
               >
@@ -650,9 +667,8 @@ Special Requests: ${specialRequests || 'None'}
                     </div>
 
                     <h3 
-                      className="text-lg md:text-xl font-bold text-[#0B3B8C] leading-snug hover:text-amber-600 transition-colors cursor-pointer" 
+                      className="text-lg md:text-xl font-bold text-[#0B3B8C] leading-snug hover:text-amber-600 transition-colors" 
                       style={{ fontFamily: 'Playfair Display, serif' }}
-                      onClick={() => handleSelectPackage(pkg.id)}
                     >
                       {pkg.title}
                     </h3>
@@ -683,13 +699,21 @@ Special Requests: ${specialRequests || 'None'}
                   {/* Dual Card Actions */}
                   <div className="pt-3 border-t border-zinc-100 flex items-center gap-3">
                     <button
-                      onClick={() => handleSelectPackage(pkg.id)}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectPackage(pkg.id, 'overview');
+                      }}
                       className="flex-1 bg-zinc-50 hover:bg-zinc-100 text-[#0B3B8C] text-xs font-black py-3 rounded-full border border-zinc-200 transition-colors cursor-pointer text-center uppercase tracking-wide"
                     >
                       View Details
                     </button>
                     <button
-                      onClick={() => handleSelectPackage(pkg.id, 'book')}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectPackage(pkg.id, 'book');
+                      }}
                       className="flex-1 bg-[#D4A017] hover:bg-amber-500 text-zinc-950 text-xs font-black py-3 rounded-full transition-all cursor-pointer text-center uppercase tracking-wide"
                     >
                       Book Now
@@ -1554,10 +1578,10 @@ Special Requests: ${specialRequests || 'None'}
           </div>
           <button 
             type="button" 
-            onClick={() => navigate('trip-builder')} 
+            onClick={() => navigate('booking')} 
             className="bg-[#D4A017] hover:bg-amber-500 text-zinc-950 font-black text-xs px-6 py-3.5 rounded-full transition-colors shrink-0 uppercase tracking-wide cursor-pointer shadow-lg shadow-amber-500/10"
           >
-            Custom Trip Builder
+            Request Custom Package
           </button>
         </div>
       </section>

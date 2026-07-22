@@ -4,7 +4,6 @@ import { Star, CheckCircle, Award, MessageSquare, ShieldAlert, Sparkles, Refresh
 import { ProgressiveImage } from '../components/ProgressiveImage';
 import { supabase } from '../lib/supabase';
 import { getSiteContent } from '../lib/cmsStore';
-import SocialFeed from '../components/SocialFeed';
 
 interface ReviewsProps {
   navigate: (page: Page) => void;
@@ -223,13 +222,6 @@ export default function Reviews({ navigate }: ReviewsProps) {
               <span className="text-[10px] text-gray-400 font-semibold">90+ reviews</span>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Live Social Hub Feed Section */}
-      <section className="py-8 bg-gray-50">
-        <div className="max-w-6xl mx-auto px-4">
-          <SocialFeed />
         </div>
       </section>
 

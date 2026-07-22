@@ -437,11 +437,12 @@ export default function Tours({ navigate, queryParams }: ToursProps) {
             {filteredTours.map((tour, idx) => (
               <div 
                 key={`${tour.id}-${tour.category}-${idx}`} 
-                className="group bg-white rounded-3xl border border-slate-200/50 hover:border-slate-200 hover:shadow-2xl transition-all duration-300 flex flex-col justify-between h-[480px] overflow-hidden"
+                onClick={() => navigate('tour-detail', (tour.name || '').toLowerCase().replace(/\s+/g, '-'))}
+                className="group bg-white rounded-3xl border border-slate-200/50 hover:border-slate-200 hover:shadow-2xl transition-all duration-300 flex flex-col justify-between min-h-[480px] overflow-hidden cursor-pointer"
               >
                 
                 {/* Image & Badges */}
-                <div className="relative h-56 overflow-hidden bg-slate-50 shrink-0">
+                <div className="relative h-52 overflow-hidden bg-slate-50 shrink-0">
                   <ProgressiveImage src={tour.image} alt={tour.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102" />
                   
                   {/* Floating Left Badge */}
@@ -452,14 +453,17 @@ export default function Tours({ navigate, queryParams }: ToursProps) {
                   {/* Wishlist Heart */}
                   <button
                     type="button"
-                    onClick={() => toggleWishlist({
-                      id: tour.id,
-                      name: tour.name,
-                      price: tour.price,
-                      duration: tour.duration,
-                      image: tour.image,
-                      type: 'tour'
-                    })}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleWishlist({
+                        id: tour.id,
+                        name: tour.name,
+                        price: tour.price,
+                        duration: tour.duration,
+                        image: tour.image,
+                        type: 'tour'
+                      });
+                    }}
                     className={`absolute top-4 right-4 p-2 rounded-full cursor-pointer z-10 transition-colors shadow-sm ${
                       isInWishlist(tour.id) ? 'bg-[#D4A017] text-white' : 'bg-white/95 hover:bg-white text-slate-600'
                     }`}
@@ -482,8 +486,7 @@ export default function Tours({ navigate, queryParams }: ToursProps) {
                     </div>
 
                     <h3 
-                      onClick={() => navigate('tour-detail', (tour.name || '').toLowerCase().replace(/\s+/g, '-'))}
-                      className="font-extrabold text-base sm:text-lg text-[#0B3B8C] hover:text-[#D4A017] cursor-pointer transition-colors leading-snug line-clamp-1"
+                      className="font-extrabold text-base sm:text-lg text-[#0B3B8C] hover:text-[#D4A017] transition-colors leading-snug line-clamp-1"
                       style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
                     >
                       {tour.name}
@@ -514,14 +517,18 @@ export default function Tours({ navigate, queryParams }: ToursProps) {
                   <div className="flex gap-2.5 pt-4 border-t border-slate-100 shrink-0">
                     <button
                       type="button"
-                      onClick={() => navigate('tour-detail', (tour.name || '').toLowerCase().replace(/\s+/g, '-'))}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('tour-detail', (tour.name || '').toLowerCase().replace(/\s+/g, '-'));
+                      }}
                       className="flex-1 border border-slate-200 hover:border-[#0B3B8C] text-slate-600 hover:text-[#0B3B8C] font-bold text-xs uppercase tracking-wider py-3 rounded-full transition-colors cursor-pointer text-center bg-white"
                     >
                       Details
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         localStorage.setItem('booking_prefilled_category', 'tour');
                         localStorage.setItem('booking_prefilled_tour', tour.name);
                         navigate('booking', `package=${encodeURIComponent(tour.name)}`);
@@ -570,10 +577,10 @@ export default function Tours({ navigate, queryParams }: ToursProps) {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
             <button
-              onClick={() => navigate('trip-builder')}
+              onClick={() => navigate('booking')}
               className="w-full sm:w-auto bg-[#D4A017] hover:bg-[#c49010] text-[#020C1F] font-black px-8 py-4 rounded-full text-xs uppercase tracking-wider transition-all"
             >
-              Launch Custom Trip Planner
+              Custom Booking Request
             </button>
             <a
               href="https://wa.me/255629506063"

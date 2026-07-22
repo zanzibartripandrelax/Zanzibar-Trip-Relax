@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Page } from '../hooks/useHashRouter';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
 import { showToast } from '../components/ToastNotification';
 import { 
   Calendar, User, Phone, Mail, CheckCircle2, Globe, Users, Home as HomeIcon,
-  MessageSquare, Check, Sparkles, MapPin, Star, Clock, Compass, ArrowRight, ExternalLink
+  MessageSquare, Check, Compass, Download, ExternalLink, ArrowRight
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCMSStore, getHotels } from '../lib/cmsStore';
@@ -138,25 +138,25 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
         const parsed = JSON.parse(saved);
         setFormData(prev => ({
           ...prev,
-          fullName: parsed.name || '',
-          email: parsed.email || '',
-          whatsapp: parsed.phone || parsed.whatsapp || '',
-          hotelName: parsed.pickupLocation || ''
+          fullName: parsed.name || prev.fullName,
+          email: parsed.email || prev.email,
+          whatsapp: parsed.phone || parsed.whatsapp || prev.whatsapp,
+          hotelName: parsed.pickupLocation || prev.hotelName
         }));
       }
     } catch (err) {
-      console.warn('Failed to pre-fill returning client dossier', err);
+      console.warn('Failed to pre-fill returning client info', err);
     }
   }, []);
 
   const totalGuests = useMemo(() => {
-    return parseInt(formData.adults) + parseInt(formData.children);
+    return parseInt(formData.adults, 10) + parseInt(formData.children, 10);
   }, [formData.adults, formData.children]);
 
   const estimatedTotalCost = useMemo(() => {
     if (!selectedPackage) return 0;
     const price = selectedPackage.basePrice;
-    return price * parseInt(formData.adults) + (price * 0.5 * parseInt(formData.children));
+    return price * parseInt(formData.adults, 10) + (price * 0.5 * parseInt(formData.children, 10));
   }, [selectedPackage, formData.adults, formData.children]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -173,23 +173,21 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
       id: bookingId,
       reference: bookingId,
       created_at: new Date().toISOString(),
-      lead_traveler_name: formData.fullName.trim(),
-      lead_traveler_email: formData.email.trim(),
+      lead_traveler_name: formData.fullName.trim() || 'Guest Traveler',
+      lead_traveler_email: formData.email.trim() || 'Not provided',
       lead_traveler_phone: formData.whatsapp.trim(),
       lead_traveler_whatsapp: formData.whatsapp.trim(),
-      nationality: formData.country.trim(),
+      nationality: formData.country.trim() || 'International',
       travel_date: formData.travelDate,
       product_name: selectedPackage.name,
       product_category: selectedPackage.category,
-      adults_count: parseInt(formData.adults),
-      children_count: parseInt(formData.children),
+      adults_count: parseInt(formData.adults, 10),
+      children_count: parseInt(formData.children, 10),
       pickup_hotel: formData.hotelName.trim() || 'Stone Town Port / Airport',
       payment_choice: 'later',
       total_price: estimatedTotalCost,
-      deposit_amount: 0,
-      balance_remaining: estimatedTotalCost,
       special_requests: formData.specialRequests.trim(),
-      status: 'On Hold'
+      status: 'Pending Confirmation' // Status Rule 4
     };
 
     // 1. Insert directly into Supabase 'bookings' table
@@ -197,8 +195,8 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
       await supabase.from('bookings').insert([
         {
           reference_code: bookingId,
-          customer_name: formData.fullName.trim(),
-          customer_email: formData.email.trim(),
+          customer_name: formData.fullName.trim() || 'Guest Traveler',
+          customer_email: formData.email.trim() || null,
           customer_phone: formData.whatsapp.trim(),
           product_name: selectedPackage.name,
           product_category: selectedPackage.category,
@@ -207,7 +205,7 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
           pickup_location: formData.hotelName.trim() || 'Stone Town Port / Airport',
           total_price: estimatedTotalCost,
           payment_status: 'pending',
-          status: 'pending',
+          status: 'Pending Confirmation',
           details: bookingPayload
         }
       ]);
@@ -221,7 +219,6 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
       localStorage.setItem('ztr_local_bookings_backup', JSON.stringify([bookingPayload, ...existing]));
       localStorage.setItem('ztr_bookings', JSON.stringify([bookingPayload, ...existing]));
 
-      // Save user details for their next visit
       localStorage.setItem('ztr_returning_user_info', JSON.stringify({
         name: formData.fullName.trim(),
         email: formData.email.trim(),
@@ -234,43 +231,66 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
 
     setIsSubmitting(false);
     setBookingSuccess(bookingPayload);
-    showToast(`Direct Booking ${bookingId} Secured Successfully!`, 'success');
+    showToast(`Booking ${bookingId} Submitted Successfully!`, 'success');
   };
 
   const generateWhatsAppUrl = () => {
     if (!bookingSuccess) return '#';
-    const msg = `Hello Zanzibar Trip & Relax! I have secured my booking for *${bookingSuccess.product_name}* via your simplified portal.\n\n*Booking ID:* ${bookingSuccess.id}\n*Client:* ${bookingSuccess.lead_traveler_name}\n*Date:* ${bookingSuccess.travel_date}\n*Guests:* ${bookingSuccess.adults_count} Adults, ${bookingSuccess.children_count} Children\n*Hotel:* ${bookingSuccess.pickup_hotel}\n\nPlease confirm my direct checkout ticket.`;
+    const msg = `Hello Zanzibar Trip & Relax! I have submitted my booking for *${bookingSuccess.product_name}* (Ref: ${bookingSuccess.id}).\n\n*Traveler:* ${bookingSuccess.lead_traveler_name}\n*Date:* ${bookingSuccess.travel_date}\n*Guests:* ${bookingSuccess.adults_count} Adults, ${bookingSuccess.children_count} Children\n*Hotel:* ${bookingSuccess.pickup_hotel}\n\nPlease review and send my pickup confirmation.`;
     return `https://wa.me/255629506063?text=${encodeURIComponent(msg)}`;
   };
 
+  const currentStep = bookingSuccess ? 3 : (selectedPackage && formData.fullName ? 2 : 1);
+
   return (
     <div className="bg-[#020C1F] text-white min-h-screen pt-24 pb-16 font-sans">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
-        {/* Step Header */}
-        <div className="text-center space-y-3">
+        {/* Step Header & Progress (Rule 10: Step 1: Guest Details -> Step 2: Booking Review -> Step 3: Booking Submitted) */}
+        <div className="text-center space-y-4">
           <span className="text-[10px] bg-[#D4A017]/15 text-[#D4A017] uppercase tracking-[0.25em] font-black px-4 py-1.5 rounded-full border border-[#D4A017]/20">
-            Secure Direct Checkout
+            Zanzibar Trip & Relax
           </span>
-          <h1 className="text-3xl sm:text-5xl font-serif font-black tracking-tight text-white uppercase leading-none">
-            3-CLICK CHECKOUT
+          <h1 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-white uppercase leading-none">
+            Reservation Progress
           </h1>
-          <p className="text-slate-400 text-xs sm:text-sm font-light max-w-md mx-auto leading-relaxed">
-            Secure your Zanzibar adventure in minutes. No credit cards required upfront. Lock your travel dates and pay directly on arrival.
-          </p>
+
+          {/* Clean Stepper Bar (Rule 10) */}
+          <div className="flex items-center justify-center gap-2 sm:gap-4 max-w-xl mx-auto pt-2 text-xs font-bold">
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${currentStep >= 1 ? 'bg-[#D4A017] text-[#020C1F] border-[#D4A017]' : 'bg-white/5 text-slate-400 border-white/10'}`}>
+              <span className="w-5 h-5 rounded-full bg-black/20 flex items-center justify-center text-[10px]">1</span>
+              <span>Guest Details</span>
+            </div>
+
+            <span className="text-slate-600">↓</span>
+
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${currentStep >= 2 ? 'bg-[#D4A017] text-[#020C1F] border-[#D4A017]' : 'bg-white/5 text-slate-400 border-white/10'}`}>
+              <span className="w-5 h-5 rounded-full bg-black/20 flex items-center justify-center text-[10px]">2</span>
+              <span>Booking Review</span>
+            </div>
+
+            <span className="text-slate-600">↓</span>
+
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${currentStep === 3 ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-white/5 text-slate-400 border-white/10'}`}>
+              <span className="w-5 h-5 rounded-full bg-black/20 flex items-center justify-center text-[10px]">3</span>
+              <span>Booking Submitted</span>
+            </div>
+          </div>
         </div>
 
         <AnimatePresence mode="wait">
           {!bookingSuccess ? (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-fade-in">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fade-in">
               
-              {/* Left Column: Experience Selection Summary */}
-              <div className="lg:col-span-1 bg-[#0A1224] border border-white/5 rounded-3xl p-6 space-y-6">
-                <h3 className="text-xs font-bold text-[#D4A017] uppercase tracking-wider">1. Experience Selected</h3>
+              {/* Left Column: Selected Excursion Card (Col-4) */}
+              <div className="lg:col-span-5 bg-[#0A1224] border border-white/10 rounded-3xl p-6 space-y-5 shadow-xl">
+                <h3 className="text-xs font-black text-[#D4A017] uppercase tracking-wider">
+                  Step 1: Experience Selection
+                </h3>
                 
                 {selectedPackage ? (
                   <div className="space-y-4">
-                    <div className="h-44 rounded-2xl overflow-hidden relative border border-white/5 shadow-inner">
+                    <div className="h-44 rounded-2xl overflow-hidden relative border border-white/10 shadow-inner">
                       <img 
                         src={selectedPackage.image} 
                         alt={selectedPackage.name} 
@@ -278,44 +298,45 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
                         referrerPolicy="no-referrer"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
-                      <span className="absolute bottom-3 left-3 bg-[#D4A017] text-[#020C1F] text-[9px] font-black uppercase px-2 py-0.5 rounded-full">
+                      <span className="absolute bottom-3 left-3 bg-[#D4A017] text-[#020C1F] text-[9px] font-black uppercase px-2.5 py-1 rounded-full">
                         {selectedPackage.category}
                       </span>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <h4 className="text-sm font-serif font-bold text-white tracking-tight">{selectedPackage.name}</h4>
+                    <div className="space-y-1">
+                      <h4 className="text-base font-serif font-bold text-white leading-tight">{selectedPackage.name}</h4>
                       <p className="text-xs text-slate-400 font-light leading-relaxed">{selectedPackage.description}</p>
                     </div>
 
-                    <div className="border-t border-dashed border-white/10 pt-4 space-y-2">
-                      <div className="flex justify-between text-xs">
+                    <div className="border-t border-dashed border-white/10 pt-3 space-y-1.5 text-xs">
+                      <div className="flex justify-between">
                         <span className="text-slate-400 font-light">Duration</span>
                         <span className="font-bold text-slate-200">{selectedPackage.duration}</span>
                       </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-400 font-light">Base Rate</span>
-                        <span className="font-bold text-slate-200">${selectedPackage.basePrice} USD / Adult</span>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400 font-light">Rate / Guest</span>
+                        <span className="font-bold text-slate-200">${selectedPackage.basePrice} USD</span>
                       </div>
                     </div>
 
-                    <div className="bg-[#D4A017]/5 border border-[#D4A017]/10 p-3 rounded-xl text-center">
-                      <span className="text-[10px] text-slate-450 uppercase font-bold tracking-wider block">Estimated Checkout Total</span>
-                      <span className="text-xl font-mono font-black text-[#D4A017] block">${estimatedTotalCost} USD</span>
-                      <span className="text-[9px] text-slate-400 italic font-light block mt-0.5">Pay later upon arrival</span>
+                    <div className="bg-[#D4A017]/10 border border-[#D4A017]/20 p-3 rounded-2xl text-center">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Estimated Total Price</span>
+                      <span className="text-2xl font-mono font-black text-[#D4A017] block">${estimatedTotalCost} USD</span>
+                      <span className="text-[10px] text-emerald-400 italic font-medium block mt-0.5">Pay later on arrival • No credit card needed</span>
                     </div>
 
                     <button
+                      type="button"
                       onClick={() => setSelectedPackage(null)}
-                      className="w-full text-center text-red-400 hover:text-red-300 text-[10px] font-bold uppercase tracking-wider hover:underline transition-all cursor-pointer"
+                      className="w-full text-center text-slate-400 hover:text-white text-[10px] font-bold uppercase tracking-wider hover:underline transition-all cursor-pointer"
                     >
-                      Change Excursion Choice
+                      Choose Different Excursion
                     </button>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <p className="text-xs text-slate-400 font-light leading-relaxed">
-                      Please pick your preferred excursion or private luxury hotel stay from our direct directory listing beneath:
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Please pick your preferred excursion or private luxury stay:
                     </p>
                     <div className="relative">
                       <Compass className="absolute left-3.5 top-3.5 text-slate-450" size={14} />
@@ -339,16 +360,18 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
                 )}
               </div>
 
-              {/* Right Column: Required Checkout Fields Form */}
-              <div className="lg:col-span-2 bg-[#0A1224] border border-white/5 rounded-3xl p-6 sm:p-8 space-y-6">
-                <h3 className="text-xs font-bold text-[#D4A017] uppercase tracking-wider">2. Provide Travel Dossier Details</h3>
+              {/* Right Column: Guest Information & Review (Col-7) */}
+              <div className="lg:col-span-7 bg-[#0A1224] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+                <h3 className="text-xs font-black text-[#D4A017] uppercase tracking-wider">
+                  Step 2: Guest Details & Review
+                </h3>
                 
                 <form onSubmit={handleSubmit} className="space-y-4 text-xs">
                   {/* Full Name */}
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Full Name *</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Full Name *</label>
                     <div className="relative">
-                      <User className="absolute left-3.5 top-3.5 text-slate-450" size={14} />
+                      <User className="absolute left-3.5 top-3.5 text-slate-400" size={14} />
                       <input
                         type="text"
                         required
@@ -363,29 +386,29 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
                   {/* Email & WhatsApp */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Email Address *</label>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">WhatsApp / Phone *</label>
                       <div className="relative">
-                        <Mail className="absolute left-3.5 top-3.5 text-slate-450" size={14} />
-                        <input
-                          type="email"
-                          required
-                          value={formData.email}
-                          onChange={e => setFormData({ ...formData, email: e.target.value })}
-                          placeholder="john@example.com"
-                          className="w-full bg-[#0C1930] border border-white/10 py-3 pl-10 pr-4 rounded-xl text-xs text-white outline-none focus:border-[#D4A017] transition-all"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">WhatsApp / Phone *</label>
-                      <div className="relative">
-                        <Phone className="absolute left-3.5 top-3.5 text-slate-450" size={14} />
+                        <Phone className="absolute left-3.5 top-3.5 text-slate-400" size={14} />
                         <input
                           type="tel"
                           required
                           value={formData.whatsapp}
                           onChange={e => setFormData({ ...formData, whatsapp: e.target.value })}
-                          placeholder="e.g. +1 555 123 4567"
+                          placeholder="e.g. +255 629 506 063"
+                          className="w-full bg-[#0C1930] border border-white/10 py-3 pl-10 pr-4 rounded-xl text-xs text-white outline-none focus:border-[#D4A017] transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Email Address (Optional)</label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-3.5 text-slate-400" size={14} />
+                        <input
+                          type="email"
+                          value={formData.email}
+                          onChange={e => setFormData({ ...formData, email: e.target.value })}
+                          placeholder="john@example.com"
                           className="w-full bg-[#0C1930] border border-white/10 py-3 pl-10 pr-4 rounded-xl text-xs text-white outline-none focus:border-[#D4A017] transition-all"
                         />
                       </div>
@@ -395,12 +418,11 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
                   {/* Country & Travel Date */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Country of Residence *</label>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Country of Residence</label>
                       <div className="relative">
-                        <Globe className="absolute left-3.5 top-3.5 text-slate-450" size={14} />
+                        <Globe className="absolute left-3.5 top-3.5 text-slate-400" size={14} />
                         <input
                           type="text"
-                          required
                           value={formData.country}
                           onChange={e => setFormData({ ...formData, country: e.target.value })}
                           placeholder="United Kingdom"
@@ -409,9 +431,9 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Travel Date *</label>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Travel Date *</label>
                       <div className="relative">
-                        <Calendar className="absolute left-3.5 top-3.5 text-slate-450" size={14} />
+                        <Calendar className="absolute left-3.5 top-3.5 text-slate-400" size={14} />
                         <input
                           type="date"
                           required
@@ -426,9 +448,9 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
                   {/* Adults & Children */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Adults</label>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Adults</label>
                       <div className="relative">
-                        <Users className="absolute left-3.5 top-3.5 text-slate-450" size={14} />
+                        <Users className="absolute left-3.5 top-3.5 text-slate-400" size={14} />
                         <select
                           value={formData.adults}
                           onChange={e => setFormData({ ...formData, adults: e.target.value })}
@@ -439,9 +461,9 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Children</label>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Children</label>
                       <div className="relative">
-                        <Users className="absolute left-3.5 top-3.5 text-slate-450" size={14} />
+                        <Users className="absolute left-3.5 top-3.5 text-slate-400" size={14} />
                         <select
                           value={formData.children}
                           onChange={e => setFormData({ ...formData, children: e.target.value })}
@@ -455,9 +477,9 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
 
                   {/* Hotel / Pickup location */}
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Hotel / Pickup Location *</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Hotel / Pickup Location *</label>
                     <div className="relative">
-                      <HomeIcon className="absolute left-3.5 top-3.5 text-slate-450" size={14} />
+                      <HomeIcon className="absolute left-3.5 top-3.5 text-slate-400" size={14} />
                       <input
                         type="text"
                         required
@@ -471,14 +493,14 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
 
                   {/* Special Requests */}
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Special Requests (Optional)</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Special Requests (Optional)</label>
                     <div className="relative">
-                      <MessageSquare className="absolute left-3.5 top-3.5 text-slate-450" size={14} />
+                      <MessageSquare className="absolute left-3.5 top-3.5 text-slate-400" size={14} />
                       <textarea
                         value={formData.specialRequests}
                         onChange={e => setFormData({ ...formData, specialRequests: e.target.value })}
-                        rows={3}
-                        placeholder="Any flight numbers, dietary restrictions, child age configurations..."
+                        rows={2}
+                        placeholder="Dietary requests, flight numbers, child seats..."
                         className="w-full bg-[#0C1930] border border-white/10 py-3 pl-10 pr-4 rounded-xl text-xs text-white outline-none focus:border-[#D4A017] transition-all"
                       />
                     </div>
@@ -488,14 +510,14 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
                   <button
                     type="submit"
                     disabled={isSubmitting || !selectedPackage}
-                    className="w-full bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] font-black uppercase text-xs tracking-wider py-4 rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed pt-4"
+                    className="w-full bg-[#D4A017] hover:bg-amber-400 text-[#020C1F] font-black uppercase text-xs tracking-wider py-4 rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed pt-4"
                   >
                     {isSubmitting ? (
-                      <span>Saving Secure Booking...</span>
+                      <span>Saving Booking...</span>
                     ) : (
                       <>
-                        <Check size={14} />
-                        <span>Confirm & Submit Booking Ticket</span>
+                        <Check size={16} />
+                        <span>Submit Reservation</span>
                       </>
                     )}
                   </button>
@@ -504,54 +526,85 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
 
             </div>
           ) : (
-            // Breathtaking Success Screen
-            <div className="max-w-md mx-auto bg-[#0A1224] border border-white/5 rounded-3xl p-8 text-center space-y-6 animate-scale-up">
-              <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                <CheckCircle2 size={32} className="animate-bounce" />
+            <div className="max-w-lg mx-auto bg-[#0A1224] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6 text-slate-200 shadow-2xl animate-scale-up">
+              {/* STEP 3: BOOKING SUBMITTED (Rule 3 & Rule 10) */}
+              
+              <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle2 size={32} />
               </div>
 
-              <div className="space-y-2">
-                <h2 className="text-xl sm:text-2xl font-serif font-black text-white uppercase tracking-tight">Booking Secured!</h2>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
-                  Excellent choice! Your checkout has been locked with the Zanzibar desk. A ticketing reference code has been dynamically compiled.
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl font-serif font-black text-white uppercase tracking-tight">
+                  Booking Received
+                </h2>
+                <p className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto">
+                  Thank you for booking with Zanzibar Trip & Relax. Your reservation has been received successfully.
                 </p>
               </div>
 
-              {/* Dynamic Ticket code card */}
-              <div className="bg-[#0C1930] border border-white/5 rounded-2xl p-5 space-y-3 relative overflow-hidden">
-                <span className="text-[9px] text-slate-500 uppercase tracking-[0.25em] font-black block">System Reference Code</span>
-                <span className="text-xl font-mono font-black text-[#D4A017] block">{bookingSuccess.id}</span>
+              {/* Reference Number Card (Rule 3) */}
+              <div className="bg-[#0C1930] border border-white/10 rounded-2xl p-4 text-center space-y-1">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Booking Reference Number</span>
+                <span className="text-2xl font-mono font-black text-[#D4A017] block">{bookingSuccess.id}</span>
+                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-500/20 px-2.5 py-0.5 rounded-full inline-block mt-1">
+                  Status: Pending Confirmation
+                </span>
+              </div>
+
+              {/* What Happens Next Explanation (Rule 3) */}
+              <div className="space-y-3 text-xs bg-white/5 p-4 rounded-2xl border border-white/10">
+                <p className="font-bold text-slate-100">
+                  Our Reservations Team will personally review your booking and send:
+                </p>
+                <ul className="space-y-1 text-slate-300 font-medium pl-1">
+                  <li>• Pickup Time</li>
+                  <li>• Driver Details</li>
+                  <li>• Guide Information</li>
+                  <li>• Final Confirmation</li>
+                  <li>• Payment Instructions (if required)</li>
+                </ul>
                 
-                <div className="border-t border-dashed border-white/10 pt-3 text-[10px] text-slate-400 flex flex-col items-center gap-1 font-light">
-                  <span>Experience: {bookingSuccess.product_name}</span>
-                  <span>Lead Traveler: {bookingSuccess.lead_traveler_name}</span>
-                  <span>Date Locked: {bookingSuccess.travel_date}</span>
+                <div className="border-t border-white/10 pt-2 text-slate-300 font-semibold space-y-0.5">
+                  <p>You will receive these details via:</p>
+                  <p className="text-emerald-400">✓ WhatsApp</p>
+                  <p className="text-emerald-400">✓ Email (if provided)</p>
                 </div>
               </div>
 
-              {/* Action operations */}
-              <div className="space-y-3 pt-2">
+              {/* Action Buttons (Rule 3) */}
+              <div className="space-y-2.5 pt-2">
                 <a
                   href={generateWhatsAppUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white font-extrabold text-xs uppercase tracking-wider py-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full bg-[#25D366] hover:bg-[#1ebd5a] text-white font-extrabold text-xs uppercase tracking-wider py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <ExternalLink size={14} />
-                  <span>Share Ticket on WhatsApp</span>
+                  <ExternalLink size={15} fill="white" />
+                  <span>Follow-up on WhatsApp</span>
                 </a>
-                
+
                 <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="w-full bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs uppercase tracking-wider py-3 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Download size={14} />
+                  <span>Download Booking Summary</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => {
                     setBookingSuccess(null);
                     setSelectedPackage(null);
                     navigate('home');
                   }}
-                  className="w-full bg-white/5 hover:bg-white/10 text-white font-extrabold text-xs uppercase tracking-wider py-3.5 rounded-xl transition-all cursor-pointer"
+                  className="w-full text-slate-400 hover:text-white font-bold text-xs uppercase tracking-wider py-2 text-center underline cursor-pointer"
                 >
-                  Continue Browsing
+                  Track Booking / Return to Home
                 </button>
               </div>
+
             </div>
           )}
         </AnimatePresence>

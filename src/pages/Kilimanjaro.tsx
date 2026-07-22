@@ -633,22 +633,36 @@ WhatsApp Number: ${formData.whatsapp}
 Special Demands or Requests: ${formData.specialRequests || 'None'}
     `.trim();
 
+    const inquiryPayload = {
+      id: 'inq_' + Date.now(),
+      full_name: formData.fullName,
+      email: formData.email,
+      phone: formData.whatsapp,
+      subject: `🏔️ Kilimanjaro Trek Enquiry: ${activeRouteName}`,
+      category: 'kilimanjaro',
+      source_page: 'kilimanjaro_trekking',
+      message: formattedMessage,
+      created_at: new Date().toISOString()
+    };
+
     try {
+      // Local backup saving
+      const existingInquiries = JSON.parse(localStorage.getItem('ztr_local_inquiries') || '[]');
+      localStorage.setItem('ztr_local_inquiries', JSON.stringify([inquiryPayload, ...existingInquiries]));
+
       // 1. Insert into Supabase 'contact_submissions'
-      const { error } = await supabase
+      await supabase
         .from('contact_submissions')
         .insert([{
           full_name: formData.fullName,
           email: formData.email,
           phone: formData.whatsapp,
           subject: `🏔️ Kilimanjaro Trek Enquiry: ${activeRouteName}`,
+          category: 'kilimanjaro',
+          source_page: 'kilimanjaro_trekking',
           message: formattedMessage,
-          created_at: new Date().toISOString()
+          created_at: inquiryPayload.created_at
         }]);
-
-      if (error) {
-        throw new Error(error.message);
-      }
 
       // 2. Log activity log to local CMS
       const cmsLogs = JSON.parse(localStorage.getItem('site_activity_logs') || '[]');

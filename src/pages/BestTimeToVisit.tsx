@@ -281,7 +281,7 @@ export default function BestTimeToVisit({ navigate }: BestTimeToVisitProps) {
                     <td className="px-6 py-4 text-slate-300 font-medium">{act.best}</td>
                     <td className="px-6 py-4 text-right">
                       <button
-                        onClick={() => navigate('trip-builder')}
+                        onClick={() => navigate('booking')}
                         className="text-[10px] font-black uppercase tracking-wider text-[#D4A017] hover:text-white transition-colors flex items-center gap-1 ml-auto"
                       >
                         Book Window <ArrowRight className="w-3 h-3" />
@@ -413,10 +413,10 @@ export default function BestTimeToVisit({ navigate }: BestTimeToVisitProps) {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
               <button
-                onClick={() => navigate('trip-builder')}
+                onClick={() => navigate('booking')}
                 className="w-full sm:w-auto bg-[#D4A017] hover:bg-[#b8860b] text-[#020C1F] font-black uppercase tracking-wider text-xs px-8 py-4 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg"
               >
-                <span>Launch Trip Builder</span> <Sparkles className="w-4 h-4" />
+                <span>Book Custom Trip</span> <Sparkles className="w-4 h-4" />
               </button>
               <button
                 onClick={() => navigate('contact')}

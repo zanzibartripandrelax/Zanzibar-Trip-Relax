@@ -278,8 +278,8 @@ export default function About({ navigate }: AboutProps) {
             Let us help you plan an unforgettable adventure
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button type="button" onClick={() => navigate('trip-builder')} className="bg-[#D4A017] hover:bg-[#c49010] text-[#0B1E3D] font-bold px-8 py-4 rounded-full transition-colors cursor-pointer">
-              Build Your Trip
+            <button type="button" onClick={() => navigate('booking')} className="bg-[#D4A017] hover:bg-[#c49010] text-[#0B1E3D] font-bold px-8 py-4 rounded-full transition-colors cursor-pointer">
+              Book Custom Trip
             </button>
             <button type="button" onClick={() => navigate('contact')} className="border-2 border-white text-white font-bold px-8 py-4 rounded-full hover:bg-white hover:text-[#0B3B8C] transition-all cursor-pointer">
               Contact Us

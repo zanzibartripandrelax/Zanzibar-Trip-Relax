@@ -104,14 +104,6 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsMap = {
     ogType: 'website',
     ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
   },
-  'trip-builder': {
-    title: 'Custom Trip Builder | Tailor Your Zanzibar Dream Vacation',
-    description: 'Build your bespoke Zanzibar and Tanzania itinerary in real-time. Pick day tours, multi-day safaris, luxury hotels, and transfers that fit your budget.',
-    keywords: 'Zanzibar itinerary builder, custom Tanzania trips, tailor made Africa holidays, interactive trip builder',
-    canonicalUrl: 'https://zanzibartripandrelax.com/trip-builder',
-    ogType: 'website',
-    ogImage: 'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1200'
-  },
   faq: {
     title: 'Frequently Asked Questions | Zanzibar Travel Tips & Safety',
     description: 'Answers to your questions about Zanzibar visas, vaccinations, malaria risk, payment methods, local customs, and travel safety protocols.',

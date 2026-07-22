@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { Page } from '../hooks/useHashRouter';
 import GuestReviews from '../components/GuestReviews';
-import SocialFeed from '../components/SocialFeed';
 import Newsletter from '../components/Newsletter';
 import { getSiteContent } from '../lib/cmsStore';
 import { motion, AnimatePresence } from 'motion/react';
@@ -994,11 +993,6 @@ export default function Home({ navigate }: HomeProps) {
       {/* Render beautiful newsletter below blog */}
       <Newsletter variant="card" />
 
-      {/* Social Live Feed */}
-      <div className="max-w-7xl mx-auto px-4 py-16">
-        <SocialFeed />
-      </div>
-
       {/* SECTION 15 — FINAL CALL TO ACTION */}
       <section id="cta-adventure" className="py-24 px-4 bg-gradient-to-br from-[#0B3B8C] to-[#0A1224] relative overflow-hidden text-center text-white border-t border-white/5">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(212,160,23,0.06),transparent_50%)] pointer-events-none" />
@@ -1014,7 +1008,7 @@ export default function Home({ navigate }: HomeProps) {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6 max-w-md sm:max-w-lg mx-auto">
               <button 
                 type="button" 
-                onClick={() => navigate('trip-builder')} 
+                onClick={() => navigate('booking')} 
                 className="w-full sm:w-auto bg-[#D4A017] hover:bg-[#c49010] text-[#0A1224] font-black px-8 py-4.5 rounded-full text-xs uppercase tracking-wider transition-all hover:scale-[1.03] active:scale-[0.98] duration-200 cursor-pointer shadow-lg hover:shadow-xl text-center border-0"
                 aria-label="Directly plan your custom vacation trip"
               >

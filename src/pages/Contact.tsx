@@ -48,17 +48,35 @@ export default function Contact({ navigate }: ContactProps) {
     setErrorMsg('');
 
     try {
-      const { error } = await supabase.from('contact_submissions').insert([
+      const inquiryPayload = {
+        id: 'inq_' + Date.now(),
+        full_name: formData.name.trim(),
+        email: formData.email.trim() || 'No email provided',
+        phone: formData.whatsapp.trim(),
+        subject: formData.subject.trim() || 'General Inquiry',
+        category: 'contact',
+        source_page: 'contact_us',
+        message: formData.message.trim(),
+        created_at: new Date().toISOString()
+      };
+
+      const existingInquiries = JSON.parse(localStorage.getItem('ztr_local_inquiries') || '[]');
+      localStorage.setItem('ztr_local_inquiries', JSON.stringify([inquiryPayload, ...existingInquiries]));
+
+      await supabase.from('contact_submissions').insert([
         {
+          full_name: formData.name.trim(),
           name: formData.name.trim(),
           email: formData.email.trim() || null,
           whatsapp_number: formData.whatsapp.trim(),
+          phone: formData.whatsapp.trim(),
           subject: formData.subject.trim() || 'General Inquiry',
+          category: 'contact',
+          source_page: 'contact_us',
           message: formData.message.trim(),
+          created_at: inquiryPayload.created_at
         }
       ]);
-
-      if (error) throw error;
 
       // Standardize CRM lead tracking and fire conversions
       syncLeadToCRM({

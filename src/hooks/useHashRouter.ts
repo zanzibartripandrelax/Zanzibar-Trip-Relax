@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 export type Page =
   | 'home' | 'about' | 'tours' | 'booking' | 'gallery'
   | 'contact' | 'packages' | 'safaris' | 'transfers' | 'blog'
-  | 'reviews' | 'trip-builder' | 'blog-detail' | 'kilimanjaro'
+  | 'reviews' | 'blog-detail' | 'kilimanjaro'
   | 'faq' | 'tour-detail' | 'policies' | 'admin' | 'trip-results' | 'manage-booking'
   | 'careers' | 'sustainability' | 'admin/login' | 'owner/setup' | 'owner/login' | 'owner' | 'dashboard' | 'admin/dashboard' | 'my-account' | 'best-time-to-visit' | 'destinations' | 'hotels'
   | 'owner-login' | 'admin-login' | 'create-owner';
@@ -11,7 +11,7 @@ export type Page =
 const VALID_PAGES: Page[] = [
   'home', 'about', 'tours', 'booking', 'gallery',
   'contact', 'packages', 'safaris', 'transfers', 'blog',
-  'reviews', 'trip-builder', 'blog-detail', 'kilimanjaro',
+  'reviews', 'blog-detail', 'kilimanjaro',
   'faq', 'tour-detail', 'policies', 'admin', 'trip-results', 'manage-booking',
   'careers', 'sustainability', 'admin/login', 'owner/setup', 'owner/login', 'owner', 'dashboard', 'admin/dashboard', 'my-account', 'best-time-to-visit', 'destinations', 'hotels',
   'owner-login', 'admin-login', 'create-owner'
@@ -83,7 +83,7 @@ function getPageFromHash(): RouteState {
     } else if (cleanPath === '/reviews') {
       window.location.hash = 'reviews';
     } else if (cleanPath === '/trip-builder') {
-      window.location.hash = 'trip-builder';
+      window.location.hash = 'packages';
     } else if (cleanPath === '/faq') {
       window.location.hash = 'faq';
     } else if (cleanPath === '/policies') {

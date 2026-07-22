@@ -3,7 +3,8 @@ import { Page } from '../hooks/useHashRouter';
 import { 
   Compass, Calendar, Check, ArrowRight, MessageCircle, Star, Clock, List, 
   HelpCircle, X, Shield, ChevronDown, ChevronUp, Sparkles, Image as ImageIcon, 
-  MapPin, Search, Filter, Info, Plane, Award, Eye, Trash, RefreshCw, ThumbsUp, UserCheck
+  MapPin, Search, Filter, Info, Plane, Award, Eye, Trash, RefreshCw, ThumbsUp, UserCheck,
+  Heart, Mail
 } from 'lucide-react';
 import { ProgressiveImage } from '../components/ProgressiveImage';
 import GuestReviews from '../components/GuestReviews';
@@ -249,17 +250,87 @@ export default function Safaris({ navigate }: SafarisProps) {
 
   // Step-by-step Custom Safari Builder state
   const [plannerStep, setPlannerStep] = useState(1);
+  const [plannerSubmitted, setPlannerSubmitted] = useState(false);
   const [plannerData, setPlannerData] = useState({
     circuit: 'Custom Combination',
     style: 'Premium Classic',
     wildlife: [] as string[],
     groupType: 'Family Safari',
-    travelMonth: 'September',
-    duration: '4-6 Days',
+    startDate: '2026-09-25',
+    endDate: '2026-09-29',
+    travelMonth: 'September 2026',
+    duration: '5 Days / 4 Nights',
     guestsCount: 2,
     leadName: '',
+    leadEmail: '',
     contactNum: ''
   });
+
+  const calculateSafariDuration = (startStr: string, endStr: string) => {
+    if (!startStr || !endStr) {
+      return {
+        days: 5,
+        nights: 4,
+        durationStr: '5 Days / 4 Nights',
+        monthStr: 'September 2026'
+      };
+    }
+    const start = new Date(startStr + 'T00:00:00');
+    const end = new Date(endStr + 'T00:00:00');
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+      return {
+        days: 1,
+        nights: 0,
+        durationStr: '1 Day / 0 Nights',
+        monthStr: !isNaN(start.getTime()) ? start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'September 2026'
+      };
+    }
+
+    const diffMs = end.getTime() - start.getTime();
+    const nights = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    const days = nights === 0 ? 1 : nights + 1;
+
+    const monthStr = start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const durationStr = nights === 0 ? '1 Day (Day Trip)' : `${days} Days / ${nights} ${nights === 1 ? 'Night' : 'Nights'}`;
+
+    return { days, nights, durationStr, monthStr };
+  };
+
+  const handleStartDateChange = (newStart: string) => {
+    let newEnd = plannerData.endDate;
+    if (!newEnd || newEnd < newStart) {
+      const s = new Date(newStart + 'T00:00:00');
+      s.setDate(s.getDate() + 4);
+      newEnd = s.toISOString().split('T')[0];
+    }
+    const calc = calculateSafariDuration(newStart, newEnd);
+    setPlannerData(prev => ({
+      ...prev,
+      startDate: newStart,
+      endDate: newEnd,
+      duration: calc.durationStr,
+      travelMonth: calc.monthStr
+    }));
+  };
+
+  const handleEndDateChange = (newEnd: string) => {
+    let start = plannerData.startDate;
+    if (!start) {
+      start = new Date().toISOString().split('T')[0];
+    }
+    if (newEnd < start) {
+      newEnd = start;
+    }
+    const calc = calculateSafariDuration(start, newEnd);
+    setPlannerData(prev => ({
+      ...prev,
+      startDate: start,
+      endDate: newEnd,
+      duration: calc.durationStr,
+      travelMonth: calc.monthStr
+    }));
+  };
 
   // Load and merge dynamic Supabase / Local CMS Safaris with our static defaults
   const mergedSafaris = useMemo(() => {
@@ -436,25 +507,34 @@ export default function Safaris({ navigate }: SafarisProps) {
 
   const handlePlannerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!plannerData.leadName.trim() || !plannerData.leadEmail.trim() || !plannerData.contactNum.trim()) {
+      alert('Please fill in all required fields: Name, Email, and Phone/WhatsApp.');
+      return;
+    }
     
-    const summary = `
-🐾 *CUSTOM TANZANIA SAFARI DESIGN* 🐾
-*Name:* ${plannerData.leadName}
-*Travelers:* ${plannerData.guestsCount} guests
-*Month:* ${plannerData.travelMonth}
-*Duration:* ${plannerData.duration}
-*Preferred Circuit:* ${plannerData.circuit}
-*Accommodation Style:* ${plannerData.style}
-*Group Type:* ${plannerData.groupType}
-*Dream Wildlife/Experience:* ${plannerData.wildlife.join(', ') || 'General Safari exploration'}
-*Contact Phone:* ${plannerData.contactNum || 'N/A'}
-`;
+    const emailBody = `CUSTOM TANZANIA SAFARI DESIGN REQUEST
 
-    const waUrl = `https://wa.me/255629506063?text=${encodeURIComponent(summary.trim())}`;
-    trackWhatsAppClick('Custom Safari Planner', plannerData.leadName);
-    window.open(waUrl, '_blank');
-    setShowCustomPlanner(false);
-    setPlannerStep(1);
+Name: ${plannerData.leadName}
+Email: ${plannerData.leadEmail}
+Phone/WhatsApp: ${plannerData.contactNum || 'N/A'}
+Travelers: ${plannerData.guestsCount} guests
+Check-In / Arrival: ${plannerData.startDate}
+Departure / Check-Out: ${plannerData.endDate}
+Estimated Month: ${plannerData.travelMonth}
+Calculated Duration: ${plannerData.duration}
+Preferred Circuit: ${plannerData.circuit}
+Accommodation Style: ${plannerData.style}
+Group Type: ${plannerData.groupType}
+Dream Wildlife/Experience: ${plannerData.wildlife.join(', ') || 'General Safari exploration'}`;
+
+    const subject = `Custom Safari Request from ${plannerData.leadName}`;
+    const mailtoUrl = `mailto:zanzibartripandrelax@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+    
+    // Launch mail client directly
+    window.location.href = mailtoUrl;
+
+    trackWhatsAppClick('Custom Safari Planner Email Dispatched', plannerData.leadName);
+    setPlannerSubmitted(true);
   };
 
   return (
@@ -482,22 +562,7 @@ export default function Safaris({ navigate }: SafarisProps) {
             Fly directly from Zanzibar sands to legendary national parks. Experience private open-top Land Cruiser game drives, premium eco-glamping, and deep wildlife encounters.
           </p>
 
-          <div className="pt-2 flex flex-wrap justify-center gap-3">
-            <button 
-              onClick={() => setShowCustomPlanner(true)}
-              className="bg-[#D4A017] hover:bg-[#b58812] text-slate-950 text-xs md:text-sm font-black px-6 py-3.5 rounded-full transition-all flex items-center gap-2 cursor-pointer shadow-lg hover:shadow-[#D4A017]/20 uppercase tracking-wider"
-            >
-              <Compass size={16} />
-              <span>Plan My Custom Safari</span>
-            </button>
-            <a 
-              href="#featured-packages" 
-              className="bg-white/10 hover:bg-white/20 text-white text-xs md:text-sm font-black px-6 py-3.5 rounded-full transition-all flex items-center gap-1.5 border border-white/15 backdrop-blur-sm"
-            >
-              <span>Explore Packages</span>
-              <ChevronDown size={16} />
-            </a>
-          </div>
+
         </div>
 
         {/* Floating Factoids Bar */}
@@ -767,7 +832,8 @@ export default function Safaris({ navigate }: SafarisProps) {
                 return (
                   <div 
                     key={safari.id}
-                    className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group"
+                    onClick={() => handleOpenDetails(safari)}
+                    className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group cursor-pointer"
                   >
                     {/* Card Header Media */}
                     <div className="relative h-56 overflow-hidden">
@@ -787,7 +853,7 @@ export default function Safaris({ navigate }: SafarisProps) {
                         </span>
                       </div>
 
-                      {/* Compare Checkbox */}
+                      {/* Wish List Toggle */}
                       <button 
                         onClick={(e) => toggleCompare(safari.id, e)}
                         className={`absolute top-4 right-4 w-8 h-8 rounded-full border flex items-center justify-center transition-all cursor-pointer backdrop-blur-md shadow-md ${
@@ -795,9 +861,9 @@ export default function Safaris({ navigate }: SafarisProps) {
                             ? 'bg-[#D4A017] border-[#D4A017] text-slate-950' 
                             : 'bg-black/30 border-white/25 text-white hover:bg-black/50'
                         }`}
-                        title="Compare Safari side-by-side"
+                        title={isCompared ? "Remove from Wish List" : "Add to Wish List"}
                       >
-                        {isCompared ? <Check size={14} strokeWidth={3} /> : <span className="text-[10px] font-bold">+</span>}
+                        <Heart size={14} fill={isCompared ? "currentColor" : "none"} strokeWidth={isCompared ? 0 : 2} />
                       </button>
 
                       {/* Duration Tag */}
@@ -813,7 +879,7 @@ export default function Safaris({ navigate }: SafarisProps) {
                         <span className="text-[9px] text-[#D4A017] uppercase font-black tracking-wider">
                           Best For: {safari.bestFor}
                         </span>
-                        <h3 className="text-lg md:text-xl font-bold text-[#0B3B8C] leading-snug line-clamp-1 hover:text-[#D4A017] transition-all cursor-pointer" onClick={() => handleOpenDetails(safari)}>
+                        <h3 className="text-lg md:text-xl font-bold text-[#0B3B8C] leading-snug line-clamp-1 hover:text-[#D4A017] transition-all">
                           {safari.title}
                         </h3>
                         <p className="text-xs text-slate-500 leading-relaxed line-clamp-3 font-medium">
@@ -826,30 +892,35 @@ export default function Safaris({ navigate }: SafarisProps) {
                         </div>
                       </div>
 
-                      <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                        <div>
+                      <div className="pt-4 border-t border-slate-100 space-y-3">
+                        <div className="flex items-center justify-between">
                           <p className="text-[9px] text-slate-400 font-bold uppercase">All-Inclusive Rate</p>
                           <p className="text-xl md:text-2xl font-black text-slate-900">{safari.price}</p>
                         </div>
 
-                        <div className="flex gap-1.5">
+                        <div className="flex gap-2">
                           <button 
-                            onClick={() => handleOpenDetails(safari)}
-                            className="bg-slate-100 hover:bg-slate-200 text-slate-800 w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer"
-                            title="Interactive details view"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDetails(safari);
+                            }}
+                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 px-3 rounded-xl transition-all cursor-pointer text-center uppercase tracking-wider"
                           >
-                            <Eye size={14} />
+                            Details
                           </button>
                           <button 
-                            onClick={() => {
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               localStorage.setItem('booking_prefilled_category', 'safari');
                               localStorage.setItem('booking_prefilled_tour', safari.title);
                               navigate('booking', `package=${encodeURIComponent(safari.title)}`);
                             }}
-                            className="bg-[#0B3B8C] hover:bg-[#093175] text-white text-xs font-bold px-4 py-2 rounded-xl transition-all flex items-center gap-1"
+                            className="flex-1 bg-[#0B3B8C] hover:bg-[#093175] text-white text-xs font-black py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer uppercase tracking-wider shadow-sm"
                           >
-                            <span>Book</span>
-                            <ArrowRight size={12} />
+                            <span>Book Now</span>
+                            <ArrowRight size={13} />
                           </button>
                         </div>
                       </div>
@@ -874,10 +945,11 @@ export default function Safaris({ navigate }: SafarisProps) {
             >
               <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-[#0B3B8C] text-white">
                 <div>
-                  <h3 className="text-lg font-black uppercase tracking-wider" style={{ fontFamily: 'Playfair Display, serif' }}>
-                    Compare Safari Specifications
+                  <h3 className="text-lg font-black uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+                    <Heart size={18} className="text-[#D4A017]" fill="currentColor" />
+                    Safari Wish List
                   </h3>
-                  <p className="text-xs text-slate-200">Side-by-side analytical tour comparison</p>
+                  <p className="text-xs text-slate-200">Review specs, price points, and vehicles side-by-side</p>
                 </div>
                 <button 
                   onClick={() => setShowCompareModal(false)}
@@ -953,7 +1025,7 @@ export default function Safaris({ navigate }: SafarisProps) {
                               localStorage.setItem('booking_prefilled_tour', pkg.title);
                               navigate('booking', `package=${encodeURIComponent(pkg.title)}`);
                             }}
-                            className="w-full bg-[#0B3B8C] hover:bg-slate-800 text-white text-xs font-bold py-2 rounded-xl transition-all uppercase tracking-wider"
+                            className="w-full bg-[#0B3B8C] hover:bg-slate-800 text-white text-xs font-bold py-2 rounded-xl transition-all uppercase tracking-wider cursor-pointer"
                           >
                             Book Package
                           </button>
@@ -968,25 +1040,28 @@ export default function Safaris({ navigate }: SafarisProps) {
         )}
       </AnimatePresence>
 
-      {/* Floating Compare Bar */}
+      {/* Floating Wish List Bar */}
       {comparedIds.length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-950/95 border border-white/10 px-6 py-4 rounded-3xl shadow-2xl z-40 flex flex-col sm:flex-row items-center gap-4 max-w-xl w-11/12 animate-fade-in-up backdrop-blur-md">
           <div className="flex-1 text-center sm:text-left">
-            <h4 className="text-xs font-black text-white uppercase tracking-wider">Compare Safari Packages ({comparedIds.length}/3)</h4>
+            <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center justify-center sm:justify-start gap-1.5">
+              <Heart size={14} className="text-[#D4A017]" fill="currentColor" />
+              Safari Wish List ({comparedIds.length}/3)
+            </h4>
             <p className="text-[10px] text-slate-400">Review specs, price points, and vehicles side-by-side</p>
           </div>
           <div className="flex gap-2 w-full sm:w-auto justify-center">
             <button 
               onClick={() => setComparedIds([])} 
-              className="text-xs text-slate-400 hover:text-white px-3 py-2 rounded-xl transition-all"
+              className="text-xs text-slate-400 hover:text-white px-3 py-2 rounded-xl transition-all cursor-pointer"
             >
               Clear
             </button>
             <button 
               onClick={() => setShowCompareModal(true)} 
-              className="bg-[#D4A017] hover:bg-amber-500 text-slate-950 text-xs font-black px-4 py-2 rounded-xl transition-all uppercase tracking-wider"
+              className="bg-[#D4A017] hover:bg-amber-500 text-slate-950 text-xs font-black px-4 py-2 rounded-xl transition-all uppercase tracking-wider cursor-pointer"
             >
-              Compare Now
+              Wish List
             </button>
           </div>
         </div>
@@ -1005,231 +1080,329 @@ export default function Safaris({ navigate }: SafarisProps) {
               {/* Header */}
               <div className="bg-[#0B3B8C] text-white p-6 relative">
                 <button 
-                  onClick={() => setShowCustomPlanner(false)}
+                  onClick={() => {
+                    setShowCustomPlanner(false);
+                    setPlannerSubmitted(false);
+                    setPlannerStep(1);
+                  }}
                   className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 p-1.5 rounded-full cursor-pointer"
                 >
                   <X size={16} />
                 </button>
                 <span className="text-[#D4A017] text-[10px] font-black uppercase tracking-widest block mb-1">
-                  Step {plannerStep} of 4
+                  {plannerSubmitted ? 'Request Dispatched' : `Step ${plannerStep} of 4`}
                 </span>
                 <h3 className="text-lg md:text-xl font-bold" style={{ fontFamily: 'Playfair Display, serif' }}>
-                  Design Your Private Safari
+                  {plannerSubmitted ? 'Inquiry Sent via Email!' : 'Design Your Private Safari'}
                 </h3>
-                <p className="text-xs text-slate-200">Our local travel experts craft a tailored itinerary at no charge.</p>
+                <p className="text-xs text-slate-200">
+                  {plannerSubmitted ? 'Our travel team will review your request shortly.' : 'Our local travel experts craft a tailored itinerary at no charge.'}
+                </p>
               </div>
 
               {/* Progress Bar */}
               <div className="w-full bg-slate-200 h-1">
                 <div 
                   className="bg-[#D4A017] h-full transition-all duration-300"
-                  style={{ width: `${(plannerStep / 4) * 100}%` }}
+                  style={{ width: plannerSubmitted ? '100%' : `${(plannerStep / 4) * 100}%` }}
                 />
               </div>
 
               {/* Content Form */}
-              <form onSubmit={handlePlannerSubmit} className="p-6 text-left space-y-6 max-h-[60vh] overflow-y-auto">
-                {/* STEP 1: Circuit & Accommodation */}
-                {plannerStep === 1 && (
-                  <div className="space-y-4">
-                    <h4 className="font-extrabold text-[#0B3B8C] text-sm uppercase tracking-wider">Circuit & Accommodation preferences</h4>
-                    
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-500 block">Where would you like to explore?</label>
-                      <select 
-                        value={plannerData.circuit}
-                        onChange={(e) => setPlannerData({ ...plannerData, circuit: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-800"
-                      >
-                        <option value="Northern Circuit (Serengeti, Ngorongoro Crater)">Northern Circuit (Serengeti, Ngorongoro Crater)</option>
-                        <option value="Southern Circuit (Nyerere, Mikumi National Parks)">Southern Circuit (Nyerere, Mikumi National Parks)</option>
-                        <option value="Custom Combination (Beach, Bush, & Flights)">Custom Combination (Beach, Bush, & Flights)</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-500 block">Accommodation & Style</label>
-                      <select 
-                        value={plannerData.style}
-                        onChange={(e) => setPlannerData({ ...plannerData, style: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-800"
-                      >
-                        <option value="Ultra-Luxury Glamping (Premium river tents & private pools)">Ultra-Luxury Glamping (Premium river tents & private pools)</option>
-                        <option value="Premium Classic (Boutique forest lodges & standard camps)">Premium Classic (Boutique forest lodges & standard camps)</option>
-                        <option value="Budget-Conscious Day Trips (Fast, action-packed flight tours)">Budget-Conscious Day Trips (Fast, action-packed flight tours)</option>
-                      </select>
-                    </div>
+              {plannerSubmitted ? (
+                <div className="p-6 text-center space-y-5">
+                  <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                    <Check size={28} strokeWidth={3} />
                   </div>
-                )}
 
-                {/* STEP 2: Wildlife and Focus */}
-                {plannerStep === 2 && (
-                  <div className="space-y-4">
-                    <h4 className="font-extrabold text-[#0B3B8C] text-sm uppercase tracking-wider">Dream Wildlife & Focus</h4>
-                    <p className="text-[11px] text-slate-400">What is on your bucket list? (Select multiple)</p>
+                  <div className="space-y-1.5">
+                    <h4 className="text-base font-extrabold text-[#0B3B8C]">
+                      Thank you, {plannerData.leadName}!
+                    </h4>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Your custom safari design request has been dispatched to <strong className="text-slate-800">zanzibartripandrelax@gmail.com</strong>.
+                    </p>
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-3.5">
-                      {['The Big Five', 'Wildebeest Migration', 'River Boat Cruise', 'Nature Walking Safaris', 'Bird Watching', 'Photography'].map((wild) => {
-                        const isSelected = plannerData.wildlife.includes(wild);
-                        return (
-                          <button 
-                            type="button"
-                            key={wild}
-                            onClick={() => {
-                              const copy = isSelected 
-                                ? plannerData.wildlife.filter(w => w !== wild)
-                                : [...plannerData.wildlife, wild];
-                              setPlannerData({ ...plannerData, wildlife: copy });
-                            }}
-                            className={`p-3.5 rounded-2xl border text-left text-xs transition-all flex items-center justify-between cursor-pointer ${
-                              isSelected 
-                                ? 'bg-[#0B3B8C]/10 border-[#0B3B8C] text-[#0B3B8C] font-extrabold' 
-                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
-                            }`}
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-left text-xs space-y-1 text-slate-600 font-medium">
+                    <span className="text-[#0B3B8C] font-extrabold block uppercase tracking-wider text-[10px]">Summary Sent</span>
+                    <p><strong>Contact:</strong> {plannerData.leadName} ({plannerData.leadEmail} / {plannerData.contactNum})</p>
+                    <p><strong>Circuit:</strong> {plannerData.circuit}</p>
+                    <p><strong>Schedule:</strong> {plannerData.startDate} ➔ {plannerData.endDate} ({plannerData.duration})</p>
+                  </div>
+
+                  <div className="pt-2 space-y-3">
+                    <p className="text-xs font-bold text-slate-700">Want an instant response? Follow up directly on WhatsApp:</p>
+
+                    <a
+                      href={`https://wa.me/255629506063?text=${encodeURIComponent(`Hi Gerevas! I just sent a custom safari inquiry via email for ${plannerData.leadName} (${plannerData.leadEmail}).\n\nCircuit: ${plannerData.circuit}\nDates: ${plannerData.startDate} to ${plannerData.endDate}\nDuration: ${plannerData.duration}\nMonth: ${plannerData.travelMonth}\nGuests: ${plannerData.guestsCount}\nPhone: ${plannerData.contactNum}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => trackWhatsAppClick('Custom Safari Planner WhatsApp Followup', plannerData.leadName)}
+                      className="w-full bg-[#25D366] hover:bg-[#1ebd5a] text-white font-extrabold text-xs py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 shadow-md transition-all uppercase tracking-wider cursor-pointer"
+                    >
+                      <MessageCircle size={18} fill="white" />
+                      <span>Quick Follow-up on WhatsApp</span>
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCustomPlanner(false);
+                        setPlannerSubmitted(false);
+                        setPlannerStep(1);
+                      }}
+                      className="text-xs font-semibold text-slate-500 hover:text-slate-800 py-2 transition-colors cursor-pointer block w-full text-center"
+                    >
+                      Close Window
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handlePlannerSubmit} className="p-6 text-left space-y-6 max-h-[60vh] overflow-y-auto">
+                  {/* STEP 1: Circuit & Accommodation */}
+                  {plannerStep === 1 && (
+                    <div className="space-y-4">
+                      <h4 className="font-extrabold text-[#0B3B8C] text-sm uppercase tracking-wider">Circuit & Accommodation preferences</h4>
+                      
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-slate-500 block">Where would you like to explore?</label>
+                        <select 
+                          value={plannerData.circuit}
+                          onChange={(e) => setPlannerData({ ...plannerData, circuit: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-800"
+                        >
+                          <option value="Northern Circuit (Serengeti, Ngorongoro Crater)">Northern Circuit (Serengeti, Ngorongoro Crater)</option>
+                          <option value="Southern Circuit (Nyerere, Mikumi National Parks)">Southern Circuit (Nyerere, Mikumi National Parks)</option>
+                          <option value="Custom Combination (Beach, Bush, & Flights)">Custom Combination (Beach, Bush, & Flights)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-slate-500 block">Accommodation & Style</label>
+                        <select 
+                          value={plannerData.style}
+                          onChange={(e) => setPlannerData({ ...plannerData, style: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-800"
+                        >
+                          <option value="Ultra-Luxury Glamping (Premium river tents & private pools)">Ultra-Luxury Glamping (Premium river tents & private pools)</option>
+                          <option value="Premium Classic (Boutique forest lodges & standard camps)">Premium Classic (Boutique forest lodges & standard camps)</option>
+                          <option value="Budget-Conscious Day Trips (Fast, action-packed flight tours)">Budget-Conscious Day Trips (Fast, action-packed flight tours)</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 2: Wildlife and Focus */}
+                  {plannerStep === 2 && (
+                    <div className="space-y-4">
+                      <h4 className="font-extrabold text-[#0B3B8C] text-sm uppercase tracking-wider">Dream Wildlife & Focus</h4>
+                      <p className="text-[11px] text-slate-400">What is on your bucket list? (Select multiple)</p>
+
+                      <div className="grid grid-cols-2 gap-3.5">
+                        {['The Big Five', 'Wildebeest Migration', 'River Boat Cruise', 'Nature Walking Safaris', 'Bird Watching', 'Photography'].map((wild) => {
+                          const isSelected = plannerData.wildlife.includes(wild);
+                          return (
+                            <button 
+                              type="button"
+                              key={wild}
+                              onClick={() => {
+                                const copy = isSelected 
+                                  ? plannerData.wildlife.filter(w => w !== wild)
+                                  : [...plannerData.wildlife, wild];
+                                setPlannerData({ ...plannerData, wildlife: copy });
+                              }}
+                              className={`p-3.5 rounded-2xl border text-left text-xs transition-all flex items-center justify-between cursor-pointer ${
+                                isSelected 
+                                  ? 'bg-[#0B3B8C]/10 border-[#0B3B8C] text-[#0B3B8C] font-extrabold' 
+                                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
+                              }`}
+                            >
+                              <span>{wild}</span>
+                              {isSelected && <Check size={14} />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 3: Travel Parameters */}
+                  {plannerStep === 3 && (
+                    <div className="space-y-4">
+                      <h4 className="font-extrabold text-[#0B3B8C] text-sm uppercase tracking-wider flex items-center gap-2">
+                        <Calendar size={16} className="text-[#D4A017]" />
+                        Select Dates & Calculate Safari Duration
+                      </h4>
+
+                      {/* Calendar Date Pickers */}
+                      <div className="grid grid-cols-2 gap-3.5">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold text-slate-600 block flex items-center gap-1">
+                            <span>Arrival / Check-in Date</span>
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <input 
+                            type="date"
+                            value={plannerData.startDate}
+                            onChange={(e) => handleStartDateChange(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-xs text-slate-800 font-semibold focus:outline-none focus:border-[#D4A017] cursor-pointer"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold text-slate-600 block flex items-center gap-1">
+                            <span>Departure / Check-out Date</span>
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <input 
+                            type="date"
+                            value={plannerData.endDate}
+                            min={plannerData.startDate}
+                            onChange={(e) => handleEndDateChange(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-xs text-slate-800 font-semibold focus:outline-none focus:border-[#D4A017] cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Live Duration & Night Calculation Box */}
+                      <div className="bg-gradient-to-br from-[#0B3B8C]/10 via-[#0B3B8C]/5 to-amber-500/10 border border-[#0B3B8C]/20 rounded-2xl p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-[#0B3B8C]">
+                            Calculated Safari Duration
+                          </span>
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
+                            Month: {plannerData.travelMonth}
+                          </span>
+                        </div>
+
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xl md:text-2xl font-black text-[#0B3B8C]" style={{ fontFamily: 'Playfair Display, serif' }}>
+                            {plannerData.duration}
+                          </span>
+                        </div>
+
+                        <p className="text-[11px] text-slate-600 font-medium">
+                          📅 Selected Schedule: <strong className="text-slate-900">{plannerData.startDate}</strong> to <strong className="text-slate-900">{plannerData.endDate}</strong>
+                        </p>
+                      </div>
+
+                      {/* Guests & Group Type */}
+                      <div className="grid grid-cols-2 gap-4 pt-1">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold text-slate-500 block">Travelers Count</label>
+                          <input 
+                            type="number" 
+                            min={1} 
+                            max={30}
+                            value={plannerData.guestsCount}
+                            onChange={(e) => setPlannerData({ ...plannerData, guestsCount: parseInt(e.target.value, 10) || 1 })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-xs text-slate-800"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold text-slate-500 block">Travel Party Vibe</label>
+                          <select 
+                            value={plannerData.groupType}
+                            onChange={(e) => setPlannerData({ ...plannerData, groupType: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-xs text-slate-800"
                           >
-                            <span>{wild}</span>
-                            {isSelected && <Check size={14} />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* STEP 3: Travel Parameters */}
-                {plannerStep === 3 && (
-                  <div className="space-y-4">
-                    <h4 className="font-extrabold text-[#0B3B8C] text-sm uppercase tracking-wider">Group & Dates</h4>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-slate-500 block">Estimated Month</label>
-                        <select 
-                          value={plannerData.travelMonth}
-                          onChange={(e) => setPlannerData({ ...plannerData, travelMonth: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-xs text-slate-800"
-                        >
-                          {['June', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May'].map(m => (
-                            <option key={m} value={m}>{m}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-slate-500 block">Safari Duration</label>
-                        <select 
-                          value={plannerData.duration}
-                          onChange={(e) => setPlannerData({ ...plannerData, duration: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-xs text-slate-800"
-                        >
-                          <option value="1 Day">1 Day</option>
-                          <option value="2-3 Days">2-3 Days</option>
-                          <option value="4-6 Days">4-6 Days</option>
-                          <option value="7+ Days">7+ Days</option>
-                        </select>
+                            <option value="Family Safari">Family Safari (Kid-Friendly)</option>
+                            <option value="Savoring Honeymoon">Savoring Honeymoon</option>
+                            <option value="Couples Trip">Couples Trip</option>
+                            <option value="Group Adventure">Group Adventure</option>
+                            <option value="Solo Exploration">Solo Exploration</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
+                  )}
 
-                    <div className="grid grid-cols-2 gap-4">
+                  {/* STEP 4: Personal Info & Submit */}
+                  {plannerStep === 4 && (
+                    <div className="space-y-4">
+                      <h4 className="font-extrabold text-[#0B3B8C] text-sm uppercase tracking-wider">Contact & Summary</h4>
+
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-slate-500 block">Travelers Count</label>
+                        <label className="text-[11px] font-bold text-slate-500 block">Your Full Name <span className="text-red-500">*</span></label>
                         <input 
-                          type="number" 
-                          min={1} 
-                          max={30}
-                          value={plannerData.guestsCount}
-                          onChange={(e) => setPlannerData({ ...plannerData, guestsCount: parseInt(e.target.value, 10) || 1 })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-xs text-slate-800"
+                          type="text" 
+                          required
+                          value={plannerData.leadName}
+                          onChange={(e) => setPlannerData({ ...plannerData, leadName: e.target.value })}
+                          placeholder="e.g. Dr. Emily Carter"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-800 focus:border-[#D4A017]"
                         />
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-slate-500 block">Travel Party Vibe</label>
-                        <select 
-                          value={plannerData.groupType}
-                          onChange={(e) => setPlannerData({ ...plannerData, groupType: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-xs text-slate-800"
-                        >
-                          <option value="Family Safari">Family Safari (Kid-Friendly)</option>
-                          <option value="Savoring Honeymoon">Savoring Honeymoon</option>
-                          <option value="Couples Trip">Couples Trip</option>
-                          <option value="Group Adventure">Group Adventure</option>
-                          <option value="Solo Exploration">Solo Exploration</option>
-                        </select>
+                        <label className="text-[11px] font-bold text-slate-500 block">Email Address <span className="text-red-500">*</span></label>
+                        <input 
+                          type="email" 
+                          required
+                          value={plannerData.leadEmail}
+                          onChange={(e) => setPlannerData({ ...plannerData, leadEmail: e.target.value })}
+                          placeholder="e.g. emily@example.com"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-800 focus:border-[#D4A017]"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-slate-500 block">WhatsApp or Phone number (with country code) <span className="text-red-500">*</span></label>
+                        <input 
+                          type="tel" 
+                          required
+                          value={plannerData.contactNum}
+                          onChange={(e) => setPlannerData({ ...plannerData, contactNum: e.target.value })}
+                          placeholder="e.g. +44 7911 123456"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-800 focus:border-[#D4A017]"
+                        />
+                      </div>
+
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-1 font-medium text-slate-600">
+                        <span className="text-[#0B3B8C] font-extrabold block">📑 Ready to Submit via Email</span>
+                        <p><strong>Recipient:</strong> zanzibartripandrelax@gmail.com</p>
+                        <p><strong>Preferred Circuit:</strong> {plannerData.circuit}</p>
+                        <p><strong>Travel Dates:</strong> {plannerData.startDate} ➔ {plannerData.endDate}</p>
+                        <p><strong>Safari Duration:</strong> {plannerData.duration} ({plannerData.travelMonth})</p>
+                        <p><strong>Travelers:</strong> {plannerData.guestsCount} guests | <strong>Party Style:</strong> {plannerData.groupType}</p>
                       </div>
                     </div>
-                  </div>
-                )}
-
-                {/* STEP 4: Personal Info & Submit */}
-                {plannerStep === 4 && (
-                  <div className="space-y-4">
-                    <h4 className="font-extrabold text-[#0B3B8C] text-sm uppercase tracking-wider">Contact & Summary</h4>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-500 block">Your Full Name</label>
-                      <input 
-                        type="text" 
-                        required
-                        value={plannerData.leadName}
-                        onChange={(e) => setPlannerData({ ...plannerData, leadName: e.target.value })}
-                        placeholder="e.g. Dr. Emily Carter"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-800 focus:border-[#D4A017]"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-500 block">WhatsApp or Phone number (with country code)</label>
-                      <input 
-                        type="tel" 
-                        required
-                        value={plannerData.contactNum}
-                        onChange={(e) => setPlannerData({ ...plannerData, contactNum: e.target.value })}
-                        placeholder="e.g. +44 7911 123456"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-800 focus:border-[#D4A017]"
-                      />
-                    </div>
-
-                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-1 font-medium text-slate-600">
-                      <span className="text-[#0B3B8C] font-extrabold block">📑 Ready to Dispatch Summary</span>
-                      <p><strong>Preferred Circuit:</strong> {plannerData.circuit}</p>
-                      <p><strong>Travelers:</strong> {plannerData.guestsCount} guests | <strong>Party Style:</strong> {plannerData.groupType}</p>
-                      <p><strong>Timeline:</strong> {plannerData.travelMonth} ({plannerData.duration})</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="pt-4 border-t border-slate-100 flex justify-between gap-4">
-                  {plannerStep > 1 && (
-                    <button 
-                      type="button"
-                      onClick={handlePlannerPrev}
-                      className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-3 px-5 rounded-full cursor-pointer"
-                    >
-                      Back
-                    </button>
                   )}
-                  {plannerStep < 4 ? (
-                    <button 
-                      type="button"
-                      onClick={handlePlannerNext}
-                      className="bg-[#0B3B8C] hover:bg-slate-800 text-white text-xs font-black py-3 px-6 rounded-full ml-auto cursor-pointer flex items-center gap-1.5"
-                    >
-                      <span>Next Step</span>
-                      <ArrowRight size={14} />
-                    </button>
-                  ) : (
-                    <button 
-                      type="submit"
-                      className="bg-[#25D366] hover:bg-[#1ebd5a] text-white text-xs font-black py-3 px-6 rounded-full ml-auto cursor-pointer flex items-center gap-1.5 shadow-lg"
-                    >
-                      <MessageCircle size={14} fill="white" />
-                      <span>Submit to WhatsApp</span>
-                    </button>
-                  )}
-                </div>
-              </form>
+
+                  {/* Actions */}
+                  <div className="pt-4 border-t border-slate-100 flex justify-between gap-4">
+                    {plannerStep > 1 && (
+                      <button 
+                        type="button"
+                        onClick={handlePlannerPrev}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-3 px-5 rounded-full cursor-pointer"
+                      >
+                        Back
+                      </button>
+                    )}
+                    {plannerStep < 4 ? (
+                      <button 
+                        type="button"
+                        onClick={handlePlannerNext}
+                        className="bg-[#0B3B8C] hover:bg-slate-800 text-white text-xs font-black py-3 px-6 rounded-full ml-auto cursor-pointer flex items-center gap-1.5"
+                      >
+                        <span>Next Step</span>
+                        <ArrowRight size={14} />
+                      </button>
+                    ) : (
+                      <button 
+                        type="submit"
+                        className="bg-[#0B3B8C] hover:bg-[#082a66] text-white text-xs font-black py-3 px-6 rounded-full ml-auto cursor-pointer flex items-center gap-1.5 shadow-lg"
+                      >
+                        <Mail size={14} />
+                        <span>Submit Custom Safari Request</span>
+                      </button>
+                    )}
+                  </div>
+                </form>
+              )}
             </motion.div>
           </div>
         )}

@@ -229,7 +229,7 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
     primaryButtonText: 'Book a Tour',
     primaryButtonAction: 'tours',
     secondaryButtonText: 'Plan My Trip',
-    secondaryButtonAction: 'trip-builder',
+    secondaryButtonAction: 'booking',
     bgImages: [
       'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&cs=tinysrgb&w=1920',
       'https://images.pexels.com/photos/3155666/pexels-photo-3155666.jpeg?auto=compress&cs=tinysrgb&w=1920',

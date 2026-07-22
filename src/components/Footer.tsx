@@ -166,9 +166,9 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
                 </button>
               </li>
               <li>
-                <button onClick={() => navigate('trip-builder')} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
+                <button onClick={() => navigate('booking')} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
                   <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
-                  <span>Trip Builder</span>
+                  <span>Custom Booking</span>
                 </button>
               </li>
               <li>
