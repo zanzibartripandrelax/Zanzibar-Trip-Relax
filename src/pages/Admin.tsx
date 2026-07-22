@@ -2398,18 +2398,9 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
   // Reset Owner account & returns system to first-time setup (Phase 5)
   const handleResetOwner = () => {
     if (window.confirm("WARNING: This is an emergency action. This will permanently remove the current ADMIN account, wipe all active session data, and return the system back to first-time onboarding. Continue?")) {
-      // Delete Owner/ADMIN account from ztr_admin_users
+      // Delete Owner/ADMIN account and clear authentication keys from localStorage
       try {
-        const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
-        const updatedUsers = storedUsers.filter((u: any) => u.role !== 'OWNER' && u.role !== 'Owner' && u.role?.toUpperCase() !== 'ADMIN');
-        localStorage.setItem('ztr_admin_users', JSON.stringify(updatedUsers));
-        
-        // Verify delete worked
-        const verifyUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
-        const ownerExists = verifyUsers.some((u: any) => u.role === 'Owner' || u.role === 'OWNER' || u.role?.toUpperCase() === 'ADMIN');
-        if (ownerExists) {
-          console.error("ADMIN account still exists after reset!");
-        }
+        localStorage.removeItem('ztr_admin_users');
       } catch (e) {
         // ignore
       }
@@ -2468,8 +2459,8 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
       setIsSystemInitialized(false);
       setSetupStep(1); // Reset wizard back to Step 1
       
-      // Navigate to /owner/setup
-      navigate('owner/setup');
+      // Navigate to create-owner
+      navigate('create-owner');
       showToast('Emergency system reset completed successfully.', 'success');
     }
   };
@@ -3978,12 +3969,14 @@ Stone Town, Zanzibar, Tanzania`);
               <button
                 type="button"
                 onClick={() => {
+                  localStorage.removeItem('ztr_admin_users');
                   localStorage.removeItem('ztr_active_session');
                   localStorage.removeItem('system_initialized');
                   setSession(null);
                   setIsSystemInitialized(false);
                   setSetupStep(1);
                   setAuthError('');
+                  navigate('create-owner');
                 }}
                 className="text-xs text-[#D4A017] hover:text-[#f3c852] font-semibold transition-all underline cursor-pointer block mx-auto"
               >
@@ -4141,12 +4134,14 @@ Stone Town, Zanzibar, Tanzania`);
           <button
             type="button"
             onClick={() => {
+              localStorage.removeItem('ztr_admin_users');
               localStorage.removeItem('ztr_active_session');
               localStorage.removeItem('system_initialized');
               setSession(null);
               setIsSystemInitialized(false);
               setSetupStep(1);
               setAuthError('');
+              navigate('create-owner');
               showToast('Resetting system. Create your first admin credential below.', 'info');
             }}
             className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer border border-white/10"
