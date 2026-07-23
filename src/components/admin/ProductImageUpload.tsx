@@ -3,6 +3,8 @@ import {
   Upload, Trash2, ArrowLeft, ArrowRight, Sparkles, Image as ImageIcon, 
   Map, FileText, CheckCircle2, RefreshCw
 } from 'lucide-react';
+import { uploadToSupabaseStorage } from '../../lib/supabase';
+import { optimizeUploadedImage } from '../../lib/imageOptimizer';
 
 interface ProductImageUploadProps {
   product: any;
@@ -21,20 +23,26 @@ export default function ProductImageUpload({ product, onChange }: ProductImageUp
     setDragOverField(null);
   };
 
-  // Process File and encode to base64
-  const processAndUploadFile = (file: File, field: 'image' | 'heroBanner' | 'mapImage' | 'accommodationImage' | 'gallery') => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64Data = reader.result as string;
-      const originalSize = (file.size / 1024).toFixed(0);
-      const optimizedSize = (file.size * 0.45 / 1024).toFixed(0);
+  // Process File and upload to Supabase or optimize
+  const processAndUploadFile = async (file: File, field: 'image' | 'heroBanner' | 'mapImage' | 'accommodationImage' | 'gallery') => {
+    if (file.size > 10 * 1024 * 1024) {
+      alert(`File "${file.name}" exceeds the 10MB maximum limit.`);
+      return;
+    }
+
+    try {
+      let finalUrl = await uploadToSupabaseStorage(file, 'tours');
+      if (!finalUrl) {
+        const optimized = await optimizeUploadedImage(file);
+        finalUrl = optimized.desktop;
+      }
 
       const mediaItem = {
         id: `media-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        url: base64Data,
+        url: finalUrl,
         caption: `${file.name.split('.')[0]}`,
         altText: product.title || 'Travel Product Resource',
-        optimizationNotes: `Compressed: Optimized from ${originalSize}KB to ${optimizedSize}KB (JPEG 80%)`
+        optimizationNotes: `Uploaded & Optimized (${(file.size / 1024).toFixed(0)}KB)`
       };
 
       if (field === 'gallery') {
@@ -46,12 +54,13 @@ export default function ProductImageUpload({ product, onChange }: ProductImageUp
       } else {
         onChange({
           ...product,
-          [field]: base64Data,
+          [field]: finalUrl,
           [`${field}Optimized`]: mediaItem.optimizationNotes
         });
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Failed to upload image:', err);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'image' | 'heroBanner' | 'mapImage' | 'accommodationImage' | 'gallery') => {

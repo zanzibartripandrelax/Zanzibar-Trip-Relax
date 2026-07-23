@@ -4,6 +4,7 @@ import { Page } from '../hooks/useHashRouter';
 import { ProgressiveImage } from './ProgressiveImage';
 import Newsletter from './Newsletter';
 import { useAnalytics } from '../context/AnalyticsContext';
+import { useSiteLogos } from '../lib/cmsStore';
 
 interface FooterProps {
   navigate: (page: Page, id?: string) => void;
@@ -19,6 +20,7 @@ function TikTokIcon({ size = 18 }: { size?: number }) {
 }
 
 export default function Footer({ navigate, currentPage }: FooterProps) {
+  const logos = useSiteLogos();
   const { trackWhatsAppClick } = useAnalytics();
   const year = new Date().getFullYear();
   const [careerToast, setCareerToast] = useState(false);
@@ -45,7 +47,7 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
         <div className={`grid grid-cols-1 ${currentPage === 'home' ? '' : 'lg:grid-cols-12'} gap-8 items-center pb-12 mb-12 border-b border-white/10`}>
           <div className={`${currentPage === 'home' ? 'w-full' : 'lg:col-span-5'} flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left`}>
             <ProgressiveImage
-              src="/src/assets/images/logo.png"
+              src={logos.footerLogo || logos.headerLogo || "/src/assets/images/logo.png"}
               alt="Zanzibar Trip and Relax Logo"
               className="h-16 w-16 object-contain shrink-0 filter drop-shadow-md"
             />

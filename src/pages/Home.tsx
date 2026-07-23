@@ -3,12 +3,12 @@ import {
   Compass, Palmtree, MessageCircle, MapPin, Star, ArrowRight, 
   Clock, Shield, Users, CheckCircle, Calendar, ChevronRight, 
   Sparkles, Phone, Waves, TreePine, Mountain, Plane, Play, 
-  ShieldCheck, Award, Heart, Check
+  ShieldCheck, Award, Heart, Check, X
 } from 'lucide-react';
 import { Page } from '../hooks/useHashRouter';
 import GuestReviews from '../components/GuestReviews';
 import Newsletter from '../components/Newsletter';
-import { getSiteContent } from '../lib/cmsStore';
+import { getSiteContent, extractYouTubeId, getYouTubeEmbedUrl } from '../lib/cmsStore';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../context/LanguageContext';
 import { ProgressiveImage } from '../components/ProgressiveImage';
@@ -235,6 +235,7 @@ function AnimatedSection({ children, className = '' }: { children: ReactNode; cl
 export default function Home({ navigate }: HomeProps) {
   const { trackWhatsAppClick } = useAnalytics();
   const [slide, setSlide] = useState(0);
+  const [activeVideoModal, setActiveVideoModal] = useState<{ title: string; embedUrl: string } | null>(null);
   const scrollY = useScrollY();
   const content = getSiteContent();
 
@@ -838,32 +839,79 @@ export default function Home({ navigate }: HomeProps) {
           </AnimatedSection>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-            {videosList.map((v, idx) => (
-              <AnimatedSection key={idx}>
-                <a 
-                  href={v.youtube} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="group block bg-white rounded-2xl overflow-hidden border border-slate-100 hover:shadow-2xl transition-all duration-300 relative h-64"
-                >
-                  <ProgressiveImage src={v.img} alt={v.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors" />
-                  
-                  {/* Hover play animation */}
-                  <div className="absolute inset-0 flex flex-col justify-between p-4 z-10 text-white">
-                    <div className="w-10 h-10 bg-[#D4A017] rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform self-end">
-                      <Play size={16} fill="white" className="ml-0.5 text-white" />
+            {videosList.map((v, idx) => {
+              const ytId = extractYouTubeId(v.youtube);
+              const embedUrl = ytId ? getYouTubeEmbedUrl(ytId) : v.youtube;
+
+              return (
+                <AnimatedSection key={idx}>
+                  <button 
+                    onClick={() => setActiveVideoModal({ title: v.title, embedUrl })}
+                    className="group w-full text-left bg-white rounded-2xl overflow-hidden border border-slate-100 hover:shadow-2xl transition-all duration-300 relative h-64 cursor-pointer"
+                  >
+                    <ProgressiveImage src={v.img} alt={v.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors" />
+                    
+                    {/* Hover play animation */}
+                    <div className="absolute inset-0 flex flex-col justify-between p-4 z-10 text-white">
+                      <div className="w-10 h-10 bg-[#D4A017] rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform self-end">
+                        <Play size={16} fill="white" className="ml-0.5 text-white" />
+                      </div>
+                      <p className="text-xs font-extrabold tracking-tight text-white leading-snug drop-shadow-md">
+                        {v.title}
+                      </p>
                     </div>
-                    <p className="text-xs font-extrabold tracking-tight text-white leading-snug drop-shadow-md">
-                      {v.title}
-                    </p>
-                  </div>
-                </a>
-              </AnimatedSection>
-            ))}
+                  </button>
+                </AnimatedSection>
+              );
+            })}
           </div>
         </div>
       </section>
+
+      {/* EMBEDDED YOUTUBE VIDEO STORY MODAL */}
+      <AnimatePresence>
+        {activeVideoModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setActiveVideoModal(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-4xl bg-[#0A1224] border border-white/20 rounded-3xl overflow-hidden shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-4 bg-[#081835] border-b border-white/10">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Play size={16} className="text-[#D4A017] fill-[#D4A017]" />
+                  <span>{activeVideoModal.title}</span>
+                </h3>
+                <button 
+                  onClick={() => setActiveVideoModal(null)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="relative aspect-video bg-black">
+                <iframe 
+                  src={`${activeVideoModal.embedUrl}?autoplay=1`}
+                  title={activeVideoModal.title}
+                  className="w-full h-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* SECTION 13 — ABOUT THE FOUNDER */}
       <section id="founder-section" className="py-24 px-4 bg-[#F4E7D3]/80 border-b border-slate-100">

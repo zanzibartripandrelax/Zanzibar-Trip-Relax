@@ -6,7 +6,7 @@ import {
   Camera, HelpCircle, Briefcase, Compass, Search
 } from 'lucide-react';
 import { Page } from '../hooks/useHashRouter';
-import { getSiteContent, getHotels, Destination, TourItem } from '../lib/cmsStore';
+import { getSiteContent, getHotels, Destination, TourItem, getGoogleMapEmbedUrl } from '../lib/cmsStore';
 import UnifiedBookingModal from '../components/UnifiedBookingModal';
 
 // Static Categories data for main landing
@@ -808,7 +808,7 @@ export default function Destinations({ navigate }: { navigate: (page: Page, id?:
               </h3>
               <div className="rounded-2xl overflow-hidden h-72 border border-slate-100 relative">
                 <iframe 
-                  src={`https://maps.google.com/maps?q=${encodeURIComponent(currentDestObj.mapQuery)}&t=&z=10&ie=UTF8&iwloc=&output=embed`}
+                  src={getGoogleMapEmbedUrl((currentDestObj as any).mapUrl || (currentDestObj as any).mapQuery || currentDestObj.name)}
                   className="w-full h-full border-0" 
                   allowFullScreen={true} 
                   loading="lazy" 

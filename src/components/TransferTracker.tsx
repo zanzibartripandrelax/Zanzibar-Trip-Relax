@@ -477,15 +477,38 @@ export default function TransferTracker({ onBackToBooking }: TransferTrackerProp
                     <MapPin size={14} className="text-rose-500 mt-0.5" />
                     <div>
                       <span className="text-slate-400 text-[9px] uppercase block font-mono">Pickup Zone Coordinate</span>
-                      <span className="font-extrabold text-slate-800">{foundBooking.pickup || foundBooking.pickup_location}</span>
+                      <span className="font-extrabold text-slate-800">{foundBooking.pickup || foundBooking.pickup_location?.name || foundBooking.pickup_location}</span>
+                      {foundBooking.pickup_location?.address && (
+                        <span className="text-slate-500 text-[10px] block">{foundBooking.pickup_location.address}</span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <MapPin size={14} className="text-[#0B3B8C] mt-0.5" />
                     <div>
                       <span className="text-slate-400 text-[9px] uppercase block font-mono">Drop-off Destination</span>
-                      <span className="font-extrabold text-slate-800">{foundBooking.destination || 'Selected Beach Resort Area'}</span>
+                      <span className="font-extrabold text-slate-800">{foundBooking.destination || foundBooking.destination_location?.name || 'Selected Beach Resort Area'}</span>
+                      {foundBooking.destination_location?.address && (
+                        <span className="text-slate-500 text-[10px] block">{foundBooking.destination_location.address}</span>
+                      )}
                     </div>
+                  </div>
+
+                  {/* Google Maps Turn-by-Turn Navigation Button for Driver & Guest */}
+                  <div className="pt-2">
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
+                        foundBooking.pickup_location?.address || foundBooking.pickup_location?.name || foundBooking.pickup || 'Zanzibar Airport'
+                      )}&destination=${encodeURIComponent(
+                        foundBooking.destination_location?.address || foundBooking.destination_location?.name || foundBooking.destination || 'Nungwi Beach'
+                      )}&travelmode=driving`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-[#0B3B8C] hover:bg-[#082E6E] text-white font-extrabold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all"
+                    >
+                      <MapPin size={14} className="text-[#D4A017]" />
+                      <span>Navigate with Google Maps (Turn-by-Turn)</span>
+                    </a>
                   </div>
                 </div>
 

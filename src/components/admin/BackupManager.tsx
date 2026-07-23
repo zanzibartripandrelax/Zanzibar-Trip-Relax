@@ -1,6 +1,7 @@
 import React from 'react';
 import { Download, Upload, Database, AlertCircle, RefreshCw } from 'lucide-react';
 import { addActivityLog } from '../../lib/cmsStore';
+import { safeLocalStorage, migrateLocalStorage } from '../../lib/safeStorage';
 
 interface BackupManagerProps {
   session: any;
@@ -76,14 +77,15 @@ export default function BackupManager({ session }: BackupManagerProps) {
                     const parsed = JSON.parse(ev.target?.result as string);
                     if (confirm('Are you sure you want to restore? This will replace ALL existing settings with the backup content.')) {
                       Object.keys(parsed).forEach(k => {
-                        if (parsed[k]) localStorage.setItem(k, parsed[k]);
+                        if (parsed[k]) safeLocalStorage.setItem(k, parsed[k]);
                       });
+                      migrateLocalStorage();
                       addActivityLog(session?.name || 'Owner', 'backupRestore', 'Restored complete database configuration backup.');
-                      alert('Restored successfully! System is refreshing.');
+                      alert('System successfully restored from backup snapshot!');
                       window.location.reload();
                     }
-                  } catch {
-                    alert('Invalid backup file formatting.');
+                  } catch (err) {
+                    alert('Invalid JSON backup file.');
                   }
                 };
                 r.readAsText(file);

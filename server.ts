@@ -3,22 +3,508 @@ import path from 'path';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
 import twilio from 'twilio';
+import bcrypt from 'bcryptjs';
 import { createServer as createViteServer } from 'vite';
 
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Server paths
 const DATA_DIR = path.join(process.cwd(), 'src/data');
 const SETTINGS_FILE = path.join(DATA_DIR, 'notification_settings.json');
 const LOGS_FILE = path.join(DATA_DIR, 'notification_logs.json');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const BOOKINGS_FILE = path.join(DATA_DIR, 'bookings.json');
+const CUSTOMERS_FILE = path.join(DATA_DIR, 'customers.json');
+const DOCUMENTS_FILE = path.join(DATA_DIR, 'documents.json');
+const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
+const MEDIA_FILE = path.join(DATA_DIR, 'media.json');
+const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 
 // Ensure parent directories exist
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+// Serve static uploaded files
+app.use('/uploads', express.static(UPLOADS_DIR));
+
+// HELPER: Server Base64 Sanitizer
+function stripBase64OnServer(data: any): any {
+  if (!data) return data;
+  if (typeof data === 'string') {
+    if (data.startsWith('data:')) {
+      if (data.includes('image/')) {
+        return 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=compress&cs=tinysrgb&w=150';
+      }
+      return '/uploads/documents/document.pdf';
+    }
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data.map(stripBase64OnServer);
+  }
+  if (typeof data === 'object') {
+    const res: Record<string, any> = {};
+    for (const k of Object.keys(data)) {
+      if (k === 'passwordHash' || k === 'password') {
+        res[k] = data[k];
+      } else {
+        res[k] = stripBase64OnServer(data[k]);
+      }
+    }
+    return res;
+  }
+  return data;
+}
+
+// HELPER: Load and Save Users Data
+function getUsersData() {
+  if (fs.existsSync(USERS_FILE)) {
+    try {
+      return JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+    } catch (e) {
+      console.error('[AuthServer] Failed to parse users file:', e);
+    }
+  }
+  return { system_initialized: false, users: [] };
+}
+
+function saveUsersData(data: { system_initialized: boolean; users: any[] }) {
+  data.users = stripBase64OnServer(data.users);
+  fs.writeFileSync(USERS_FILE, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+// Helper generic JSON loaders
+function getJsonFile(filePath: string, defaultVal: any = []) {
+  if (fs.existsSync(filePath)) {
+    try {
+      return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    } catch (e) {
+      console.error(`[DbServer] Failed to parse ${filePath}:`, e);
+    }
+  }
+  return defaultVal;
+}
+
+function saveJsonFile(filePath: string, data: any) {
+  const cleanData = stripBase64OnServer(data);
+  fs.writeFileSync(filePath, JSON.stringify(cleanData, null, 2), 'utf-8');
+}
+
+// ==========================================
+// FILE UPLOAD ENDPOINT (/api/upload)
+// ==========================================
+app.post('/api/upload', (req, res) => {
+  try {
+    const { fileName, fileData, folder = 'general' } = req.body;
+    if (!fileData) {
+      return res.status(400).json({ success: false, error: 'No file data provided.' });
+    }
+
+    let buffer: Buffer;
+    let extension = 'png';
+    let mimeType = 'image/png';
+
+    if (typeof fileData === 'string' && fileData.startsWith('data:')) {
+      const matches = fileData.match(/^data:(.+);base64,(.+)$/);
+      if (matches) {
+        mimeType = matches[1];
+        buffer = Buffer.from(matches[2], 'base64');
+        if (mimeType.includes('pdf')) extension = 'pdf';
+        else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
+        else if (mimeType.includes('png')) extension = 'png';
+        else if (mimeType.includes('webp')) extension = 'webp';
+        else if (mimeType.includes('svg')) extension = 'svg';
+        else if (mimeType.includes('word') || mimeType.includes('docx')) extension = 'docx';
+      } else {
+        buffer = Buffer.from(fileData, 'base64');
+      }
+    } else {
+      buffer = Buffer.from(String(fileData), 'base64');
+    }
+
+    const cleanFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '');
+    const targetFolder = path.join(UPLOADS_DIR, cleanFolder);
+    if (!fs.existsSync(targetFolder)) {
+      fs.mkdirSync(targetFolder, { recursive: true });
+    }
+
+    const cleanName = (fileName || `file_${Date.now()}`).replace(/[^a-zA-Z0-9_.-]/g, '_');
+    const safeFilename = `${Date.now()}_${Math.floor(Math.random() * 10000)}_${cleanName.endsWith('.' + extension) ? cleanName : cleanName + '.' + extension}`;
+    const filePath = path.join(targetFolder, safeFilename);
+    
+    fs.writeFileSync(filePath, buffer);
+
+    const relativeUrl = `/uploads/${cleanFolder}/${safeFilename}`;
+    const sizeKB = (buffer.length / 1024).toFixed(1) + ' KB';
+
+    console.log(`[UploadServer] Saved file "${safeFilename}" (${sizeKB}) at ${relativeUrl}`);
+
+    res.json({
+      success: true,
+      url: relativeUrl,
+      fileName: safeFilename,
+      size: sizeKB,
+      mimeType
+    });
+  } catch (err: any) {
+    console.error('[UploadServer] Upload error:', err);
+    res.status(500).json({ success: false, error: err.message || 'File upload failed.' });
+  }
+});
+
+// ==========================================
+// PERSISTENT DATABASE ENDPOINTS
+// ==========================================
+
+// Bookings Endpoint
+app.get('/api/bookings', (req, res) => {
+  const bookings = getJsonFile(BOOKINGS_FILE, []);
+  res.json({ success: true, bookings });
+});
+
+app.post('/api/bookings', (req, res) => {
+  const { bookings } = req.body;
+  if (!Array.isArray(bookings)) {
+    return res.status(400).json({ success: false, error: 'Array of bookings expected.' });
+  }
+  saveJsonFile(BOOKINGS_FILE, bookings);
+  res.json({ success: true, count: bookings.length });
+});
+
+// Customers Endpoint
+app.get('/api/customers', (req, res) => {
+  const customers = getJsonFile(CUSTOMERS_FILE, []);
+  res.json({ success: true, customers });
+});
+
+app.post('/api/customers', (req, res) => {
+  const { customers } = req.body;
+  if (!Array.isArray(customers)) {
+    return res.status(400).json({ success: false, error: 'Array of customers expected.' });
+  }
+  saveJsonFile(CUSTOMERS_FILE, customers);
+  res.json({ success: true, count: customers.length });
+});
+
+// Documents Endpoint
+app.get('/api/documents', (req, res) => {
+  const documents = getJsonFile(DOCUMENTS_FILE, []);
+  res.json({ success: true, documents });
+});
+
+app.post('/api/documents', (req, res) => {
+  const { documents } = req.body;
+  if (!Array.isArray(documents)) {
+    return res.status(400).json({ success: false, error: 'Array of documents expected.' });
+  }
+  saveJsonFile(DOCUMENTS_FILE, documents);
+  res.json({ success: true, count: documents.length });
+});
+
+// Reports Endpoint
+app.get('/api/reports', (req, res) => {
+  const reports = getJsonFile(REPORTS_FILE, []);
+  res.json({ success: true, reports });
+});
+
+app.post('/api/reports', (req, res) => {
+  const { reports } = req.body;
+  if (!Array.isArray(reports)) {
+    return res.status(400).json({ success: false, error: 'Array of reports expected.' });
+  }
+  saveJsonFile(REPORTS_FILE, reports);
+  res.json({ success: true, count: reports.length });
+});
+
+// Media Library Endpoint
+app.get('/api/media', (req, res) => {
+  const media = getJsonFile(MEDIA_FILE, []);
+  res.json({ success: true, media });
+});
+
+app.post('/api/media', (req, res) => {
+  const { media } = req.body;
+  if (!Array.isArray(media)) {
+    return res.status(400).json({ success: false, error: 'Array of media items expected.' });
+  }
+  saveJsonFile(MEDIA_FILE, media);
+  res.json({ success: true, count: media.length });
+});
+
+// ==========================================
+// AUTHENTICATION & ROLE MANAGEMENT ENDPOINTS
+// ==========================================
+
+// Check first-time system initialization status
+app.get('/api/auth/init-status', (req, res) => {
+  const data = getUsersData();
+  const hasAdmin = data.users.some((u: any) => u.role === 'ADMIN' || u.role === 'Admin' || u.role === 'Owner');
+  res.json({
+    initialized: data.system_initialized || hasAdmin,
+    hasAdmin
+  });
+});
+
+// Setup First-Time System Administrator
+app.post('/api/auth/setup-admin', (req, res) => {
+  const data = getUsersData();
+  const hasAdmin = data.users.some((u: any) => u.role === 'ADMIN' || u.role === 'Admin' || u.role === 'Owner');
+  if (data.system_initialized && hasAdmin) {
+    return res.status(400).json({ success: false, error: 'System is already initialized. First-time setup is blocked.' });
+  }
+
+  const { fullName, username, password, phone, email, recoveryQuestion, recoveryAnswer, profilePhoto } = req.body;
+  if (!fullName || !username || !password || !phone) {
+    return res.status(400).json({ success: false, error: 'Mandatory fields missing (FullName, Username, Password, Phone).' });
+  }
+  if (username.includes(' ')) {
+    return res.status(400).json({ success: false, error: 'Username cannot contain spaces.' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ success: false, error: 'Password must be at least 6 characters.' });
+  }
+
+  const hashedPassword = bcrypt.hashSync(password, 10);
+  const newAdmin = {
+    username: username.trim().toLowerCase(),
+    passwordHash: hashedPassword,
+    name: fullName.trim(),
+    phone: phone.trim(),
+    email: (email || '').trim(),
+    profile_photo: profilePhoto || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=compress&cs=tinysrgb&w=150',
+    profilePhoto: profilePhoto || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=compress&cs=tinysrgb&w=150',
+    recoveryQuestion: recoveryQuestion || 'What was the name of your first pet?',
+    recoveryAnswer: (recoveryAnswer || 'default').trim().toLowerCase(),
+    role: 'ADMIN',
+    status: 'Active',
+    staff_id: 'ADMIN-1',
+    first_login_required: false,
+    created_at: new Date().toISOString()
+  };
+
+  data.system_initialized = true;
+  data.users = [newAdmin, ...data.users.filter((u: any) => u.role !== 'ADMIN' && u.role !== 'Owner')];
+  saveUsersData(data);
+
+  res.json({
+    success: true,
+    message: 'System Administrator created successfully.',
+    user: {
+      username: newAdmin.username,
+      name: newAdmin.name,
+      role: 'ADMIN',
+      staff_id: newAdmin.staff_id,
+      email: newAdmin.email,
+      phone: newAdmin.phone
+    }
+  });
+});
+
+// Portal User Login
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ success: false, error: 'Username and password required.' });
+  }
+
+  const data = getUsersData();
+  const searchInput = username.trim().toLowerCase();
+  const user = data.users.find((u: any) => u.username.toLowerCase() === searchInput || u.email?.toLowerCase() === searchInput);
+
+  if (!user) {
+    return res.status(401).json({ success: false, error: 'Incorrect username or password' });
+  }
+
+  if (user.status === 'Inactive' || user.isLocked) {
+    return res.status(403).json({ success: false, error: 'Your staff account has been locked or deactivated.' });
+  }
+
+  const matches = bcrypt.compareSync(password, user.passwordHash) || user.passwordHash === password;
+  if (!matches) {
+    return res.status(401).json({ success: false, error: 'Incorrect username or password' });
+  }
+
+  res.json({
+    success: true,
+    user: {
+      username: user.username,
+      name: user.name,
+      role: user.role === 'Owner' || user.role === 'ADMIN' ? 'ADMIN' : user.role,
+      staff_id: user.staff_id || 'STF-001',
+      email: user.email,
+      phone: user.phone,
+      first_login_required: !!user.first_login_required
+    }
+  });
+});
+
+// Forgot Password - Step 1: Retrieve Question
+app.post('/api/auth/forgot-password/question', (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ success: false, error: 'Username is required.' });
+
+  const data = getUsersData();
+  const searchInput = username.trim().toLowerCase();
+  const user = data.users.find((u: any) => u.username.toLowerCase() === searchInput);
+
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'User account not found.' });
+  }
+
+  res.json({
+    success: true,
+    username: user.username,
+    recoveryQuestion: user.recoveryQuestion || 'What was the name of your first pet?'
+  });
+});
+
+// Forgot Password - Step 2: Verify Answer & Reset
+app.post('/api/auth/forgot-password/verify', (req, res) => {
+  const { username, recoveryAnswer, newPassword } = req.body;
+  if (!username || !recoveryAnswer || !newPassword) {
+    return res.status(400).json({ success: false, error: 'All fields are required.' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ success: false, error: 'New password must be at least 6 characters long.' });
+  }
+
+  const data = getUsersData();
+  const searchInput = username.trim().toLowerCase();
+  const userIndex = data.users.findIndex((u: any) => u.username.toLowerCase() === searchInput);
+
+  if (userIndex === -1) {
+    return res.status(404).json({ success: false, error: 'User account not found.' });
+  }
+
+  const user = data.users[userIndex];
+  const storedAnswer = (user.recoveryAnswer || '').trim().toLowerCase();
+  const inputAnswer = recoveryAnswer.trim().toLowerCase();
+
+  if (storedAnswer !== inputAnswer) {
+    return res.status(401).json({ success: false, error: 'Incorrect recovery answer.' });
+  }
+
+  user.passwordHash = bcrypt.hashSync(newPassword, 10);
+  user.first_login_required = false;
+  data.users[userIndex] = user;
+  saveUsersData(data);
+
+  res.json({ success: true, message: 'Password reset successful. You may now log in.' });
+});
+
+// Staff Management - List Staff
+app.get('/api/auth/staff', (req, res) => {
+  const data = getUsersData();
+  const staffList = data.users.map((u: any) => ({
+    username: u.username,
+    name: u.name,
+    email: u.email,
+    phone: u.phone,
+    role: u.role,
+    status: u.status || 'Active',
+    staff_id: u.staff_id,
+    office: u.office || 'Zanzibar HQ',
+    first_login_required: !!u.first_login_required,
+    created_at: u.created_at
+  }));
+  res.json({ success: true, staff: staffList });
+});
+
+// Staff Management - Create Staff Account
+app.post('/api/auth/staff', (req, res) => {
+  const { fullName, username, temporaryPassword, phone, email, role, department } = req.body;
+  if (!fullName || !username || !temporaryPassword || !role) {
+    return res.status(400).json({ success: false, error: 'Missing required staff fields.' });
+  }
+
+  const data = getUsersData();
+  const exists = data.users.some((u: any) => u.username.toLowerCase() === username.trim().toLowerCase());
+  if (exists) {
+    return res.status(400).json({ success: false, error: 'Username already exists.' });
+  }
+
+  const hashedPassword = bcrypt.hashSync(temporaryPassword, 10);
+  const newStaff = {
+    username: username.trim().toLowerCase(),
+    passwordHash: hashedPassword,
+    name: fullName.trim(),
+    phone: (phone || '').trim(),
+    email: (email || '').trim(),
+    role,
+    status: 'Active',
+    office: department || 'Operations',
+    staff_id: `STF-${Math.floor(100 + Math.random() * 900)}`,
+    first_login_required: true,
+    recoveryQuestion: 'What was the name of your first pet?',
+    recoveryAnswer: 'default',
+    created_at: new Date().toISOString()
+  };
+
+  data.users.push(newStaff);
+  saveUsersData(data);
+
+  res.json({ success: true, message: 'Staff member account created.', staff: newStaff });
+});
+
+// Password Change / First Login Force Reset
+app.post('/api/auth/change-password', (req, res) => {
+  const { username, currentPassword, newPassword } = req.body;
+  if (!username || !newPassword) {
+    return res.status(400).json({ success: false, error: 'Username and new password required.' });
+  }
+
+  const data = getUsersData();
+  const userIndex = data.users.findIndex((u: any) => u.username.toLowerCase() === username.trim().toLowerCase());
+  if (userIndex === -1) {
+    return res.status(404).json({ success: false, error: 'User not found.' });
+  }
+
+  const user = data.users[userIndex];
+  if (currentPassword && !user.first_login_required) {
+    const valid = bcrypt.compareSync(currentPassword, user.passwordHash) || user.passwordHash === currentPassword;
+    if (!valid) {
+      return res.status(401).json({ success: false, error: 'Current password is incorrect.' });
+    }
+  }
+
+  user.passwordHash = bcrypt.hashSync(newPassword, 10);
+  user.first_login_required = false;
+  data.users[userIndex] = user;
+  saveUsersData(data);
+
+  res.json({ success: true, message: 'Password changed successfully.' });
+});
+
+// Emergency System Reset (Admin Password Required)
+app.post('/api/auth/emergency-reset', (req, res) => {
+  const { adminUsername, adminPassword } = req.body;
+  if (!adminUsername || !adminPassword) {
+    return res.status(400).json({ success: false, error: 'Admin username and password required.' });
+  }
+
+  const data = getUsersData();
+  const admin = data.users.find((u: any) => (u.username.toLowerCase() === adminUsername.trim().toLowerCase()) && (u.role === 'ADMIN' || u.role === 'Admin' || u.role === 'Owner'));
+
+  if (!admin) {
+    return res.status(403).json({ success: false, error: 'Admin account credentials required for emergency reset.' });
+  }
+
+  const valid = bcrypt.compareSync(adminPassword, admin.passwordHash) || admin.passwordHash === adminPassword;
+  if (!valid) {
+    return res.status(401).json({ success: false, error: 'Invalid admin password.' });
+  }
+
+  saveUsersData({ system_initialized: false, users: [] });
+  res.json({ success: true, message: 'Emergency reset executed. System wiped and reset to first-time setup.' });
+});
 
 // HELPER: Load settings
 function getSettings() {

@@ -8,6 +8,7 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     define: {
       'process.env.AUTH_MODE': JSON.stringify(process.env.AUTH_MODE || 'development'),
+      'process.env.GOOGLE_MAPS_PLATFORM_KEY': JSON.stringify(process.env.GOOGLE_MAPS_PLATFORM_KEY || ''),
     },
     resolve: {
       alias: {

@@ -7,7 +7,7 @@ import {
   FileText, Copy, Mail, Calendar, Eye, Image, Sparkles,
   CheckCircle2, DollarSign, Upload, Users, Activity, HelpCircle,
   TrendingUp, Download, EyeOff, Layout, Phone, MapPin, Clock, List,
-  Shield, Check, Briefcase, Leaf, X, Database, CloudUpload, History, Play, RefreshCw, FileCode, AlertTriangle, Terminal, ChevronDown, ChevronUp, Printer,
+  Shield, Check, Briefcase, Leaf, X, Database, CloudUpload, History, Play, RefreshCw, FileCode, AlertTriangle, Terminal, ChevronDown, ChevronUp, Printer, KeyRound,
   Luggage, Award, Send, Truck, Navigation, Info, Globe
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -134,6 +134,19 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
     }
   });
 
+  // Sync initialization status with server backend
+  useEffect(() => {
+    fetch('/api/auth/init-status')
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.initialized === 'boolean') {
+          setIsSystemInitialized(data.initialized);
+          localStorage.setItem('system_initialized', String(data.initialized));
+        }
+      })
+      .catch(err => console.warn('Backend init-status check failed:', err));
+  }, []);
+
   // Local wrapper to make activity logging dynamic and update React state immediately
   const addActivityLog = (
     user: string,
@@ -153,6 +166,22 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
+
+  // Auth view & password reset states
+  const [authView, setAuthView] = useState<'login' | 'forgot' | 'force-password-change'>('login');
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
+  const [forgotUsernameInput, setForgotUsernameInput] = useState('');
+  const [forgotQuestion, setForgotQuestion] = useState('');
+  const [forgotAnswerInput, setForgotAnswerInput] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+  const [forgotError, setForgotError] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+
+  const [forceNewPassword, setForceNewPassword] = useState('');
+  const [forceConfirmPassword, setForceConfirmPassword] = useState('');
+  const [forcePasswordError, setForcePasswordError] = useState('');
+  const [forcePasswordLoading, setForcePasswordLoading] = useState(false);
 
   // Owner Setup states
   const [ownerFullName, setOwnerFullName] = useState('');
@@ -2199,83 +2228,254 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
     setAuthLoading(true);
     try {
       console.log('[AUTH-DEBUG] Username entered:', username.trim());
-      
-      const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
-      const ownersList = storedUsers.filter((u: any) => u.role?.toUpperCase() === 'ADMIN' || u.role?.toLowerCase() === 'owner');
-      console.log('[AUTH-DEBUG] Admin/Owner count:', ownersList.length);
+      let authenticatedUser: any = null;
 
-      const searchInput = username.trim().toLowerCase();
-      const userMatch = storedUsers.find(
-        (u: any) =>
-          (u.username && u.username.toLowerCase() === searchInput) ||
-          (u.name && u.name.toLowerCase() === searchInput) ||
-          (u.name && u.name.toLowerCase().includes(searchInput)) ||
-          (u.username && u.username.toLowerCase().includes(searchInput))
-      );
-
-      if (userMatch) {
-        const isOwnerFound = userMatch.role?.toUpperCase() === 'ADMIN' || userMatch.role?.toLowerCase() === 'owner';
-        console.log('[AUTH-DEBUG] Admin/Owner found:', isOwnerFound ? 'true' : 'false', '(Role:', userMatch.role, ')');
-
-        if (userMatch.status === 'Inactive' || userMatch.isLocked || userMatch.status === 'Locked') {
-          addActivityLog(userMatch.name, 'loginBlocked', `Blocked login attempt: Staff member identity is locked/deactivated.`);
-          setAuthError('Your staff account has been locked or deactivated. Please contact an executive administrator.');
-          setAuthLoading(false);
-          return;
+      // 1. Try server backend authentication endpoint
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username.trim(), password })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          authenticatedUser = data.user;
+        } else if (!data.success && data.error) {
+          console.warn('[AUTH-DEBUG] Backend auth message:', data.error);
         }
+      } catch (err) {
+        console.warn('[AUTH-DEBUG] Backend auth endpoint unreachable, falling back to local database:', err);
+      }
 
-        // Validate password
-        const isPasswordCorrect = await comparePassword(password, userMatch.passwordHash);
-        console.log('[AUTH-DEBUG] Password comparison:', isPasswordCorrect ? 'success' : 'failed');
+      // 2. Fallback to local user store if backend didn't return user
+      if (!authenticatedUser) {
+        const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+        const searchInput = username.trim().toLowerCase();
+        const userMatch = storedUsers.find(
+          (u: any) =>
+            (u.username && u.username.toLowerCase() === searchInput) ||
+            (u.email && u.email.toLowerCase() === searchInput) ||
+            (u.name && u.name.toLowerCase() === searchInput)
+        );
 
-        if (isPasswordCorrect) {
-          const userInfo = {
-            username: userMatch.username,
-            name: userMatch.name,
-            role: (userMatch.role?.toUpperCase() === 'ADMIN' || userMatch.role?.toLowerCase() === 'owner') ? 'ADMIN' : userMatch.role,
-            staff_id: userMatch.staff_id,
-            office: userMatch.office,
-            office_code: userMatch.office_code,
-            branch_code: userMatch.branch_code
-          };
-          setSession(userInfo);
-          localStorage.setItem('ztr_active_session', JSON.stringify({
-            user: userInfo,
-            timestamp: Date.now()
-          }));
-          console.log('[AUTH-DEBUG] Session created:', userInfo.username);
+        if (userMatch) {
+          if (userMatch.status === 'Inactive' || userMatch.isLocked || userMatch.status === 'Locked') {
+            addActivityLog(userMatch.name, 'loginBlocked', `Blocked login attempt: Account locked/deactivated.`);
+            setAuthError('Your staff account has been locked or deactivated. Please contact an executive administrator.');
+            setAuthLoading(false);
+            return;
+          }
 
-          addActivityLog(userMatch.name, userInfo.role, `Logged into Admin Portal successfully using ${userInfo.role} clearance.`);
-          setInactivityNotice(false);
-          
-          setActiveTab('dashboard');
-          showToast(`Welcome back, ${userInfo.name}!`, 'success');
-          navigate('admin');
-        } else {
-          console.warn('[AUTH-DEBUG] Authentication failed: Invalid password.');
-          addActivityLog(username.trim(), 'Guest / External', `Failed login attempt: Invalid password for username.`);
-          setAuthError('Incorrect username or password');
+          const isPasswordCorrect = await comparePassword(password, userMatch.passwordHash);
+          if (isPasswordCorrect) {
+            authenticatedUser = {
+              username: userMatch.username,
+              name: userMatch.name,
+              role: (userMatch.role?.toUpperCase() === 'ADMIN' || userMatch.role?.toLowerCase() === 'owner') ? 'ADMIN' : userMatch.role,
+              staff_id: userMatch.staff_id || 'STF-001',
+              office: userMatch.office || 'Zanzibar HQ',
+              office_code: userMatch.office_code || 'ZNZ-HQ',
+              branch_code: userMatch.branch_code || 'HQ-01',
+              first_login_required: !!userMatch.first_login_required
+            };
+          }
         }
+      }
+
+      if (authenticatedUser) {
+        setSession(authenticatedUser);
+        localStorage.setItem('ztr_active_session', JSON.stringify({
+          user: authenticatedUser,
+          timestamp: Date.now()
+        }));
+        addActivityLog(authenticatedUser.name, authenticatedUser.role, `Logged into Admin Portal successfully.`);
+        setInactivityNotice(false);
+        setActiveTab('dashboard');
+        showToast(`Welcome back, ${authenticatedUser.name}!`, 'success');
+        navigate('admin');
       } else {
-        console.warn('[AUTH-DEBUG] Authentication failed: Username not found.');
-        addActivityLog(username.trim(), 'Guest / External', `Failed login attempt: Invalid username.`);
-        setAuthError('Incorrect username or password');
+        addActivityLog(username.trim(), 'Guest / External', `Failed login attempt: Invalid credentials.`);
+        setAuthError('Incorrect username or password.');
       }
     } catch (err: any) {
-      console.error('[AUTH-DEBUG] Cryptographic authentication error:', err.message);
-      addActivityLog(username.trim(), 'Guest / External', `Failed login attempt: Cryptographic authentication error - ${err.message}.`);
+      console.error('[AUTH-DEBUG] Authentication error:', err.message);
       setAuthError('Error authenticating secure portal: ' + err.message);
     } finally {
       setAuthLoading(false);
     }
   };
 
-  // Owner Account Creation handler (Phase 3)
+  // Forgot Password Handlers
+  const handleForgotStep1 = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    if (!forgotUsernameInput.trim()) {
+      setForgotError('Please enter your username.');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      let questionFound = '';
+      try {
+        const res = await fetch('/api/auth/forgot-password/question', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: forgotUsernameInput.trim() })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          questionFound = data.recoveryQuestion;
+        }
+      } catch (e) {}
+
+      if (!questionFound) {
+        const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+        const userMatch = storedUsers.find((u: any) => u.username?.toLowerCase() === forgotUsernameInput.trim().toLowerCase());
+        if (userMatch) {
+          questionFound = userMatch.recoveryQuestion || 'What was the name of your first pet?';
+        }
+      }
+
+      if (!questionFound) {
+        setForgotError('Username not found in system database.');
+        setForgotLoading(false);
+        return;
+      }
+
+      setForgotQuestion(questionFound);
+      setForgotStep(2);
+    } catch (err: any) {
+      setForgotError(err.message || 'Failed to retrieve recovery question.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleForgotStep2 = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+
+    if (!forgotAnswerInput.trim() || !forgotNewPassword) {
+      setForgotError('Please enter your recovery answer and new password.');
+      return;
+    }
+    if (forgotNewPassword.length < 6) {
+      setForgotError('New password must be at least 6 characters long.');
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setForgotError('Passwords do not match.');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      let resetOk = false;
+      try {
+        const res = await fetch('/api/auth/forgot-password/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: forgotUsernameInput.trim(),
+            recoveryAnswer: forgotAnswerInput.trim(),
+            newPassword: forgotNewPassword
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          resetOk = true;
+        }
+      } catch (e) {}
+
+      if (!resetOk) {
+        const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+        const searchInput = forgotUsernameInput.trim().toLowerCase();
+        const userIndex = storedUsers.findIndex((u: any) => u.username?.toLowerCase() === searchInput);
+        if (userIndex === -1) {
+          throw new Error('User account not found.');
+        }
+        const user = storedUsers[userIndex];
+        const storedAns = (user.recoveryAnswer || 'default').trim().toLowerCase();
+        if (storedAns !== forgotAnswerInput.trim().toLowerCase()) {
+          throw new Error('Incorrect recovery answer.');
+        }
+        user.passwordHash = await hashPassword(forgotNewPassword);
+        user.first_login_required = false;
+        storedUsers[userIndex] = user;
+        localStorage.setItem('ztr_admin_users', JSON.stringify(storedUsers));
+      }
+
+      showToast('Password reset successfully! Please log in with your new password.', 'success');
+      setAuthView('login');
+      setForgotStep(1);
+      setForgotUsernameInput('');
+      setForgotAnswerInput('');
+      setForgotNewPassword('');
+      setForgotConfirmPassword('');
+    } catch (err: any) {
+      setForgotError(err.message || 'Error verifying recovery answer.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  // Force Change Password Handler
+  const handleForceChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForcePasswordError('');
+
+    if (!forceNewPassword) {
+      setForcePasswordError('Please enter a new password.');
+      return;
+    }
+    if (forceNewPassword.length < 6) {
+      setForcePasswordError('Password must be at least 6 characters long.');
+      return;
+    }
+    if (forceNewPassword !== forceConfirmPassword) {
+      setForcePasswordError('Passwords do not match.');
+      return;
+    }
+
+    setForcePasswordLoading(true);
+    try {
+      try {
+        await fetch('/api/auth/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: session?.username,
+            newPassword: forceNewPassword
+          })
+        });
+      } catch (e) {}
+
+      const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
+      const userIndex = storedUsers.findIndex((u: any) => u.username?.toLowerCase() === session?.username?.toLowerCase());
+      if (userIndex !== -1) {
+        storedUsers[userIndex].passwordHash = await hashPassword(forceNewPassword);
+        storedUsers[userIndex].first_login_required = false;
+        localStorage.setItem('ztr_admin_users', JSON.stringify(storedUsers));
+      }
+
+      const updatedSession = { ...session, first_login_required: false };
+      setSession(updatedSession as any);
+      localStorage.setItem('ztr_active_session', JSON.stringify({ user: updatedSession, timestamp: Date.now() }));
+
+      showToast('Your password has been updated successfully!', 'success');
+    } catch (err: any) {
+      setForcePasswordError(err.message || 'Error changing password.');
+    } finally {
+      setForcePasswordLoading(false);
+    }
+  };
+
+  // Owner/Admin Account Creation handler
   const handleCreateOwner = async (e: React.FormEvent) => {
     e.preventDefault();
     setSetupError('');
     
-    // Validate fields
     if (!ownerFullName.trim()) {
       setSetupError('Full Name is mandatory.');
       return;
@@ -2303,9 +2503,36 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
 
     setSetupLoading(true);
     try {
-      // Hash the password using bcrypt/sha256 helper
-      const hashedPassword = await hashPassword(ownerPassword);
+      let createdUser: any = null;
 
+      // 1. Try server backend setup-admin endpoint
+      try {
+        const res = await fetch('/api/auth/setup-admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fullName: ownerFullName.trim(),
+            username: ownerUsername.trim().toLowerCase(),
+            password: ownerPassword,
+            phone: ownerPhone.trim(),
+            email: ownerEmail.trim(),
+            recoveryQuestion: ownerRecoveryQuestion,
+            recoveryAnswer: ownerRecoveryAnswer.trim(),
+            profilePhoto: ownerProfilePhoto.trim()
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          createdUser = data.user;
+        } else if (!data.success && data.error && !data.error.includes('already initialized')) {
+          throw new Error(data.error);
+        }
+      } catch (err: any) {
+        console.warn('[AUTH-DEBUG] Backend setup-admin warning:', err.message);
+      }
+
+      // 2. Local fallback sync
+      const hashedPassword = await hashPassword(ownerPassword);
       const newOwner = {
         username: ownerUsername.trim().toLowerCase(),
         passwordHash: hashedPassword,
@@ -2316,46 +2543,29 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
         profilePhoto: ownerProfilePhoto.trim() || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=compress&cs=tinysrgb&w=150',
         recoveryQuestion: ownerRecoveryQuestion,
         recoveryAnswer: ownerRecoveryAnswer.trim().toLowerCase() || 'default',
-        role: 'ADMIN', // Automatically set ADMIN
+        role: 'ADMIN',
         status: 'Active',
-        active: true, // Set active=true
+        active: true,
         permissions: 'Full System Access',
         createdBy: 'System',
         systemInitialized: true,
-        staff_id: 'OWNER-1',
+        staff_id: 'ADMIN-1',
+        first_login_required: false,
         isLocked: false,
-        created_at: new Date().toISOString(), // created_at
-        updated_at: new Date().toISOString()  // updated_at
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
-      // Save the record
       const storedUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
-      // Filter out any legacy OWNER / ADMIN users
       const cleanUsers = storedUsers.filter((u: any) => u.role?.toLowerCase() !== 'owner' && u.role?.toUpperCase() !== 'ADMIN');
       const updatedUsers = [newOwner, ...cleanUsers];
       localStorage.setItem('ztr_admin_users', JSON.stringify(updatedUsers));
-      
-      // Step 10 Debugging: Admin count, Admin found
-      const finalOwners = updatedUsers.filter((u: any) => u.role?.toUpperCase() === 'ADMIN' || u.role?.toLowerCase() === 'owner');
-      console.log('[AUTH-DEBUG] Admin created:', newOwner.username);
-      console.log('[AUTH-DEBUG] Admin count:', finalOwners.length);
-      console.log('[AUTH-DEBUG] Admin found: true, username:', newOwner.username);
-
-      // Double check that the record exists and is persisted
-      const verifyUsers = JSON.parse(localStorage.getItem('ztr_admin_users') || '[]');
-      const ownerExists = verifyUsers.some((u: any) => (u.role?.toUpperCase() === 'ADMIN' || u.role?.toLowerCase() === 'owner') && u.username === newOwner.username);
-      if (!ownerExists) {
-        throw new Error("Failed to verify storage persistence of Admin credentials.");
-      }
-
-      // Save initialization flag
       localStorage.setItem('system_initialized', 'true');
       setIsSystemInitialized(true);
 
       addActivityLog(newOwner.name, 'ADMIN', 'Created system admin account.');
-      showToast('ADMIN account created successfully! Automatically logging in...', 'success');
+      showToast('ADMIN account created successfully! Welcome to Zanzibar Trip & Relax.', 'success');
 
-      // Clear setup fields
       setOwnerFullName('');
       setOwnerUsername('');
       setOwnerPassword('');
@@ -2365,15 +2575,15 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
       setOwnerProfilePhoto('');
       setOwnerRecoveryAnswer('');
 
-      // STEP 5: Automatically login
       const userInfo = {
         username: newOwner.username,
         name: newOwner.name,
-        role: 'Owner', // UI expects capitalised 'Owner'
+        role: 'ADMIN',
         staff_id: newOwner.staff_id,
         office: 'Zanzibar HQ',
         office_code: 'ZNZ-HQ',
-        branch_code: 'HQ-01'
+        branch_code: 'HQ-01',
+        first_login_required: false
       };
 
       setSession(userInfo);
@@ -2382,14 +2592,10 @@ export default function Admin({ navigate, currentPage }: AdminProps) {
         timestamp: Date.now()
       }));
 
-      // Step 10 Debugging: Session created
-      console.log('[AUTH-DEBUG] Session created:', userInfo.username);
-
-      // Redirect
       navigate('admin');
     } catch (err: any) {
       console.error('[AUTH-DEBUG] Owner creation error:', err.message);
-      setSetupError('Error creating owner: ' + err.message);
+      setSetupError(err.message || 'Error creating owner');
     } finally {
       setSetupLoading(false);
     }
@@ -3601,19 +3807,17 @@ Stone Town, Zanzibar, Tanzania`);
   const pendingPayments = chartData.pendingDeposits + chartData.pendingBalances;
   const conversionRate = chartData.conversionRate;
 
-  // Render Login page if not authorized
+  // Render Login page or System Initialization if not authorized
   if (!session) {
     if (!isSystemInitialized || currentPage === 'create-owner') {
-      // Create System Owner Wizard
+      // Create System Administrator Wizard
       const strength = getPasswordStrength(ownerPassword);
       
       return (
-        <div className="min-h-screen bg-[#020C1F] flex flex-col lg:flex-row items-center justify-center p-4 md:p-8 lg:p-12 relative overflow-hidden text-white gap-8" style={{ fontFamily: 'Inter, sans-serif' }}>
-          {/* Abstract background vector circles */}
+        <div className="min-h-screen bg-[#020C1F] flex flex-col items-center justify-center p-4 md:p-8 lg:p-12 relative overflow-hidden text-white" style={{ fontFamily: 'Inter, sans-serif' }}>
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#0B3B8C] rounded-full filter blur-[150px] opacity-20 pointer-events-none" />
           <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[#D4A017] rounded-full filter blur-[180px] opacity-10 pointer-events-none" />
 
-          {/* Setup Wizard Form Container */}
           <div className="max-w-xl w-full relative z-10 animate-fade-in shrink-0">
             <div className="bg-[#051128] border border-white/10 rounded-3xl p-8 shadow-2xl space-y-6">
               
@@ -3622,13 +3826,13 @@ Stone Town, Zanzibar, Tanzania`);
                   <Shield className="w-8 h-8 text-[#D4A017] animate-pulse" />
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight text-white mb-1" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>
-                  Zanzibar Trip & Relax
+                  Welcome – Create System Administrator
                 </h1>
                 <p className="text-xs text-[#D4A017] font-semibold tracking-widest uppercase">
-                  Create System Owner
+                  Zanzibar Trip & Relax Enterprise ERP
                 </p>
                 <p className="text-xs text-slate-400 font-medium max-w-sm mx-auto leading-relaxed">
-                  Onboarding Step {setupStep} of 3: Initialize the Enterprise Travel ERP environment.
+                  Step {setupStep} of 3: Initialize master administrator account for system governance.
                 </p>
               </div>
 
@@ -3645,7 +3849,6 @@ Stone Town, Zanzibar, Tanzania`);
                       key={step}
                       type="button"
                       onClick={() => {
-                        // Allow navigation to previous steps or if validated
                         if (step < setupStep) setSetupStep(step);
                       }}
                       className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border transition-all ${
@@ -3673,14 +3876,16 @@ Stone Town, Zanzibar, Tanzania`);
                 e.preventDefault();
                 if (setupStep === 1) {
                   if (!ownerFullName.trim() || !ownerPhone.trim()) {
-                    setSetupError('Full Name and Phone Number are required.');
+                    setSetupError('Full Name and Phone Number are mandatory.');
                   } else {
                     setSetupError('');
                     setSetupStep(2);
                   }
                 } else if (setupStep === 2) {
                   if (!ownerUsername.trim() || !ownerPassword) {
-                    setSetupError('Username and Password are required.');
+                    setSetupError('Username and Password are mandatory.');
+                  } else if (ownerUsername.trim().includes(' ')) {
+                    setSetupError('Username cannot contain spaces.');
                   } else if (ownerPassword.length < 6) {
                     setSetupError('Password must be at least 6 characters long.');
                   } else if (ownerPassword !== ownerConfirmPassword) {
@@ -3690,15 +3895,19 @@ Stone Town, Zanzibar, Tanzania`);
                     setSetupStep(3);
                   }
                 } else if (setupStep === 3) {
+                  if (!ownerRecoveryAnswer.trim()) {
+                    setSetupError('Recovery answer is required for security reset capability.');
+                    return;
+                  }
                   handleCreateOwner(e);
                 }
               }} className="space-y-5 text-left">
                 
-                {/* STEP 1: PERSONAL DETAILS */}
+                {/* STEP 1: PERSONAL & CONTACT */}
                 {setupStep === 1 && (
                   <div className="space-y-4 animate-fade-in">
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Full Name</label>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Full Name *</label>
                       <input
                         type="text"
                         required
@@ -3710,7 +3919,7 @@ Stone Town, Zanzibar, Tanzania`);
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Phone Number</label>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Phone Number *</label>
                       <input
                         type="text"
                         required
@@ -3722,46 +3931,46 @@ Stone Town, Zanzibar, Tanzania`);
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Email (optional)</label>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Email (Optional)</label>
                       <input
                         type="email"
                         value={ownerEmail}
                         onChange={e => setOwnerEmail(e.target.value)}
                         className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
-                        placeholder="e.g. owner@zanzibartrip.com"
+                        placeholder="e.g. admin@zanzibartrip.com"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Profile Photo URL (optional)</label>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Profile Photo URL (Optional)</label>
                       <input
                         type="text"
                         value={ownerProfilePhoto}
                         onChange={e => setOwnerProfilePhoto(e.target.value)}
                         className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
-                        placeholder="e.g. https://example.com/avatar.jpg"
+                        placeholder="https://example.com/photo.jpg"
                       />
                     </div>
                   </div>
                 )}
 
-                {/* STEP 2: SECURITY CREDENTIALS */}
+                {/* STEP 2: USERNAME & PASSWORD */}
                 {setupStep === 2 && (
                   <div className="space-y-4 animate-fade-in">
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Master Username</label>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Username * (No Spaces)</label>
                       <input
                         type="text"
                         required
                         value={ownerUsername}
                         onChange={e => setOwnerUsername(e.target.value)}
                         className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
-                        placeholder="e.g. haji_owner"
+                        placeholder="e.g. admin_haji"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Password</label>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Password *</label>
                       <div className="relative">
                         <input
                           type={showSetupPassword ? 'text' : 'password'}
@@ -3780,10 +3989,9 @@ Stone Town, Zanzibar, Tanzania`);
                         </button>
                       </div>
 
-                      {/* Password Strength Indicator */}
                       <div className="space-y-1 pt-1">
                         <div className="flex justify-between items-center text-[10px] font-semibold">
-                          <span className="text-slate-400">Security Strength:</span>
+                          <span className="text-slate-400">Password Strength:</span>
                           <span className={strength.text}>{strength.label}</span>
                         </div>
                         <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -3793,7 +4001,7 @@ Stone Town, Zanzibar, Tanzania`);
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Confirm Password</label>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Confirm Password *</label>
                       <div className="relative">
                         <input
                           type={showSetupConfirmPassword ? 'text' : 'password'}
@@ -3815,34 +4023,43 @@ Stone Town, Zanzibar, Tanzania`);
                   </div>
                 )}
 
-                {/* STEP 3: REVIEW & INITIALIZE */}
+                {/* STEP 3: RECOVERY QUESTION & FINALIZE */}
                 {setupStep === 3 && (
-                  <div className="space-y-4 animate-fade-in text-xs bg-white/5 p-5 rounded-2xl border border-white/5">
-                    <h3 className="font-bold text-[#D4A017] text-sm mb-2 border-b border-white/10 pb-2">Confirm Configuration</h3>
-                    <div className="grid grid-cols-2 gap-y-3 gap-x-1">
-                      <div>
-                        <span className="text-slate-400 block font-medium">Owner Name</span>
-                        <span className="font-bold text-white text-sm">{ownerFullName}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block font-medium">Username</span>
-                        <span className="font-bold text-white text-sm">@{ownerUsername}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block font-medium">Contact Phone</span>
-                        <span className="font-bold text-white">{ownerPhone}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block font-medium">Email</span>
-                        <span className="font-bold text-white">{ownerEmail || 'None provided'}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block font-medium">System Role</span>
-                        <span className="font-bold text-[#D4A017] uppercase">OWNER</span>
-                      </div>
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Security Recovery Question *</label>
+                      <select
+                        value={ownerRecoveryQuestion}
+                        onChange={e => setOwnerRecoveryQuestion(e.target.value)}
+                        className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                      >
+                        <option value="What was the name of your first pet?">What was the name of your first pet?</option>
+                        <option value="What is your mother's maiden name?">What is your mother's maiden name?</option>
+                        <option value="What city were you born in?">What city were you born in?</option>
+                        <option value="What was the name of your first school?">What was the name of your first school?</option>
+                      </select>
                     </div>
-                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-[11px] text-amber-300/90 leading-relaxed mt-2">
-                      ⚠️ This will initialize the admin database using **LocalStorage** as the secure master credential directory. Make sure you remember your credentials.
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Recovery Answer *</label>
+                      <input
+                        type="text"
+                        required
+                        value={ownerRecoveryAnswer}
+                        onChange={e => setOwnerRecoveryAnswer(e.target.value)}
+                        className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3.5 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                        placeholder="Enter secret answer"
+                      />
+                    </div>
+
+                    <div className="text-xs bg-white/5 p-4 rounded-2xl border border-white/5 space-y-2 mt-2">
+                      <h3 className="font-bold text-[#D4A017]">Summary</h3>
+                      <div className="grid grid-cols-2 gap-2 text-slate-300">
+                        <div><span className="text-slate-500">Name:</span> {ownerFullName}</div>
+                        <div><span className="text-slate-500">Username:</span> {ownerUsername}</div>
+                        <div><span className="text-slate-500">Phone:</span> {ownerPhone}</div>
+                        <div><span className="text-slate-500">Role:</span> <strong className="text-[#D4A017]">ADMIN</strong></div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -3866,10 +4083,10 @@ Stone Town, Zanzibar, Tanzania`);
                     {setupLoading ? (
                       <>
                         <RefreshCw className="animate-spin" size={14} />
-                        <span>Initializing ERP...</span>
+                        <span>Initializing System...</span>
                       </>
                     ) : setupStep === 3 ? (
-                      'Initialize & Launch'
+                      'Create Admin Account'
                     ) : (
                       'Continue'
                     )}
@@ -3879,7 +4096,7 @@ Stone Town, Zanzibar, Tanzania`);
 
               <div className="border-t border-white/5 pt-3 text-center">
                 <span className="text-[10px] text-slate-400 font-medium">
-                  Enterprise Shield &copy; 2026 Zanzibar Trip & Relax. All rights reserved.
+                  Zanzibar Trip & Relax &copy; 2026 Admin Portal Security
                 </span>
               </div>
             </div>
@@ -3888,10 +4105,134 @@ Stone Town, Zanzibar, Tanzania`);
       );
     }
 
-    // Login Form Screen
+    // FORGOT PASSWORD SCREEN
+    if (authView === 'forgot') {
+      return (
+        <div className="min-h-screen bg-[#020C1F] flex flex-col items-center justify-center p-4 relative overflow-hidden text-white" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#0B3B8C] rounded-full filter blur-[150px] opacity-20 pointer-events-none" />
+          <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[#D4A017] rounded-full filter blur-[180px] opacity-10 pointer-events-none" />
+
+          <div className="max-w-md w-full relative z-10 animate-fade-in shrink-0">
+            <div className="bg-[#051128] border border-white/10 rounded-3xl p-8 shadow-2xl space-y-6">
+              <div className="text-center space-y-2">
+                <div className="mx-auto w-16 h-16 bg-[#0B3B8C]/20 border border-[#D4A017]/30 rounded-full flex items-center justify-center mb-2">
+                  <KeyRound className="w-8 h-8 text-[#D4A017]" />
+                </div>
+                <h1 className="text-2xl font-bold tracking-tight text-white mb-1" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>
+                  Account Password Recovery
+                </h1>
+                <p className="text-xs text-slate-400 font-medium">
+                  {forgotStep === 1 ? 'Enter your username to begin password recovery' : 'Answer your security question to set a new password'}
+                </p>
+              </div>
+
+              {forgotError && (
+                <div className="bg-red-500/10 border border-red-500/25 text-red-300 p-3 rounded-xl text-xs flex items-center gap-2">
+                  <ShieldAlert size={14} className="shrink-0 text-red-400" />
+                  <span>{forgotError}</span>
+                </div>
+              )}
+
+              {forgotStep === 1 ? (
+                <form onSubmit={handleForgotStep1} className="space-y-4">
+                  <div className="space-y-1.5 text-left">
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Username</label>
+                    <div className="relative">
+                      <User size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
+                      <input
+                        type="text"
+                        required
+                        value={forgotUsernameInput}
+                        onChange={e => setForgotUsernameInput(e.target.value)}
+                        className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                        placeholder="Enter your username"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="w-full bg-[#D4A017] hover:bg-[#c39010] text-[#020C1F] font-bold py-3.5 rounded-xl text-xs uppercase tracking-widest transition-all cursor-pointer mt-2"
+                  >
+                    {forgotLoading ? 'Searching Account...' : 'Retrieve Security Question'}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleForgotStep2} className="space-y-4 text-left">
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 text-xs text-amber-300 font-medium">
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold mb-1">Security Question:</span>
+                    {forgotQuestion}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Recovery Answer</label>
+                    <input
+                      type="text"
+                      required
+                      value={forgotAnswerInput}
+                      onChange={e => setForgotAnswerInput(e.target.value)}
+                      className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                      placeholder="Enter secret answer"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">New Password</label>
+                    <input
+                      type="password"
+                      required
+                      value={forgotNewPassword}
+                      onChange={e => setForgotNewPassword(e.target.value)}
+                      className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                      placeholder="••••••••"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Confirm New Password</label>
+                    <input
+                      type="password"
+                      required
+                      value={forgotConfirmPassword}
+                      onChange={e => setForgotConfirmPassword(e.target.value)}
+                      className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                      placeholder="••••••••"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="w-full bg-[#D4A017] hover:bg-[#c39010] text-[#020C1F] font-bold py-3.5 rounded-xl text-xs uppercase tracking-widest transition-all cursor-pointer mt-2"
+                  >
+                    {forgotLoading ? 'Resetting Password...' : 'Reset Password & Sign In'}
+                  </button>
+                </form>
+              )}
+
+              <div className="border-t border-white/5 pt-3 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthView('login');
+                    setForgotError('');
+                    setForgotStep(1);
+                  }}
+                  className="text-xs text-[#D4A017] hover:underline font-semibold"
+                >
+                  ← Back to Sign In
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // STRICT CLEAN LOGIN FORM SCREEN
     return (
-      <div className="min-h-screen bg-[#020C1F] flex flex-col lg:flex-row items-center justify-center p-4 md:p-8 lg:p-12 relative overflow-hidden text-white gap-8" style={{ fontFamily: 'Inter, sans-serif' }}>
-        {/* Abstract background vector circles */}
+      <div className="min-h-screen bg-[#020C1F] flex flex-col items-center justify-center p-4 md:p-8 lg:p-12 relative overflow-hidden text-white" style={{ fontFamily: 'Inter, sans-serif' }}>
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#0B3B8C] rounded-full filter blur-[150px] opacity-20 pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[#D4A017] rounded-full filter blur-[180px] opacity-10 pointer-events-none" />
 
@@ -3903,13 +4244,10 @@ Stone Town, Zanzibar, Tanzania`);
                 <Lock className="w-8 h-8 text-[#D4A017] animate-pulse" />
               </div>
               <h1 className="text-2xl font-bold tracking-tight text-white mb-1" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>
-                Zanzibar Trip & Relax
+                System Access Portal
               </h1>
               <p className="text-xs text-slate-400 font-semibold tracking-widest uppercase">
-                Enterprise Travel & Tour ERP
-              </p>
-              <p className="text-sm text-[#D4A017] font-bold tracking-wider uppercase mt-1">
-                {currentPage === 'owner-login' ? 'Owner Portal Login' : 'Staff & Operator Login'}
+                Zanzibar Trip & Relax Enterprise ERP
               </p>
             </div>
 
@@ -3931,13 +4269,26 @@ Stone Town, Zanzibar, Tanzania`);
                     value={username}
                     onChange={e => setUsername(e.target.value)}
                     className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
-                    placeholder="e.g. haji_owner"
+                    placeholder="Enter your username"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5 text-left">
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Password</label>
+                <div className="flex justify-between items-center">
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Password</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthView('forgot');
+                      setForgotError('');
+                      setForgotStep(1);
+                    }}
+                    className="text-xs text-[#D4A017] hover:underline font-semibold"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
                 <div className="relative">
                   {showPassword ? (
                     <EyeOff size={16} className="absolute right-3.5 top-3.5 text-slate-400 cursor-pointer" onClick={() => setShowPassword(false)} />
@@ -3961,29 +4312,13 @@ Stone Town, Zanzibar, Tanzania`);
                 disabled={authLoading}
                 className="w-full bg-[#D4A017] hover:bg-[#c39010] text-[#020C1F] font-bold py-3.5 rounded-xl text-xs uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-[#D4A017]/10 mt-2"
               >
-                {authLoading ? 'Verifying Safe Session...' : 'Authenticate Securely'}
+                {authLoading ? 'Verifying Session...' : 'Sign In'}
               </button>
             </form>
 
-            <div className="border-t border-white/5 pt-3 text-center space-y-3">
-              <button
-                type="button"
-                onClick={() => {
-                  localStorage.removeItem('ztr_admin_users');
-                  localStorage.removeItem('ztr_active_session');
-                  localStorage.removeItem('system_initialized');
-                  setSession(null);
-                  setIsSystemInitialized(false);
-                  setSetupStep(1);
-                  setAuthError('');
-                  navigate('create-owner');
-                }}
-                className="text-xs text-[#D4A017] hover:text-[#f3c852] font-semibold transition-all underline cursor-pointer block mx-auto"
-              >
-                Reset System & Create First Admin Credential
-              </button>
+            <div className="border-t border-white/5 pt-3 text-center">
               <span className="text-[10px] text-slate-400 font-medium block">
-                Encrypted and Secured locally &copy; 2026 Admin Panel.
+                Zanzibar Trip & Relax Enterprise ERP &copy; 2026
               </span>
             </div>
           </div>
@@ -4155,7 +4490,70 @@ Stone Town, Zanzibar, Tanzania`);
 
   // Loaded Premium Dashboard Layout
   return (
-    <div className="min-h-screen bg-[#070F1E] text-slate-100 flex flex-col md:flex-row" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="min-h-screen bg-[#070F1E] text-slate-100 flex flex-col md:flex-row relative" style={{ fontFamily: 'Inter, sans-serif' }}>
+      
+      {/* Force Change Password Modal for First Login */}
+      {(session as any)?.first_login_required && (
+        <div className="fixed inset-0 bg-[#020C1F]/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-[#051128] border border-amber-500/30 rounded-3xl p-8 shadow-2xl space-y-6 animate-fade-in text-white">
+            <div className="text-center space-y-2">
+              <div className="mx-auto w-16 h-16 bg-amber-500/20 border border-amber-500/30 rounded-full flex items-center justify-center mb-2">
+                <Lock className="w-8 h-8 text-amber-400 animate-pulse" />
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight text-white" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>
+                Mandatory Password Update
+              </h2>
+              <p className="text-xs text-amber-400 font-semibold tracking-wider uppercase">
+                First Time Login Security Policy
+              </p>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Welcome, <strong>{session.name}</strong>. System security policy requires you to create a new password before accessing the Zanzibar Trip & Relax ERP workspace.
+              </p>
+            </div>
+
+            {forcePasswordError && (
+              <div className="bg-red-500/10 border border-red-500/25 text-red-300 p-3 rounded-xl text-xs flex items-center gap-2">
+                <ShieldAlert size={14} className="shrink-0 text-red-400" />
+                <span>{forcePasswordError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleForceChangePassword} className="space-y-4 text-left">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">New Password (Min 6 Characters)</label>
+                <input
+                  type="password"
+                  required
+                  value={forceNewPassword}
+                  onChange={e => setForceNewPassword(e.target.value)}
+                  className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Confirm New Password</label>
+                <input
+                  type="password"
+                  required
+                  value={forceConfirmPassword}
+                  onChange={e => setForceConfirmPassword(e.target.value)}
+                  className="w-full text-sm bg-[#081835] border border-white/15 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[#D4A017] transition-all"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={forcePasswordLoading}
+                className="w-full bg-[#D4A017] hover:bg-[#c39010] text-[#020C1F] font-bold py-3.5 rounded-xl text-xs uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-[#D4A017]/10 mt-2"
+              >
+                {forcePasswordLoading ? 'Updating Password...' : 'Save New Password & Continue'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
       
       {/* LEFT NAVIGATION COLUMN */}
       <AdminSidebar
@@ -6450,13 +6848,12 @@ Stone Town, Zanzibar, Tanzania`);
                                 />
                               </div>
                               <div className="space-y-1">
-                                <label className="block text-[10px] text-slate-400 font-bold uppercase">Profile Photo URL</label>
-                                <input 
-                                  type="text" 
-                                  className="w-full bg-[#081226] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-[#D4A017]"
+                                <MediaSelector
+                                  label="Staff Profile Picture"
                                   value={editUserProfilePhoto}
-                                  onChange={e => setEditUserProfilePhoto(e.target.value)}
-                                  placeholder="https://images.unsplash.com/..."
+                                  onChange={url => setEditUserProfilePhoto(url)}
+                                  folder="staff"
+                                  isCMSReadOnly={isCMSReadOnly}
                                 />
                               </div>
                             </div>
@@ -12293,13 +12690,12 @@ Stone Town, Zanzibar, Tanzania`);
                         ))}
                       </div>
                       <div className="space-y-1 mt-2">
-                        <label className="text-[10px] text-slate-400 block">Or enter custom Unsplash / CDN image URL:</label>
-                        <input
-                          type="text"
-                          placeholder="https://images.unsplash.com/photo-..."
+                        <MediaSelector
+                          label="Exit Popup Background Image"
                           value={popupBgImage}
-                          onChange={(e) => setPopupBgImage(e.target.value)}
-                          className="w-full bg-[#121B30] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-mono"
+                          onChange={url => setPopupBgImage(url)}
+                          folder="promos"
+                          isCMSReadOnly={isCMSReadOnly}
                         />
                       </div>
                     </div>
@@ -12603,26 +12999,13 @@ Stone Town, Zanzibar, Tanzania`);
                         </div>
                         
                         <div className="flex-1 w-full space-y-2">
-                          <label className="block text-[10px] text-slate-400 font-bold uppercase">Profile Photo URL</label>
-                          <div className="flex gap-2">
-                            <input 
-                              type="text" 
-                              placeholder="https://images.unsplash.com/..."
-                              className="flex-1 bg-[#121B30] border border-white/10 rounded-xl py-2 px-3 text-white text-xs focus:outline-none focus:border-[#D4A017] transition-colors"
-                              value={profilePhoto}
-                              onChange={e => setProfilePhoto(e.target.value)}
-                            />
-                            {profilePhoto && (
-                              <button 
-                                type="button"
-                                onClick={handlePhotoDelete}
-                                className="bg-red-500/10 hover:bg-red-500 hover:text-white text-red-400 px-3 py-2 rounded-xl border border-red-500/20 text-xs font-bold transition-colors"
-                              >
-                                Delete
-                              </button>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-slate-500">Provide an Unsplash, secure HTTPS link, or absolute media image URL path.</p>
+                          <MediaSelector
+                            label="Upload or Replace Profile Picture"
+                            value={profilePhoto}
+                            onChange={url => setProfilePhoto(url)}
+                            folder="avatars"
+                            isCMSReadOnly={isCMSReadOnly}
+                          />
                         </div>
                       </div>
 

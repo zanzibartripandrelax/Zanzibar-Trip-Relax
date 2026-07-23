@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Image as ImageIcon, Search, Filter, Trash2, Edit, X, Crop, Move, Sliders, Check, Copy, CheckSquare } from 'lucide-react';
 import { optimizeUploadedImage, OptimizedImagePackage } from '../lib/imageOptimizer';
 import { MediaFile, getMediaLibrary, saveMediaLibrary, addActivityLog } from '../lib/cmsStore';
+import { uploadToSupabaseStorage } from '../lib/supabase';
 
 interface MediaSelectorProps {
   value: string;
@@ -57,20 +58,39 @@ export function MediaSelector({
     }
   };
 
-  // Process and optimize uploaded image
+  // Process and optimize uploaded image or document
   const processSelectedFile = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size exceeds the 10MB limit. Please select a smaller file.');
+      return;
+    }
+
     try {
-      const optimizedPkg = await optimizeUploadedImage(file);
-      const url = optimizedPkg.desktop; // optimized base64 desktop image as default
+      let finalUrl = await uploadToSupabaseStorage(file, folder);
+
+      if (!finalUrl) {
+        if (file.type.startsWith('image/')) {
+          const optimizedPkg = await optimizeUploadedImage(file);
+          finalUrl = optimizedPkg.desktop;
+        } else {
+          // For non-images (PDFs, docs), convert to base64 data URL
+          finalUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        }
+      }
 
       // Save to media library
       const newMediaFile: MediaFile = {
-        id: optimizedPkg.id,
-        name: optimizedPkg.name,
+        id: 'media-' + Date.now(),
+        name: file.name,
         folder: folder,
-        url: url,
-        size: optimizedPkg.optimizedSize,
-        dimensions: '1200xH (Optimized)'
+        url: finalUrl,
+        size: (file.size / 1024).toFixed(0) + ' KB',
+        dimensions: file.type.startsWith('image/') ? '1200xH (Optimized)' : 'Document'
       };
 
       const currentLibrary = getMediaLibrary();
@@ -78,11 +98,11 @@ export function MediaSelector({
       saveMediaLibrary(updatedLibrary);
       
       // Notify parent & update
-      onChange(url);
-      addActivityLog('Admin / Staff', 'Media Management', `Uploaded and optimized local image "${file.name}" to folder "${folder}"`);
+      onChange(finalUrl);
+      addActivityLog('Admin / Staff', 'Media Management', `Uploaded media asset "${file.name}" to folder "${folder}"`);
     } catch (err) {
-      console.error('Image optimization failed:', err);
-      alert('Failed to optimize and upload image. Please try another file.');
+      console.error('Media upload failed:', err);
+      alert('Failed to process and upload media file. Please try another file.');
     }
   };
 

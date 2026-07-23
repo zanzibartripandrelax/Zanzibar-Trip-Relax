@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import SearchOverlay from './SearchOverlay';
 import { usePreferences } from '../context/UserPreferencesContext';
 import { useAnalytics } from '../context/AnalyticsContext';
+import { useSiteLogos } from '../lib/cmsStore';
 
 interface NavbarProps {
   currentPage: Page;
@@ -71,6 +72,7 @@ const aboutUsDropdownItems = [
 ];
 
 export default function Navbar({ currentPage, navigate }: NavbarProps) {
+  const logos = useSiteLogos();
   const { trackBookingInitiate, trackWhatsAppClick } = useAnalytics();
   const [isOpen, setIsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -212,7 +214,7 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
         >
           <div className="h-[50px] w-[50px] sm:h-[60px] sm:w-[60px] relative flex-shrink-0">
             <ProgressiveImage
-              src="/src/assets/images/logo.png"
+              src={logos.headerLogo || "/src/assets/images/logo.png"}
               alt="Zanzibar Trip and Relax Logo"
               className="h-full w-full object-contain group-hover:scale-105 transition-all duration-300 aspect-square"
             />
@@ -424,29 +426,18 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
                       <button
                         onClick={() => {
                           localStorage.setItem('ztr_auth_view', 'login');
-                          navigate('my-account');
+                          navigate('owner-login');
                           setIsPortalOpen(false);
                         }}
                         className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 text-white/90 hover:text-white transition-all text-xs font-bold flex items-center gap-2 cursor-pointer bg-transparent border-none outline-none"
                       >
                         <span className="text-[#D4A017]">🔑</span>
-                        <span>Login</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          localStorage.setItem('ztr_auth_view', 'register');
-                          navigate('my-account');
-                          setIsPortalOpen(false);
-                        }}
-                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 text-white/90 hover:text-white transition-all text-xs font-bold flex items-center gap-2 cursor-pointer bg-transparent border-none outline-none"
-                      >
-                        <span className="text-[#D4A017]">✨</span>
-                        <span>Register</span>
+                        <span>Portal Login</span>
                       </button>
                       <button
                         onClick={() => {
                           localStorage.setItem('ztr_auth_view', 'forgot');
-                          navigate('my-account');
+                          navigate('owner-login');
                           setIsPortalOpen(false);
                         }}
                         className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 text-white/60 hover:text-white transition-all text-xs font-bold flex items-center gap-2 cursor-pointer bg-transparent border-none outline-none"
@@ -500,7 +491,7 @@ export default function Navbar({ currentPage, navigate }: NavbarProps) {
               <div className="flex items-center gap-2.5">
                 <div className="h-[42px] w-[42px] relative flex-shrink-0">
                   <ProgressiveImage
-                    src="/src/assets/images/logo.png"
+                    src={logos.mobileLogo || logos.headerLogo || "/src/assets/images/logo.png"}
                     alt="Zanzibar Trip and Relax Logo"
                     className="h-full w-full object-contain aspect-square"
                   />

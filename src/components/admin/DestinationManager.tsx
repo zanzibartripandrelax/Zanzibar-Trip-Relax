@@ -7,8 +7,10 @@ import {
 } from 'lucide-react';
 import { 
   Destination, ActivityItem, TourItem, Region,
-  saveSiteContent, getSiteContent, getHotels, saveHotels 
+  saveSiteContent, getSiteContent, getHotels, saveHotels,
+  getGoogleMapEmbedUrl, getYouTubeEmbedUrl, extractYouTubeId
 } from '../../lib/cmsStore';
+import { MediaSelector } from '../MediaManager';
 import { getBlogPostsFromStorage, saveBlogPosts } from '../../pages/BlogDetail';
 
 interface DestinationManagerProps {
@@ -773,35 +775,35 @@ export const DestinationManager: React.FC<DestinationManagerProps> = ({ isReadOn
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Google Maps Embed URL</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Google Maps Link or Location Name</label>
                   <input
                     type="text"
                     value={editDest.mapUrl || ''}
                     onChange={e => setEditDest({ ...editDest, mapUrl: e.target.value })}
-                    placeholder="https://maps.google.com/maps?q=...&output=embed"
+                    placeholder="Paste Google Maps URL, share link, or location name (e.g. Stone Town, Zanzibar)"
                     className="w-full bg-[#121B30] border border-white/5 p-2.5 rounded-xl text-xs focus:border-[#D4A017] outline-none"
                   />
+                  <p className="text-[10px] text-slate-500 mt-1">Paste any Google Maps share link. The system will extract location coordinates and generate the interactive map frame automatically.</p>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Hero Featured Image URL</label>
-                  <input
-                    type="text"
+                  <MediaSelector
+                    label="Hero Featured Image"
                     value={editDest.image || ''}
-                    onChange={e => setEditDest({ ...editDest, image: e.target.value })}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full bg-[#121B30] border border-white/5 p-2.5 rounded-xl text-xs focus:border-[#D4A017] outline-none"
+                    onChange={url => setEditDest({ ...editDest, image: url })}
+                    folder="destinations"
+                    isCMSReadOnly={isReadOnly}
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Hero Video Embed URL (optional)</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Hero Video URL (YouTube)</label>
                   <input
                     type="text"
                     value={editDest.videoUrl || ''}
                     onChange={e => setEditDest({ ...editDest, videoUrl: e.target.value })}
-                    placeholder="YouTube Embed URL (e.g. https://www.youtube.com/embed/aD77-k1tZxs)"
+                    placeholder="e.g. https://www.youtube.com/watch?v=aD77-k1tZxs or https://youtu.be/aD77-k1tZxs"
                     className="w-full bg-[#121B30] border border-white/5 p-2.5 rounded-xl text-xs focus:border-[#D4A017] outline-none"
                   />
                 </div>

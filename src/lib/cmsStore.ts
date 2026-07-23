@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import { Destination, ActivityItem, DEFAULT_DESTINATIONS, DEFAULT_ACTIVITIES, DEFAULT_ATTRACTIONS } from './destinationDefaults';
+import { safeLocalStorage } from './safeStorage';
 
 export type { Destination, ActivityItem };
 
@@ -187,6 +188,116 @@ export interface SiteContent {
   activities?: ActivityItem[];
   regions?: Region[];
   attractions?: Attraction[];
+  logos?: SiteLogos;
+}
+
+export interface SiteLogos {
+  headerLogo: string;
+  footerLogo: string;
+  darkLogo: string;
+  lightLogo: string;
+  mobileLogo: string;
+  favicon: string;
+}
+
+export const DEFAULT_SITE_LOGOS: SiteLogos = {
+  headerLogo: '/src/assets/images/logo.png',
+  footerLogo: '/src/assets/images/logo.png',
+  darkLogo: '/src/assets/images/logo.png',
+  lightLogo: '/src/assets/images/logo.png',
+  mobileLogo: '/src/assets/images/logo.png',
+  favicon: '/src/assets/images/logo.png'
+};
+
+export function getSiteLogos(): SiteLogos {
+  try {
+    const saved = safeLocalStorage.getItem('ztr_site_logos');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return { ...DEFAULT_SITE_LOGOS, ...parsed };
+    }
+  } catch (e) {
+    // ignore
+  }
+  return DEFAULT_SITE_LOGOS;
+}
+
+export function saveSiteLogos(logos: SiteLogos): void {
+  try {
+    safeLocalStorage.setItem('ztr_site_logos', JSON.stringify(logos));
+    window.dispatchEvent(new Event('ztr_logos_updated'));
+    
+    // Update favicon if provided
+    if (logos.favicon) {
+      const faviconLink = document.querySelector("link[rel*='icon']") as HTMLLinkElement || document.createElement('link');
+      faviconLink.type = 'image/x-icon';
+      faviconLink.rel = 'shortcut icon';
+      faviconLink.href = logos.favicon;
+      document.getElementsByTagName('head')[0].appendChild(faviconLink);
+    }
+  } catch (e) {
+    console.error('Error saving site logos:', e);
+  }
+}
+
+export function useSiteLogos(): SiteLogos {
+  const [logos, setLogos] = useState<SiteLogos>(getSiteLogos());
+  useEffect(() => {
+    const handleUpdate = () => setLogos(getSiteLogos());
+    window.addEventListener('ztr_logos_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('ztr_logos_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+  return logos;
+}
+
+export function extractYouTubeId(url: string): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = trimmed.match(regExp);
+  if (match && match[2].length === 11) {
+    return match[2];
+  }
+  if (trimmed.length === 11 && !trimmed.includes('/')) {
+    return trimmed;
+  }
+  return null;
+}
+
+export function getYouTubeEmbedUrl(urlOrId: string): string {
+  const id = extractYouTubeId(urlOrId) || urlOrId.trim();
+  return `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+}
+
+export function getYouTubeThumbnail(urlOrId: string): string {
+  const id = extractYouTubeId(urlOrId) || urlOrId.trim();
+  return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+}
+
+export function getGoogleMapEmbedUrl(inputUrl: string): string {
+  if (!inputUrl) return 'https://maps.google.com/maps?q=Zanzibar+Island&t=&z=10&ie=UTF8&iwloc=&output=embed';
+  const trimmed = inputUrl.trim();
+  if (trimmed.includes('output=embed')) return trimmed;
+  if (trimmed.includes('<iframe')) {
+    const srcMatch = trimmed.match(/src=["']([^"']+)["']/);
+    if (srcMatch && srcMatch[1]) return srcMatch[1];
+  }
+  if (trimmed.includes('google.com/maps')) {
+    const atMatch = trimmed.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (atMatch) {
+      return `https://maps.google.com/maps?q=${atMatch[1]},${atMatch[2]}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
+    }
+    const placeMatch = trimmed.match(/place\/([^\/]+)/);
+    if (placeMatch) {
+      const placeName = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+      return `https://maps.google.com/maps?q=${encodeURIComponent(placeName)}&t=&z=13&ie=UTF8&iwloc=&output=embed`;
+    }
+  }
+  return `https://maps.google.com/maps?q=${encodeURIComponent(trimmed)}&t=&z=12&ie=UTF8&iwloc=&output=embed`;
 }
 
 export interface Attraction {

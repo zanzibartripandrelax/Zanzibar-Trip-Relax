@@ -5,6 +5,35 @@ const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || 'eyJh
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+export async function uploadToSupabaseStorage(file: File, folder = 'media'): Promise<string | null> {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const cleanFileName = file.name.replace(/[^a-zA-Z0-9]/g, '_');
+    const fileName = `${folder}/${Date.now()}_${cleanFileName}.${fileExt}`;
+    
+    const { data, error } = await supabase.storage
+      .from('media')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    if (error) {
+      console.warn('Supabase storage bucket upload notice:', error.message);
+      return null;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('media')
+      .getPublicUrl(fileName);
+
+    return publicUrlData.publicUrl;
+  } catch (err) {
+    console.warn('Supabase storage fallback:', err);
+    return null;
+  }
+}
+
 export interface Booking {
   id?: string;
   full_name: string;

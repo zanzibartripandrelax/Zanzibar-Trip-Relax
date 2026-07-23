@@ -76,14 +76,26 @@ export default function App() {
     }
   }, []);
 
-  // Onboarding (Task 3) & Auth Guard (Task 4) Redirections
+  // Onboarding & Auth Guard Redirections
   useEffect(() => {
-    // 1. Check if an Owner exists in local storage
+    // Sync init status from backend
+    fetch('/api/auth/init-status')
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.initialized === 'boolean') {
+          localStorage.setItem('system_initialized', String(data.initialized));
+        }
+      })
+      .catch(err => console.warn('App init-status fetch error:', err));
+
     const storedUsersStr = localStorage.getItem('ztr_admin_users');
-    let hasOwner = false;
+    const isServerInitialized = localStorage.getItem('system_initialized') === 'true';
+    let hasOwner = isServerInitialized;
     try {
       const storedUsers = JSON.parse(storedUsersStr || '[]');
-      hasOwner = storedUsers.some((u: any) => u.role?.toUpperCase() === 'ADMIN' || u.role?.toLowerCase() === 'owner');
+      if (storedUsers.some((u: any) => u.role?.toUpperCase() === 'ADMIN' || u.role?.toLowerCase() === 'owner')) {
+        hasOwner = true;
+      }
     } catch (e) {
       // ignore
     }
@@ -94,23 +106,20 @@ export default function App() {
     ].includes(currentPage);
 
     if (!hasOwner) {
-      // If no owner exists and the user is on any admin/login pages, automatically open /create-owner
       if (isAdminRoute && currentPage !== 'create-owner') {
         navigate('create-owner');
       }
     } else {
-      // Owner exists. If the user tries to access /create-owner or owner/setup, send them to owner-login
       if (currentPage === 'create-owner' || currentPage === 'owner/setup') {
-        navigate('owner-login');
+        navigate('admin');
       }
 
-      // 2. Check Authentication status
       const sessionStr = localStorage.getItem('ztr_active_session');
       let isAuthenticated = false;
       try {
         if (sessionStr) {
           const parsed = JSON.parse(sessionStr);
-          if (Date.now() - parsed.timestamp < 2 * 60 * 60 * 1000) {
+          if (Date.now() - parsed.timestamp < 12 * 60 * 60 * 1000) {
             isAuthenticated = !!parsed.user;
           }
         }
@@ -118,10 +127,9 @@ export default function App() {
         // ignore
       }
 
-      // Auth Guard: Only authenticated Owners can access /admin, /admin/dashboard, or /dashboard
       const isRestrictedRoute = ['admin', 'dashboard', 'admin/dashboard'].includes(currentPage);
       if (!isAuthenticated && isRestrictedRoute) {
-        navigate('owner-login');
+        navigate('admin');
       }
     }
   }, [currentPage, navigate]);
