@@ -39,6 +39,7 @@ import AdminDashboard from '../components/admin/AdminDashboard';
 import AdminBookings from '../components/admin/AdminBookings';
 import WalkInBooking from '../components/admin/WalkInBooking';
 import TourOperations from '../components/admin/TourOperations';
+import GoogleWorkspaceManager from '../components/admin/GoogleWorkspaceManager';
 
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { eventBus } from '../services/eventBus';
@@ -5550,6 +5551,11 @@ Stone Town, Zanzibar, Tanzania`);
         {/* 3. MEDIA ASSET LIBRARY workspace tab */}
         {activeTab === 'media' && (
           <MediaLibrary />
+        )}
+
+        {/* GOOGLE WORKSPACE TAB */}
+        {activeTab === 'workspace' && (
+          <GoogleWorkspaceManager />
         )}
 
         {/* 4. SECURITY & AUDIT LOGS workspace tab */}

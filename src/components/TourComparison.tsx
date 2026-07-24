@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { X, Sparkles, Clock, Users, Calendar, Check, Ban, ShoppingBag, Trash2, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ProgressiveImage } from './ProgressiveImage';
@@ -23,12 +23,17 @@ export default function TourComparison({
   const [isOpen, setIsOpen] = useState(false);
   const cmsContent = getSiteContent();
 
-  // Combine static and dynamic tours
-  const activeTours = cmsContent.tours
-    .filter(t => t.visible !== false)
-    .map(t => {
+  // Combine static and dynamic tours with strict ID deduplication
+  const activeTours = useMemo(() => {
+    const seen = new Set<string>();
+    const list = [];
+    for (const t of (cmsContent.tours || [])) {
+      if (t.visible === false || !t.id) continue;
+      if (seen.has(t.id)) continue;
+      seen.add(t.id);
+
       const staticWalk = staticTours.find(st => st.id === t.id || (st?.name || '').toLowerCase() === (t?.title || '').toLowerCase());
-      return {
+      list.push({
         id: t.id,
         name: t.title,
         description: t.desc,
@@ -39,17 +44,29 @@ export default function TourComparison({
         includes: staticWalk?.includes || ['Local guide', 'Bottled water', 'Entrance fees'],
         image: t.img,
         badge: staticWalk?.badge || (t.category === 'tour' ? 'Best Seller' : t.category),
-        category: t.category.charAt(0).toUpperCase() + t.category.slice(1),
+        category: (t.category || 'tour').charAt(0).toUpperCase() + (t.category || 'tour').slice(1),
         highlights: staticWalk?.highlights || [],
         included: staticWalk?.included || [],
         excluded: staticWalk?.excluded || [],
         whatToBring: staticWalk?.whatToBring || [],
         bestTimeToVisit: staticWalk?.bestTimeToVisit || 'Year-round',
         pricingTable: staticWalk?.pricingTable || [],
-      };
-    });
+      });
+    }
+    return list;
+  }, [cmsContent.tours]);
 
-  const selectedTours = activeTours.filter(t => selectedTourIds.includes(t.id));
+  const selectedTours = useMemo(() => {
+    const seen = new Set<string>();
+    const list = [];
+    for (const t of activeTours) {
+      if (selectedTourIds.includes(t.id) && !seen.has(t.id)) {
+        seen.add(t.id);
+        list.push(t);
+      }
+    }
+    return list;
+  }, [activeTours, selectedTourIds]);
 
   // Disable/enable scroll on comparison modal open
   useEffect(() => {

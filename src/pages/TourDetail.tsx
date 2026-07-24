@@ -132,7 +132,15 @@ export default function TourDetail({ navigate }: TourDetailProps) {
   // Recommended tours (Maximum 4 cards as per Rule 9)
   const relatedToursList = useMemo(() => {
     const filtered = tours.filter(t => t.id !== tour.id);
-    return filtered.slice(0, 4);
+    const seen = new Set<string>();
+    const unique = [];
+    for (const t of filtered) {
+      if (t.id && !seen.has(t.id)) {
+        seen.add(t.id);
+        unique.push(t);
+      }
+    }
+    return unique.slice(0, 4);
   }, [tour.id]);
 
   // Dynamically update SEO Headers & Document Meta Tags

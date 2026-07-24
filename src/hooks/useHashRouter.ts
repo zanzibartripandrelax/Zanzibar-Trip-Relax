@@ -6,7 +6,7 @@ export type Page =
   | 'reviews' | 'blog-detail' | 'kilimanjaro'
   | 'faq' | 'tour-detail' | 'policies' | 'admin' | 'trip-results' | 'manage-booking'
   | 'careers' | 'sustainability' | 'admin/login' | 'owner/setup' | 'owner/login' | 'owner' | 'dashboard' | 'admin/dashboard' | 'my-account' | 'best-time-to-visit' | 'destinations' | 'hotels'
-  | 'owner-login' | 'admin-login' | 'create-owner';
+  | 'owner-login' | 'admin-login' | 'create-owner' | 'classroom';
 
 const VALID_PAGES: Page[] = [
   'home', 'about', 'tours', 'booking', 'gallery',
@@ -14,7 +14,7 @@ const VALID_PAGES: Page[] = [
   'reviews', 'blog-detail', 'kilimanjaro',
   'faq', 'tour-detail', 'policies', 'admin', 'trip-results', 'manage-booking',
   'careers', 'sustainability', 'admin/login', 'owner/setup', 'owner/login', 'owner', 'dashboard', 'admin/dashboard', 'my-account', 'best-time-to-visit', 'destinations', 'hotels',
-  'owner-login', 'admin-login', 'create-owner'
+  'owner-login', 'admin-login', 'create-owner', 'classroom'
 ];
 
 interface RouteState {
@@ -98,6 +98,8 @@ function getPageFromHash(): RouteState {
       window.location.hash = 'destinations';
     } else if (cleanPath === '/hotels') {
       window.location.hash = 'hotels';
+    } else if (cleanPath === '/classroom' || cleanPath === '/google-classroom') {
+      window.location.hash = 'classroom';
     } else if (cleanPath === '/kilimanjaro' || cleanPath === '/kilimanjaro-climbing') {
       window.location.hash = 'kilimanjaro';
     } else if (cleanPath === '/admin' || cleanPath === '/admin/dashboard' || cleanPath === '/dashboard') {

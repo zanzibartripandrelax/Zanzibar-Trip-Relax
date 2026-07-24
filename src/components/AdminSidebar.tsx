@@ -192,6 +192,14 @@ export default function AdminSidebar({
 
     // 5. System
     { 
+      id: 'workspace', 
+      label: 'Google Workspace', 
+      icon: Sparkles,
+      section: 'system',
+      action: () => { setActiveTab('workspace'); setIsMobileOpen(false); },
+      isActive: activeTab === 'workspace'
+    },
+    { 
       id: 'logs', 
       label: 'Reports', 
       icon: FileText,
@@ -211,31 +219,37 @@ export default function AdminSidebar({
 
   // Specific role configurations (limit visible tabs depending on credentials to prevent leaks)
   const rolePermissions: Record<string, string[]> = {
+    'administrator': [
+      'dashboard', 'profile', 'bookings', 'inquiries', 'zanzibarTours', 'holidayPackages', 
+      'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'suppliers', 
+      'customers', 'users', 'media', 'cms', 'workspace', 'logs', 'settings'
+    ],
     'admin': [
       'dashboard', 'profile', 'bookings', 'inquiries', 'zanzibarTours', 'holidayPackages', 
       'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'suppliers', 
-      'customers', 'users', 'media', 'cms', 'logs', 'settings'
+      'customers', 'users', 'media', 'cms', 'workspace', 'logs', 'settings'
     ],
     'owner': [
       'dashboard', 'profile', 'bookings', 'inquiries', 'zanzibarTours', 'holidayPackages', 
       'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'suppliers', 
-      'customers', 'users', 'media', 'cms', 'logs', 'settings'
+      'customers', 'users', 'media', 'cms', 'workspace', 'logs', 'settings'
     ],
     'super admin': [
       'dashboard', 'profile', 'bookings', 'inquiries', 'zanzibarTours', 'holidayPackages', 
       'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'suppliers', 
-      'customers', 'users', 'media', 'cms', 'logs', 'settings'
+      'customers', 'users', 'media', 'cms', 'workspace', 'logs', 'settings'
     ],
     'manager': [
       'dashboard', 'profile', 'bookings', 'inquiries', 'zanzibarTours', 'holidayPackages', 
       'tanzaniaSafaris', 'kilimanjaro', 'airportTransfers', 'suppliers', 
-      'customers', 'media', 'cms', 'logs', 'settings'
+      'customers', 'media', 'cms', 'workspace', 'logs', 'settings'
     ],
-    'reservation officer': ['dashboard', 'profile', 'bookings', 'inquiries', 'customers'],
-    'sales': ['dashboard', 'profile', 'bookings', 'customers'],
-    'accountant': ['dashboard', 'profile', 'logs', 'settings'],
+    'reservation officer': ['dashboard', 'profile', 'bookings', 'inquiries', 'customers', 'workspace'],
+    'sales': ['dashboard', 'profile', 'bookings', 'customers', 'workspace'],
+    'accountant': ['dashboard', 'profile', 'logs', 'settings', 'workspace'],
     'guide': ['dashboard', 'profile', 'bookings'],
     'driver': ['dashboard', 'profile', 'bookings'],
+    'content manager': ['dashboard', 'profile', 'media', 'cms'],
     'content creator': ['dashboard', 'profile', 'media', 'cms'],
     'marketing': ['dashboard', 'profile', 'customers', 'media', 'cms'],
     'customer support': ['dashboard', 'profile', 'customers', 'inquiries']

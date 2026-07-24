@@ -49,28 +49,39 @@ export default function Booking({ navigate, queryParams }: BookingProps) {
       description: p.description || 'Premium tropical Swahili coast holiday retreat.'
     }));
 
-    // Merge lists by name key to avoid duplication
+    // Merge lists by name key and ID to avoid duplication
     const merged = [...cmsList];
     for (const item of staticList) {
-      if (!merged.some(m => (m?.name || '').toLowerCase() === (item?.name || '').toLowerCase())) {
+      if (!merged.some(m => m.id === item.id || (m?.name || '').toLowerCase() === (item?.name || '').toLowerCase())) {
         merged.push(item);
       }
     }
 
     // Add hotels as bookable items
     for (const h of hotelsList) {
-      merged.push({
-        id: h.id,
-        name: `Luxury Stay: ${h.name}`,
-        basePrice: (h as any).price || 180,
-        duration: 'Per Night Stay',
-        image: h.image || 'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=600&q=80',
-        category: 'hotel',
-        description: `${(h as any).location || h.zoneId || 'Zanzibar'} • Premium luxury oceanside resort stay.`
-      });
+      if (!merged.some(m => m.id === h.id)) {
+        merged.push({
+          id: h.id,
+          name: `Luxury Stay: ${h.name}`,
+          basePrice: (h as any).price || 180,
+          duration: 'Per Night Stay',
+          image: h.image || 'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=600&q=80',
+          category: 'hotel',
+          description: `${(h as any).location || h.zoneId || 'Zanzibar'} • Premium luxury oceanside resort stay.`
+        });
+      }
     }
 
-    return merged;
+    // Guarantee strict deduplication by ID
+    const uniqueExperiences: typeof merged = [];
+    const seenIds = new Set<string>();
+    for (const exp of merged) {
+      if (!exp.id || seenIds.has(exp.id)) continue;
+      seenIds.add(exp.id);
+      uniqueExperiences.push(exp);
+    }
+
+    return uniqueExperiences;
   }, [content.tours, hotelsList]);
 
   // Selected package state

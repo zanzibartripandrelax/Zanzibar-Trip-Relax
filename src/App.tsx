@@ -39,6 +39,7 @@ const Sustainability = lazy(() => import('./pages/Sustainability'));
 const BestTimeToVisit = lazy(() => import('./pages/BestTimeToVisit'));
 const Destinations = lazy(() => import('./pages/Destinations'));
 const Hotels = lazy(() => import('./pages/Hotels'));
+const Classroom = lazy(() => import('./pages/Classroom'));
 
 // Check if this window is an OAuth redirect popup
 if (typeof window !== 'undefined' && window.opener && (window.location.hash.includes('access_token') || window.location.hash.includes('token'))) {
@@ -209,6 +210,8 @@ export default function App() {
         return <Destinations navigate={navigate} />;
       case 'hotels':
         return <Hotels navigate={navigate} />;
+      case 'classroom':
+        return <Classroom navigate={navigate} />;
       default:
         return <Home navigate={navigate} />;
     }

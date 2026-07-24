@@ -180,6 +180,12 @@ export default function Footer({ navigate, currentPage }: FooterProps) {
                 </button>
               </li>
               <li>
+                <button onClick={() => navigate('classroom')} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
+                  <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
+                  <span>Google Classroom</span>
+                </button>
+              </li>
+              <li>
                 <button onClick={handleCareersClick} className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 group">
                   <ChevronRight size={10} className="text-[#D4A017]/40 group-hover:text-[#D4A017] transition-colors" />
                   <span>Careers</span>

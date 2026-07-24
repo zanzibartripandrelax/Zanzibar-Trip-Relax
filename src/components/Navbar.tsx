@@ -67,6 +67,7 @@ const aboutUsDropdownItems = [
   { label: 'Reviews', swLabel: 'Maoni ya Wageni', page: 'reviews' as Page },
   { label: 'Sustainability', swLabel: 'Uendelevu', page: 'sustainability' as Page },
   { label: 'Careers', swLabel: 'Kazi', page: 'careers' as Page },
+  { label: 'Google Classroom', swLabel: 'Darasa la Google', page: 'classroom' as Page },
   { label: 'FAQs', swLabel: 'Maswali ya Kawaida', page: 'faq' as Page },
   { label: 'Policies', swLabel: 'Sera Zetu', page: 'policies' as Page }
 ];

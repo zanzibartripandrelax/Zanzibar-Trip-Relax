@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { supabase } from './supabase';
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { db, auth } from './firebase';
 import { Destination, ActivityItem, DEFAULT_DESTINATIONS, DEFAULT_ACTIVITIES, DEFAULT_ATTRACTIONS } from './destinationDefaults';
-import { safeLocalStorage } from './safeStorage';
 
 export type { Destination, ActivityItem };
 
@@ -143,6 +143,28 @@ export interface YoutubeVideo {
   description?: string;
 }
 
+export interface Attraction {
+  id: string;
+  destinationId: string;
+  name: string;
+  image: string;
+  description: string;
+  location: string;
+  mapUrl?: string;
+  thingsToDo: string[];
+  relatedTours?: string[]; // list of related tour IDs or titles
+}
+
+export interface Region {
+  id: string;
+  name: string;
+  image: string;
+  description: string;
+  tagline: string;
+  tag: string;
+  destCount?: number;
+}
+
 export interface SiteContent {
   contact: {
     phone: string;
@@ -200,6 +222,68 @@ export interface SiteLogos {
   favicon: string;
 }
 
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  };
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errMsg = error instanceof Error ? error.message : String(error);
+  if (errMsg.toLowerCase().includes('offline') || errMsg.toLowerCase().includes('unavailable')) {
+    console.warn(`Firestore operating in offline mode for ${operationType} on ${path}: ${errMsg}`);
+    return;
+  }
+  const errInfo: FirestoreErrorInfo = {
+    error: errMsg,
+    authInfo: {
+      userId: auth?.currentUser?.uid,
+      email: auth?.currentUser?.email,
+      emailVerified: auth?.currentUser?.emailVerified,
+      isAnonymous: auth?.currentUser?.isAnonymous,
+      tenantId: auth?.currentUser?.tenantId,
+      providerInfo: auth?.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+}
+
+// Minimal sync timestamp helper (No heavy JSON is ever stored in localStorage)
+function updateSyncTimestamp(): void {
+  try {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('ztr_cms_sync_timestamp', Date.now().toString());
+    }
+  } catch (e) {
+    // Ignore storage quota warnings for lightweight string
+  }
+}
+
 export const DEFAULT_SITE_LOGOS: SiteLogos = {
   headerLogo: '/src/assets/images/logo.png',
   footerLogo: '/src/assets/images/logo.png',
@@ -209,120 +293,6 @@ export const DEFAULT_SITE_LOGOS: SiteLogos = {
   favicon: '/src/assets/images/logo.png'
 };
 
-export function getSiteLogos(): SiteLogos {
-  try {
-    const saved = safeLocalStorage.getItem('ztr_site_logos');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return { ...DEFAULT_SITE_LOGOS, ...parsed };
-    }
-  } catch (e) {
-    // ignore
-  }
-  return DEFAULT_SITE_LOGOS;
-}
-
-export function saveSiteLogos(logos: SiteLogos): void {
-  try {
-    safeLocalStorage.setItem('ztr_site_logos', JSON.stringify(logos));
-    window.dispatchEvent(new Event('ztr_logos_updated'));
-    
-    // Update favicon if provided
-    if (logos.favicon) {
-      const faviconLink = document.querySelector("link[rel*='icon']") as HTMLLinkElement || document.createElement('link');
-      faviconLink.type = 'image/x-icon';
-      faviconLink.rel = 'shortcut icon';
-      faviconLink.href = logos.favicon;
-      document.getElementsByTagName('head')[0].appendChild(faviconLink);
-    }
-  } catch (e) {
-    console.error('Error saving site logos:', e);
-  }
-}
-
-export function useSiteLogos(): SiteLogos {
-  const [logos, setLogos] = useState<SiteLogos>(getSiteLogos());
-  useEffect(() => {
-    const handleUpdate = () => setLogos(getSiteLogos());
-    window.addEventListener('ztr_logos_updated', handleUpdate);
-    window.addEventListener('storage', handleUpdate);
-    return () => {
-      window.removeEventListener('ztr_logos_updated', handleUpdate);
-      window.removeEventListener('storage', handleUpdate);
-    };
-  }, []);
-  return logos;
-}
-
-export function extractYouTubeId(url: string): string | null {
-  if (!url) return null;
-  const trimmed = url.trim();
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-  const match = trimmed.match(regExp);
-  if (match && match[2].length === 11) {
-    return match[2];
-  }
-  if (trimmed.length === 11 && !trimmed.includes('/')) {
-    return trimmed;
-  }
-  return null;
-}
-
-export function getYouTubeEmbedUrl(urlOrId: string): string {
-  const id = extractYouTubeId(urlOrId) || urlOrId.trim();
-  return `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
-}
-
-export function getYouTubeThumbnail(urlOrId: string): string {
-  const id = extractYouTubeId(urlOrId) || urlOrId.trim();
-  return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
-}
-
-export function getGoogleMapEmbedUrl(inputUrl: string): string {
-  if (!inputUrl) return 'https://maps.google.com/maps?q=Zanzibar+Island&t=&z=10&ie=UTF8&iwloc=&output=embed';
-  const trimmed = inputUrl.trim();
-  if (trimmed.includes('output=embed')) return trimmed;
-  if (trimmed.includes('<iframe')) {
-    const srcMatch = trimmed.match(/src=["']([^"']+)["']/);
-    if (srcMatch && srcMatch[1]) return srcMatch[1];
-  }
-  if (trimmed.includes('google.com/maps')) {
-    const atMatch = trimmed.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (atMatch) {
-      return `https://maps.google.com/maps?q=${atMatch[1]},${atMatch[2]}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
-    }
-    const placeMatch = trimmed.match(/place\/([^\/]+)/);
-    if (placeMatch) {
-      const placeName = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
-      return `https://maps.google.com/maps?q=${encodeURIComponent(placeName)}&t=&z=13&ie=UTF8&iwloc=&output=embed`;
-    }
-  }
-  return `https://maps.google.com/maps?q=${encodeURIComponent(trimmed)}&t=&z=12&ie=UTF8&iwloc=&output=embed`;
-}
-
-export interface Attraction {
-  id: string;
-  destinationId: string;
-  name: string;
-  image: string;
-  description: string;
-  location: string;
-  mapUrl?: string;
-  thingsToDo: string[];
-  relatedTours?: string[]; // list of related tour IDs or titles
-}
-
-export interface Region {
-  id: string;
-  name: string;
-  image: string;
-  description: string;
-  tagline: string;
-  tag: string;
-  destCount?: number;
-}
-
-// Default initial state matching exactly current designs and details
 const DEFAULT_SITE_CONTENT: SiteContent = {
   contact: {
     phone: '+255 629 506 063',
@@ -601,303 +571,6 @@ export const DEFAULT_MEDIA: MediaFile[] = [
   },
 ];
 
-export function getSiteContent(): SiteContent {
-  const local = localStorage.getItem('site_content_dynamic');
-  if (local) {
-    try {
-      const parsed = JSON.parse(local) as SiteContent;
-      let modified = false;
-      // Ensure missing default tours are merged back and no duplicate IDs exist
-      if (parsed && parsed.tours) {
-        // First, check for pre-existing duplicate IDs in parsed.tours and deduplicate them
-        const uniqueTours: any[] = [];
-        const seenIds = new Set<string>();
-        for (const t of parsed.tours) {
-          if (t && t.id && !seenIds.has(t.id)) {
-            seenIds.add(t.id);
-            uniqueTours.push(t);
-          } else {
-            modified = true; // Duplicate detected and discarded
-          }
-        }
-        parsed.tours = uniqueTours;
-
-        const existingTitles = new Set(parsed.tours.map(t => t.title.toLowerCase()));
-        const existingIds = new Set(parsed.tours.map(t => t.id));
-        const missingTours = DEFAULT_SITE_CONTENT.tours.filter(t => 
-          !existingTitles.has(t.title.toLowerCase()) && !existingIds.has(t.id)
-        );
-        if (missingTours.length > 0) {
-          parsed.tours = [...parsed.tours, ...missingTours];
-          modified = true;
-        }
-      }
-      if (parsed && !parsed.youtubeVideos) {
-        parsed.youtubeVideos = DEFAULT_SITE_CONTENT.youtubeVideos;
-        modified = true;
-      }
-      if (parsed && !parsed.destinations) {
-        parsed.destinations = DEFAULT_SITE_CONTENT.destinations;
-        modified = true;
-      }
-      if (parsed && !parsed.activities) {
-        parsed.activities = DEFAULT_SITE_CONTENT.activities;
-        modified = true;
-      }
-      if (parsed && !parsed.regions) {
-        parsed.regions = DEFAULT_SITE_CONTENT.regions;
-        modified = true;
-      }
-      if (parsed && !parsed.attractions) {
-        parsed.attractions = DEFAULT_SITE_CONTENT.attractions;
-        modified = true;
-      }
-      if (modified) {
-        localStorage.setItem('site_content_dynamic', JSON.stringify(parsed));
-      }
-      return parsed;
-    } catch {
-      return DEFAULT_SITE_CONTENT;
-    }
-  }
-  return DEFAULT_SITE_CONTENT;
-}
-
-export async function syncSiteContentFromDb(): Promise<SiteContent | null> {
-  try {
-    const { data, error } = await supabase
-      .from('site_config')
-      .select('data')
-      .eq('id', 'global_cms_state')
-      .maybeSingle();
-
-    if (!error && data && data.data) {
-      const dbContent = data.data as SiteContent;
-      const local = localStorage.getItem('site_content_dynamic');
-      let merged = { ...dbContent };
-
-      if (local) {
-        try {
-          const parsed = JSON.parse(local) as SiteContent;
-          if (parsed && parsed.tours) {
-            const existingIds = new Set(dbContent.tours.map(t => t.id));
-            const newLocalTours = parsed.tours.filter(t => !existingIds.has(t.id));
-            if (newLocalTours.length > 0) {
-              merged.tours = [...dbContent.tours, ...newLocalTours];
-            }
-          }
-        } catch {}
-      }
-
-      // Deduplicate merged.tours first
-      const uniqueMergedTours: any[] = [];
-      const seenMergedIds = new Set<string>();
-      for (const t of merged.tours) {
-        if (t && t.id && !seenMergedIds.has(t.id)) {
-          seenMergedIds.add(t.id);
-          uniqueMergedTours.push(t);
-        }
-      }
-      merged.tours = uniqueMergedTours;
-
-      // Ensure all default static tours are in the merged tours list too
-      const existingTitles = new Set(merged.tours.map(t => t.title.toLowerCase()));
-      const existingIds = new Set(merged.tours.map(t => t.id));
-      const missingTours = DEFAULT_SITE_CONTENT.tours.filter(t => 
-        !existingTitles.has(t.title.toLowerCase()) && !existingIds.has(t.id)
-      );
-      if (missingTours.length > 0) {
-        merged.tours = [...merged.tours, ...missingTours];
-      }
-
-      if (!merged.destinations) {
-        merged.destinations = DEFAULT_SITE_CONTENT.destinations;
-      }
-      if (!merged.activities) {
-        merged.activities = DEFAULT_SITE_CONTENT.activities;
-      }
-      if (!merged.regions) {
-        merged.regions = DEFAULT_SITE_CONTENT.regions;
-      }
-      if (!merged.attractions) {
-        merged.attractions = DEFAULT_SITE_CONTENT.attractions;
-      }
-
-      localStorage.setItem('site_content_dynamic', JSON.stringify(merged));
-      return merged;
-    }
-  } catch (err) {
-    console.warn('Could not sync site content from Supabase:', err);
-  }
-  return null;
-}
-
-export function saveSiteContent(content: SiteContent, user = 'Super Admin', action = 'Updated settings'): void {
-  localStorage.setItem('site_content_dynamic', JSON.stringify(content));
-  addActivityLog(user, user === 'Super Admin' ? 'Super Admin' : 'Staff', action);
-  triggerCMSSync();
-
-  // Sync to Supabase if config is set up
-  Promise.resolve(supabase.from('site_config').upsert([{ id: 'global_cms_state', data: content }]))
-    .then(({ error }) => {
-      if (error) console.log('Supabase sync info:', error.message);
-    })
-    .catch((err) => {
-      console.warn('Supabase site content sync failed:', err);
-    });
-}
-
-export function getMediaLibrary(): MediaFile[] {
-  const local = localStorage.getItem('site_media_library');
-  if (local) {
-    try {
-      return JSON.parse(local);
-    } catch {
-      return DEFAULT_MEDIA;
-    }
-  }
-  return DEFAULT_MEDIA;
-}
-
-export async function syncMediaLibraryFromDb(): Promise<MediaFile[] | null> {
-  try {
-    const { data, error } = await supabase
-      .from('site_config')
-      .select('data')
-      .eq('id', 'site_media_library_state')
-      .maybeSingle();
-      
-    if (!error && data && data.data) {
-      const dbMedia = data.data as MediaFile[];
-      localStorage.setItem('site_media_library', JSON.stringify(dbMedia));
-      return dbMedia;
-    }
-  } catch (err) {
-    console.warn('Could not sync media library from Supabase:', err);
-  }
-  return null;
-}
-
-export function saveMediaLibrary(media: MediaFile[]): void {
-  localStorage.setItem('site_media_library', JSON.stringify(media));
-  
-  // Sync metadata and image references to Supabase table site_config
-  Promise.resolve(supabase.from('site_config').upsert([{ id: 'site_media_library_state', data: media }]))
-    .then(({ error }) => {
-      if (error) console.log('Supabase media sync info:', error.message);
-    })
-    .catch((err) => {
-      console.warn('Supabase media sync failed:', err);
-    });
-}
-
-export function getMediaItem(id: string): MediaFile | undefined {
-  const media = getMediaLibrary();
-  return media.find(m => m.id === id);
-}
-
-export function updateMediaItem(id: string, updates: Partial<MediaFile>): void {
-  const media = getMediaLibrary();
-  const updated = media.map(item => {
-    if (item.id === id) {
-      return {
-        ...item,
-        ...updates
-      };
-    }
-    return item;
-  });
-  saveMediaLibrary(updated);
-}
-
-export function addMediaItem(item: Omit<MediaFile, 'id' | 'uploadedAt'> & { id?: string; uploadedAt?: string }): MediaFile {
-  const media = getMediaLibrary();
-  const newItem: MediaFile = {
-    ...item,
-    id: item.id || `m_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    uploadedAt: item.uploadedAt || new Date().toISOString()
-  };
-  const updated = [newItem, ...media];
-  saveMediaLibrary(updated);
-  return newItem;
-}
-
-export function deleteMediaItem(id: string): void {
-  const media = getMediaLibrary();
-  const updated = media.filter(m => m.id !== id);
-  saveMediaLibrary(updated);
-}
-
-export function getActivities(): ActivityLog[] {
-  const local = localStorage.getItem('site_activity_logs');
-  if (local) {
-    try {
-      return JSON.parse(local);
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
-export function addActivityLog(
-  user: string,
-  role: string,
-  action: string,
-  previousValue?: string,
-  newValue?: string,
-  ipAddress?: string
-): void {
-  const logs = getActivities();
-  const ips = ['197.250.3.112', '102.223.11.45', '41.59.81.201', '196.43.12.94', '41.210.150.11'];
-  const newLog: ActivityLog = {
-    id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-    timestamp: new Date().toLocaleString(),
-    user,
-    role,
-    action,
-    previousValue: previousValue || 'N/A',
-    newValue: newValue || 'N/A',
-    ipAddress: ipAddress || ips[Math.floor(Math.random() * ips.length)]
-  };
-  localStorage.setItem('site_activity_logs', JSON.stringify([newLog, ...logs].slice(0, 500)));
-}
-
-// Coupons management
-export function getCoupons(): Coupon[] {
-  const local = localStorage.getItem('ztr_coupons');
-  if (local) {
-    try {
-      return JSON.parse(local);
-    } catch {
-      return DEFAULT_COUPONS;
-    }
-  }
-  return DEFAULT_COUPONS;
-}
-
-export function saveCoupons(coupons: Coupon[]): void {
-  localStorage.setItem('ztr_coupons', JSON.stringify(coupons));
-}
-
-// Date Blockages management
-export function getDateBlockages(): DateBlockage[] {
-  const local = localStorage.getItem('ztr_date_blockages');
-  if (local) {
-    try {
-      return JSON.parse(local);
-    } catch {
-      return DEFAULT_BLOCKAGES;
-    }
-  }
-  return DEFAULT_BLOCKAGES;
-}
-
-export function saveDateBlockages(blockages: DateBlockage[]): void {
-  localStorage.setItem('ztr_date_blockages', JSON.stringify(blockages));
-}
-
-// Default items templates
 const DEFAULT_COUPONS: Coupon[] = [
   { id: 'c1', name: 'WELCOME10', type: 'percentage', value: 10, expirationDate: '2028-12-31', maxUses: 1000, usedCount: 14, minBookingAmount: 0, applicableCategory: 'all', applicableDepartures: 'all', oneTimeUse: false },
   { id: 'c2', name: 'SAVE50', type: 'fixed', value: 50, expirationDate: '2028-12-31', maxUses: 500, usedCount: 8, minBookingAmount: 300, applicableCategory: 'all', applicableDepartures: 'all', oneTimeUse: false },
@@ -913,7 +586,6 @@ const DEFAULT_BLOCKAGES: DateBlockage[] = [
   { id: 'b4', date: '2026-06-30', status: 'limited', notes: 'Low seats left' }
 ];
 
-// Seasonality Settings Interface & Helpers
 export interface SeasonalityConfig {
   peakStartMonth: number; // 1-12
   peakStartDay: number;
@@ -994,18 +666,6 @@ const DEFAULT_HOTELS: HotelOption[] = [
   { id: 'h17', name: 'Tarangire Sopa Lodge', zoneId: 'z1', destinationId: 'tarangire', image: 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&w=600&q=80', description: 'Built nestled among giant, ancient thousand-year-old baobab trees, offering spacious luxury suites and close encounters with massive elephant herds.', stars: '4', category: 'Baobab Premium' }
 ];
 
-export function getSeasonalityConfig(): SeasonalityConfig {
-  const local = localStorage.getItem('ztr_seasonality');
-  if (local) {
-    try { return JSON.parse(local); } catch { return DEFAULT_SEASONALITY; }
-  }
-  return DEFAULT_SEASONALITY;
-}
-
-export function saveSeasonalityConfig(config: SeasonalityConfig): void {
-  localStorage.setItem('ztr_seasonality', JSON.stringify(config));
-}
-
 export interface ExtendedSeason {
   id: string;
   name: string;
@@ -1023,115 +683,6 @@ const DEFAULT_EXTENDED_SEASONS: ExtendedSeason[] = [
   { id: 's-peak', name: 'Peak Season', startMonth: 9, startDay: 1, endMonth: 10, endDay: 31, adjustmentPct: 15, isDiscount: false },
   { id: 's-festive', name: 'Festive Season', startMonth: 12, startDay: 15, endMonth: 1, endDay: 10, adjustmentPct: 25, isDiscount: false },
 ];
-
-export function getExtendedSeasonality(): ExtendedSeason[] {
-  const local = localStorage.getItem('ztr_extended_seasonality');
-  if (local) {
-    try {
-      return JSON.parse(local);
-    } catch {
-      return DEFAULT_EXTENDED_SEASONS;
-    }
-  }
-  return DEFAULT_EXTENDED_SEASONS;
-}
-
-export function saveExtendedSeasonality(seasons: ExtendedSeason[]): void {
-  localStorage.setItem('ztr_extended_seasonality', JSON.stringify(seasons));
-}
-
-export function getTransportZones(): TransportZone[] {
-  const local = localStorage.getItem('ztr_transport_zones');
-  if (local) {
-    try { return JSON.parse(local); } catch { return DEFAULT_ZONES; }
-  }
-  return DEFAULT_ZONES;
-}
-
-export function saveTransportZones(zones: TransportZone[]): void {
-  localStorage.setItem('ztr_transport_zones', JSON.stringify(zones));
-}
-
-export function getHotels(): HotelOption[] {
-  const local = localStorage.getItem('ztr_hotel_list_dynamic');
-  if (local) {
-    try { return JSON.parse(local); } catch { return DEFAULT_HOTELS; }
-  }
-  return DEFAULT_HOTELS;
-}
-
-export function saveHotels(hotels: HotelOption[]): void {
-  localStorage.setItem('ztr_hotel_list_dynamic', JSON.stringify(hotels));
-  
-  // Sync to Supabase if config is set up
-  Promise.resolve(supabase.from('site_config').upsert([{ id: 'ztr_hotel_list_dynamic_state', data: hotels }]))
-    .then(({ error }) => {
-      if (error) console.log('Supabase hotels sync info:', error.message);
-    })
-    .catch((err) => {
-      console.warn('Supabase hotels sync failed:', err);
-    });
-}
-
-export async function syncHotelsFromDb(): Promise<HotelOption[] | null> {
-  try {
-    const { data, error } = await supabase
-      .from('site_config')
-      .select('data')
-      .eq('id', 'ztr_hotel_list_dynamic_state')
-      .maybeSingle();
-
-    if (!error && data && data.data) {
-      const dbHotels = data.data as HotelOption[];
-      localStorage.setItem('ztr_hotel_list_dynamic', JSON.stringify(dbHotels));
-      return dbHotels;
-    }
-  } catch (err) {
-    console.warn('Could not sync hotels from Supabase:', err);
-  }
-  return null;
-}
-
-// Initialise defaults on execution
-if (!localStorage.getItem('site_content_dynamic')) {
-  localStorage.setItem('site_content_dynamic', JSON.stringify(DEFAULT_SITE_CONTENT));
-}
-if (!localStorage.getItem('site_media_library')) {
-  localStorage.setItem('site_media_library', JSON.stringify(DEFAULT_MEDIA));
-}
-if (!localStorage.getItem('ztr_coupons')) {
-  localStorage.setItem('ztr_coupons', JSON.stringify(DEFAULT_COUPONS));
-}
-if (!localStorage.getItem('ztr_date_blockages')) {
-  localStorage.setItem('ztr_date_blockages', JSON.stringify(DEFAULT_BLOCKAGES));
-}
-if (!localStorage.getItem('ztr_seasonality')) {
-  localStorage.setItem('ztr_seasonality', JSON.stringify(DEFAULT_SEASONALITY));
-}
-if (!localStorage.getItem('ztr_extended_seasonality')) {
-  localStorage.setItem('ztr_extended_seasonality', JSON.stringify(DEFAULT_EXTENDED_SEASONS));
-}
-if (!localStorage.getItem('ztr_transport_zones')) {
-  localStorage.setItem('ztr_transport_zones', JSON.stringify(DEFAULT_ZONES));
-}
-if (!localStorage.getItem('ztr_hotel_list_dynamic')) {
-  localStorage.setItem('ztr_hotel_list_dynamic', JSON.stringify(DEFAULT_HOTELS));
-} else {
-  // Update if missing Riu Palace, lacks destinationId, or has fewer hotels than new defaults
-  try {
-    const existing = JSON.parse(localStorage.getItem('ztr_hotel_list_dynamic') || '[]');
-    const lacksDestinationId = existing.some((h: any) => !h.destinationId);
-    if (!existing.some((h: any) => h.name && h.name.includes('Riu Palace')) || lacksDestinationId || existing.length < DEFAULT_HOTELS.length) {
-      localStorage.setItem('ztr_hotel_list_dynamic', JSON.stringify(DEFAULT_HOTELS));
-    }
-  } catch (e) {
-    localStorage.setItem('ztr_hotel_list_dynamic', JSON.stringify(DEFAULT_HOTELS));
-  }
-}
-
-// ==========================================
-// CAREERS (JOBS) MANAGEMENT SCHEMA
-// ==========================================
 
 export interface JobVacancy {
   id: string;
@@ -1210,22 +761,6 @@ const DEFAULT_VACANCIES: JobVacancy[] = [
   }
 ];
 
-export function getJobs(): JobVacancy[] {
-  const local = localStorage.getItem('ztr_vacancies');
-  if (local) {
-    try { return JSON.parse(local); } catch { return DEFAULT_VACANCIES; }
-  }
-  return DEFAULT_VACANCIES;
-}
-
-export function saveJobs(jobs: JobVacancy[]): void {
-  localStorage.setItem('ztr_vacancies', JSON.stringify(jobs));
-}
-
-// ==========================================
-// SUSTAINABILITY PAGE SCHEMA
-// ==========================================
-
 export interface SustainabilityContent {
   introTitle: string;
   introSubtitle: string;
@@ -1250,142 +785,556 @@ const DEFAULT_SUSTAINABILITY: SustainabilityContent = {
   carbonInitiativesText: 'We participate in local mangrove reforestation programs in Jozani and offset 100% of our domestic fly-in safari emissions through local tree planting.'
 };
 
-export function getSustainability(): SustainabilityContent {
-  const local = localStorage.getItem('ztr_sustainability_content');
-  if (local) {
-    try { return JSON.parse(local); } catch { return DEFAULT_SUSTAINABILITY; }
+const DEFAULT_ACTIVITY_LOGS: ActivityLog[] = [
+  {
+    id: `log-${Date.now()}-1`,
+    timestamp: new Date().toLocaleString(),
+    user: 'Gerevas Paulo Mtaki',
+    role: 'Super Admin',
+    action: 'Created "Audit Logs" reports module to monitor administrative security compliance.',
+    previousValue: 'N/A',
+    newValue: 'Audit Logs Module Installed',
+    ipAddress: '197.250.3.112'
+  },
+  {
+    id: `log-${Date.now()}-2`,
+    timestamp: new Date().toLocaleString(),
+    user: 'Gerevas Paulo Mtaki',
+    role: 'Super Admin',
+    action: 'Migrated CMS store to strict Firestore backend layer.',
+    previousValue: 'localStorage Heavy Caching',
+    newValue: 'Firestore Cloud Single Source of Truth',
+    ipAddress: '197.250.3.112'
   }
-  return DEFAULT_SUSTAINABILITY;
+];
+
+// IN-MEMORY CACHE VARIABLES (No heavy JSON stored in localStorage)
+let cachedSiteContent: SiteContent = DEFAULT_SITE_CONTENT;
+let cachedSiteLogos: SiteLogos = DEFAULT_SITE_LOGOS;
+let cachedMediaLibrary: MediaFile[] = DEFAULT_MEDIA;
+let cachedActivityLogs: ActivityLog[] = DEFAULT_ACTIVITY_LOGS;
+let cachedCoupons: Coupon[] = DEFAULT_COUPONS;
+let cachedDateBlockages: DateBlockage[] = DEFAULT_BLOCKAGES;
+let cachedSeasonality: SeasonalityConfig = DEFAULT_SEASONALITY;
+let cachedExtendedSeasonality: ExtendedSeason[] = DEFAULT_EXTENDED_SEASONS;
+let cachedTransportZones: TransportZone[] = DEFAULT_ZONES;
+let cachedHotels: HotelOption[] = DEFAULT_HOTELS;
+let cachedVacancies: JobVacancy[] = DEFAULT_VACANCIES;
+let cachedSustainability: SustainabilityContent = DEFAULT_SUSTAINABILITY;
+
+// Clean legacy heavy JSON keys from localStorage on store boot
+if (typeof window !== 'undefined') {
+  const HEAVY_KEYS = [
+    'site_content_dynamic',
+    'site_media_library',
+    'ztr_site_logos',
+    'ztr_coupons',
+    'ztr_date_blockages',
+    'ztr_seasonality',
+    'ztr_extended_seasonality',
+    'ztr_transport_zones',
+    'ztr_hotel_list_dynamic',
+    'ztr_vacancies',
+    'ztr_sustainability_content',
+    'site_activity_logs'
+  ];
+  HEAVY_KEYS.forEach(key => {
+    try {
+      window.localStorage.removeItem(key);
+    } catch (e) {}
+  });
+  updateSyncTimestamp();
+}
+
+// Subscribe to Firestore for real-time live synchronization
+let isListenersInitialized = false;
+
+function setupFirestoreListeners(): void {
+  if (isListenersInitialized || typeof window === 'undefined') return;
+  isListenersInitialized = true;
+
+  // 1. Site Content
+  onSnapshot(doc(db, 'cms', 'site_content'), (docSnap) => {
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedSiteContent = docSnap.data()!.data as SiteContent;
+      updateSyncTimestamp();
+      triggerCMSSync();
+    } else {
+      setDoc(doc(db, 'cms', 'site_content'), { data: DEFAULT_SITE_CONTENT }).catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/site_content'));
+    }
+  }, err => handleFirestoreError(err, OperationType.GET, 'cms/site_content'));
+
+  // 2. Site Logos
+  onSnapshot(doc(db, 'cms', 'site_logos'), (docSnap) => {
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedSiteLogos = docSnap.data()!.data as SiteLogos;
+      updateSyncTimestamp();
+      window.dispatchEvent(new Event('ztr_logos_updated'));
+      triggerCMSSync();
+    } else {
+      setDoc(doc(db, 'cms', 'site_logos'), { data: DEFAULT_SITE_LOGOS }).catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/site_logos'));
+    }
+  }, err => handleFirestoreError(err, OperationType.GET, 'cms/site_logos'));
+
+  // 3. Media Library
+  onSnapshot(doc(db, 'cms', 'media_library'), (docSnap) => {
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedMediaLibrary = docSnap.data()!.data as MediaFile[];
+      updateSyncTimestamp();
+      triggerCMSSync();
+    } else {
+      setDoc(doc(db, 'cms', 'media_library'), { data: DEFAULT_MEDIA }).catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/media_library'));
+    }
+  }, err => handleFirestoreError(err, OperationType.GET, 'cms/media_library'));
+
+  // 4. Activity Logs
+  onSnapshot(doc(db, 'cms', 'activity_logs'), (docSnap) => {
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedActivityLogs = docSnap.data()!.data as ActivityLog[];
+      updateSyncTimestamp();
+      triggerCMSSync();
+    } else {
+      setDoc(doc(db, 'cms', 'activity_logs'), { data: DEFAULT_ACTIVITY_LOGS }).catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/activity_logs'));
+    }
+  }, err => handleFirestoreError(err, OperationType.GET, 'cms/activity_logs'));
+
+  // 5. Coupons
+  onSnapshot(doc(db, 'cms', 'coupons'), (docSnap) => {
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedCoupons = docSnap.data()!.data as Coupon[];
+      updateSyncTimestamp();
+      triggerCMSSync();
+    } else {
+      setDoc(doc(db, 'cms', 'coupons'), { data: DEFAULT_COUPONS }).catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/coupons'));
+    }
+  }, err => handleFirestoreError(err, OperationType.GET, 'cms/coupons'));
+
+  // 6. Date Blockages
+  onSnapshot(doc(db, 'cms', 'date_blockages'), (docSnap) => {
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedDateBlockages = docSnap.data()!.data as DateBlockage[];
+      updateSyncTimestamp();
+      triggerCMSSync();
+    } else {
+      setDoc(doc(db, 'cms', 'date_blockages'), { data: DEFAULT_BLOCKAGES }).catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/date_blockages'));
+    }
+  }, err => handleFirestoreError(err, OperationType.GET, 'cms/date_blockages'));
+
+  // 7. Seasonality
+  onSnapshot(doc(db, 'cms', 'seasonality'), (docSnap) => {
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedSeasonality = docSnap.data()!.data as SeasonalityConfig;
+      updateSyncTimestamp();
+      triggerCMSSync();
+    } else {
+      setDoc(doc(db, 'cms', 'seasonality'), { data: DEFAULT_SEASONALITY }).catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/seasonality'));
+    }
+  }, err => handleFirestoreError(err, OperationType.GET, 'cms/seasonality'));
+
+  // 8. Extended Seasonality
+  onSnapshot(doc(db, 'cms', 'extended_seasonality'), (docSnap) => {
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedExtendedSeasonality = docSnap.data()!.data as ExtendedSeason[];
+      updateSyncTimestamp();
+      triggerCMSSync();
+    } else {
+      setDoc(doc(db, 'cms', 'extended_seasonality'), { data: DEFAULT_EXTENDED_SEASONS }).catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/extended_seasonality'));
+    }
+  }, err => handleFirestoreError(err, OperationType.GET, 'cms/extended_seasonality'));
+
+  // 9. Transport Zones
+  onSnapshot(doc(db, 'cms', 'transport_zones'), (docSnap) => {
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedTransportZones = docSnap.data()!.data as TransportZone[];
+      updateSyncTimestamp();
+      triggerCMSSync();
+    } else {
+      setDoc(doc(db, 'cms', 'transport_zones'), { data: DEFAULT_ZONES }).catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/transport_zones'));
+    }
+  }, err => handleFirestoreError(err, OperationType.GET, 'cms/transport_zones'));
+
+  // 10. Hotels
+  onSnapshot(doc(db, 'cms', 'hotels'), (docSnap) => {
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedHotels = docSnap.data()!.data as HotelOption[];
+      updateSyncTimestamp();
+      triggerCMSSync();
+    } else {
+      setDoc(doc(db, 'cms', 'hotels'), { data: DEFAULT_HOTELS }).catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/hotels'));
+    }
+  }, err => handleFirestoreError(err, OperationType.GET, 'cms/hotels'));
+
+  // 11. Vacancies
+  onSnapshot(doc(db, 'cms', 'vacancies'), (docSnap) => {
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedVacancies = docSnap.data()!.data as JobVacancy[];
+      updateSyncTimestamp();
+      triggerCMSSync();
+    } else {
+      setDoc(doc(db, 'cms', 'vacancies'), { data: DEFAULT_VACANCIES }).catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/vacancies'));
+    }
+  }, err => handleFirestoreError(err, OperationType.GET, 'cms/vacancies'));
+
+  // 12. Sustainability
+  onSnapshot(doc(db, 'cms', 'sustainability'), (docSnap) => {
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedSustainability = docSnap.data()!.data as SustainabilityContent;
+      updateSyncTimestamp();
+      triggerCMSSync();
+    } else {
+      setDoc(doc(db, 'cms', 'sustainability'), { data: DEFAULT_SUSTAINABILITY }).catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/sustainability'));
+    }
+  }, err => handleFirestoreError(err, OperationType.GET, 'cms/sustainability'));
+}
+
+// Trigger Firestore real-time initialization
+setupFirestoreListeners();
+
+// ==========================================
+// PUBLIC GETTERS AND SETTERS
+// ==========================================
+
+export function getSiteLogos(): SiteLogos {
+  return cachedSiteLogos;
+}
+
+export function saveSiteLogos(logos: SiteLogos): void {
+  cachedSiteLogos = logos;
+  updateSyncTimestamp();
+  window.dispatchEvent(new Event('ztr_logos_updated'));
+  triggerCMSSync();
+
+  // Update favicon if provided
+  if (logos.favicon && typeof document !== 'undefined') {
+    const faviconLink = (document.querySelector("link[rel*='icon']") as HTMLLinkElement) || document.createElement('link');
+    faviconLink.type = 'image/x-icon';
+    faviconLink.rel = 'shortcut icon';
+    faviconLink.href = logos.favicon;
+    document.getElementsByTagName('head')[0]?.appendChild(faviconLink);
+  }
+
+  setDoc(doc(db, 'cms', 'site_logos'), { data: logos })
+    .catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/site_logos'));
+}
+
+export function useSiteLogos(): SiteLogos {
+  const [logos, setLogos] = useState<SiteLogos>(getSiteLogos());
+  useEffect(() => {
+    const handleUpdate = () => setLogos(getSiteLogos());
+    window.addEventListener('ztr_logos_updated', handleUpdate);
+    window.addEventListener('cms_sync', handleUpdate);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'ztr_cms_sync_timestamp' || e.key === 'ztr_cms_last_sync') handleUpdate();
+    });
+    return () => {
+      window.removeEventListener('ztr_logos_updated', handleUpdate);
+      window.removeEventListener('cms_sync', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+  return logos;
+}
+
+export function extractYouTubeId(url: string): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = trimmed.match(regExp);
+  if (match && match[2].length === 11) {
+    return match[2];
+  }
+  if (trimmed.length === 11 && !trimmed.includes('/')) {
+    return trimmed;
+  }
+  return null;
+}
+
+export function getYouTubeEmbedUrl(urlOrId: string): string {
+  const id = extractYouTubeId(urlOrId) || urlOrId.trim();
+  return `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+}
+
+export function getYouTubeThumbnail(urlOrId: string): string {
+  const id = extractYouTubeId(urlOrId) || urlOrId.trim();
+  return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+}
+
+export function getGoogleMapEmbedUrl(inputUrl: string): string {
+  if (!inputUrl) return 'https://maps.google.com/maps?q=Zanzibar+Island&t=&z=10&ie=UTF8&iwloc=&output=embed';
+  const trimmed = inputUrl.trim();
+  if (trimmed.includes('output=embed')) return trimmed;
+  if (trimmed.includes('<iframe')) {
+    const srcMatch = trimmed.match(/src=["']([^"']+)["']/);
+    if (srcMatch && srcMatch[1]) return srcMatch[1];
+  }
+  if (trimmed.includes('google.com/maps')) {
+    const atMatch = trimmed.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (atMatch) {
+      return `https://maps.google.com/maps?q=${atMatch[1]},${atMatch[2]}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
+    }
+    const placeMatch = trimmed.match(/place\/([^\/]+)/);
+    if (placeMatch) {
+      const placeName = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+      return `https://maps.google.com/maps?q=${encodeURIComponent(placeName)}&t=&z=13&ie=UTF8&iwloc=&output=embed`;
+    }
+  }
+  return `https://maps.google.com/maps?q=${encodeURIComponent(trimmed)}&t=&z=12&ie=UTF8&iwloc=&output=embed`;
+}
+
+export function getSiteContent(): SiteContent {
+  return cachedSiteContent;
+}
+
+export async function syncSiteContentFromDb(): Promise<SiteContent | null> {
+  try {
+    const docSnap = await getDoc(doc(db, 'cms', 'site_content'));
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedSiteContent = docSnap.data()!.data as SiteContent;
+      updateSyncTimestamp();
+      triggerCMSSync();
+      return cachedSiteContent;
+    }
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, 'cms/site_content');
+  }
+  return cachedSiteContent;
+}
+
+export function saveSiteContent(content: SiteContent, user = 'Super Admin', action = 'Updated settings'): void {
+  cachedSiteContent = content;
+  addActivityLog(user, user === 'Super Admin' ? 'Super Admin' : 'Staff', action);
+  updateSyncTimestamp();
+  triggerCMSSync();
+
+  setDoc(doc(db, 'cms', 'site_content'), { data: content })
+    .catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/site_content'));
+}
+
+export function getMediaLibrary(): MediaFile[] {
+  return cachedMediaLibrary;
+}
+
+export async function syncMediaLibraryFromDb(): Promise<MediaFile[] | null> {
+  try {
+    const docSnap = await getDoc(doc(db, 'cms', 'media_library'));
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedMediaLibrary = docSnap.data()!.data as MediaFile[];
+      updateSyncTimestamp();
+      triggerCMSSync();
+      return cachedMediaLibrary;
+    }
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, 'cms/media_library');
+  }
+  return cachedMediaLibrary;
+}
+
+export function saveMediaLibrary(media: MediaFile[]): void {
+  cachedMediaLibrary = media;
+  updateSyncTimestamp();
+  triggerCMSSync();
+
+  setDoc(doc(db, 'cms', 'media_library'), { data: media })
+    .catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/media_library'));
+}
+
+export function getMediaItem(id: string): MediaFile | undefined {
+  return cachedMediaLibrary.find(m => m.id === id);
+}
+
+export function updateMediaItem(id: string, updates: Partial<MediaFile>): void {
+  const updated = cachedMediaLibrary.map(item => {
+    if (item.id === id) {
+      return { ...item, ...updates };
+    }
+    return item;
+  });
+  saveMediaLibrary(updated);
+}
+
+export function addMediaItem(item: Omit<MediaFile, 'id' | 'uploadedAt'> & { id?: string; uploadedAt?: string }): MediaFile {
+  const newItem: MediaFile = {
+    ...item,
+    id: item.id || `m_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    uploadedAt: item.uploadedAt || new Date().toISOString()
+  };
+  const updated = [newItem, ...cachedMediaLibrary];
+  saveMediaLibrary(updated);
+  return newItem;
+}
+
+export function deleteMediaItem(id: string): void {
+  const updated = cachedMediaLibrary.filter(m => m.id !== id);
+  saveMediaLibrary(updated);
+}
+
+export function getActivities(): ActivityLog[] {
+  return cachedActivityLogs;
+}
+
+export function addActivityLog(
+  user: string,
+  role: string,
+  action: string,
+  previousValue?: string,
+  newValue?: string,
+  ipAddress?: string
+): void {
+  const ips = ['197.250.3.112', '102.223.11.45', '41.59.81.201', '196.43.12.94', '41.210.150.11'];
+  const newLog: ActivityLog = {
+    id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    timestamp: new Date().toLocaleString(),
+    user,
+    role,
+    action,
+    previousValue: previousValue || 'N/A',
+    newValue: newValue || 'N/A',
+    ipAddress: ipAddress || ips[Math.floor(Math.random() * ips.length)]
+  };
+  cachedActivityLogs = [newLog, ...cachedActivityLogs].slice(0, 500);
+  updateSyncTimestamp();
+  triggerCMSSync();
+
+  setDoc(doc(db, 'cms', 'activity_logs'), { data: cachedActivityLogs })
+    .catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/activity_logs'));
+}
+
+export function getCoupons(): Coupon[] {
+  return cachedCoupons;
+}
+
+export function saveCoupons(coupons: Coupon[]): void {
+  cachedCoupons = coupons;
+  updateSyncTimestamp();
+  triggerCMSSync();
+
+  setDoc(doc(db, 'cms', 'coupons'), { data: coupons })
+    .catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/coupons'));
+}
+
+export function getDateBlockages(): DateBlockage[] {
+  return cachedDateBlockages;
+}
+
+export function saveDateBlockages(blockages: DateBlockage[]): void {
+  cachedDateBlockages = blockages;
+  updateSyncTimestamp();
+  triggerCMSSync();
+
+  setDoc(doc(db, 'cms', 'date_blockages'), { data: blockages })
+    .catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/date_blockages'));
+}
+
+export function getSeasonalityConfig(): SeasonalityConfig {
+  return cachedSeasonality;
+}
+
+export function saveSeasonalityConfig(config: SeasonalityConfig): void {
+  cachedSeasonality = config;
+  updateSyncTimestamp();
+  triggerCMSSync();
+
+  setDoc(doc(db, 'cms', 'seasonality'), { data: config })
+    .catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/seasonality'));
+}
+
+export function getExtendedSeasonality(): ExtendedSeason[] {
+  return cachedExtendedSeasonality;
+}
+
+export function saveExtendedSeasonality(seasons: ExtendedSeason[]): void {
+  cachedExtendedSeasonality = seasons;
+  updateSyncTimestamp();
+  triggerCMSSync();
+
+  setDoc(doc(db, 'cms', 'extended_seasonality'), { data: seasons })
+    .catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/extended_seasonality'));
+}
+
+export function getTransportZones(): TransportZone[] {
+  return cachedTransportZones;
+}
+
+export function saveTransportZones(zones: TransportZone[]): void {
+  cachedTransportZones = zones;
+  updateSyncTimestamp();
+  triggerCMSSync();
+
+  setDoc(doc(db, 'cms', 'transport_zones'), { data: zones })
+    .catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/transport_zones'));
+}
+
+export function getHotels(): HotelOption[] {
+  return cachedHotels;
+}
+
+export function saveHotels(hotels: HotelOption[]): void {
+  cachedHotels = hotels;
+  updateSyncTimestamp();
+  triggerCMSSync();
+
+  setDoc(doc(db, 'cms', 'hotels'), { data: hotels })
+    .catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/hotels'));
+}
+
+export async function syncHotelsFromDb(): Promise<HotelOption[] | null> {
+  try {
+    const docSnap = await getDoc(doc(db, 'cms', 'hotels'));
+    if (docSnap.exists() && docSnap.data()?.data) {
+      cachedHotels = docSnap.data()!.data as HotelOption[];
+      updateSyncTimestamp();
+      triggerCMSSync();
+      return cachedHotels;
+    }
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, 'cms/hotels');
+  }
+  return cachedHotels;
+}
+
+export function getJobs(): JobVacancy[] {
+  return cachedVacancies;
+}
+
+export function saveJobs(jobs: JobVacancy[]): void {
+  cachedVacancies = jobs;
+  updateSyncTimestamp();
+  triggerCMSSync();
+
+  setDoc(doc(db, 'cms', 'vacancies'), { data: jobs })
+    .catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/vacancies'));
+}
+
+export function getSustainability(): SustainabilityContent {
+  return cachedSustainability;
 }
 
 export function saveSustainability(content: SustainabilityContent): void {
-  localStorage.setItem('ztr_sustainability_content', JSON.stringify(content));
-}
+  cachedSustainability = content;
+  updateSyncTimestamp();
+  triggerCMSSync();
 
-// Initialise defaults on execution
-if (!localStorage.getItem('ztr_vacancies')) {
-  localStorage.setItem('ztr_vacancies', JSON.stringify(DEFAULT_VACANCIES));
-}
-if (!localStorage.getItem('ztr_sustainability_content')) {
-  localStorage.setItem('ztr_sustainability_content', JSON.stringify(DEFAULT_SUSTAINABILITY));
-}
-
-if (getActivities().length <= 1) {
-  // Clear and seed rich initial logs to demonstrate security tracking
-  localStorage.removeItem('site_activity_logs');
-  addActivityLog(
-    'Gerevas Paulo Mtaki',
-    'Super Admin',
-    'Created "Audit Logs" reports module to monitor administrative security compliance.',
-    'N/A',
-    'Audit Logs Module Installed',
-    '197.250.3.112'
-  );
-  addActivityLog(
-    'admin',
-    'Guest / External',
-    'Failed login attempt: Invalid password credentials entered.',
-    'N/A',
-    'N/A',
-    '198.51.100.42'
-  );
-  addActivityLog(
-    'Gerevas Paulo Mtaki',
-    'Super Admin',
-    'Updated security policy and clearances for [Accountant] role.',
-    'none',
-    'write',
-    '197.250.3.112'
-  );
-  addActivityLog(
-    'Gerevas Paulo Mtaki',
-    'Super Admin',
-    'Provisioned new staff role [Accountant] for user [frank_accountant].',
-    'N/A',
-    'Accountant Active',
-    '197.250.3.112'
-  );
-  addActivityLog(
-    'System Mailer',
-    'System',
-    'Password reset requested: dispatched recovery link to email janesmith@zanzibartrip.com',
-    'N/A',
-    'Reset Link Dispatched',
-    '127.0.0.1'
-  );
-  addActivityLog(
-    'Manager Amin',
-    'Manager',
-    'Logged into Admin Portal successfully using Manager clearance from device "MacBook Pro - Safari".',
-    'N/A',
-    'N/A',
-    '102.223.11.45'
-  );
-  addActivityLog(
-    'Manager Amin',
-    'Manager',
-    'Updated booking status of "Zanzibar Spice Tour & Dhow Excursion" to Confirmed.',
-    'Pending',
-    'Confirmed',
-    '102.223.11.45'
-  );
-  addActivityLog(
-    'Neema Marketing',
-    'Marketing',
-    'Uploaded 3 new high-resolution promotional banners for the Summer Excursion campaign.',
-    'N/A',
-    'Assets Added',
-    '41.59.81.201'
-  );
-  addActivityLog(
-    'Captain Guide Ali',
-    'Guide',
-    'Completed Zanzibar North Coast Safari expedition and updated passenger feedback checklist.',
-    'Active',
-    'Completed',
-    '196.43.12.94'
-  );
-  addActivityLog(
-    'Gerevas Paulo Mtaki',
-    'Super Admin',
-    'Terminated credentials and role permissions for temporary coordinator [temp_coordinator].',
-    'Active',
-    'Revoked',
-    '197.250.3.112'
-  );
-  addActivityLog(
-    'System Initializer',
-    'Super Admin',
-    'CMS database template seeded successfully.',
-    'N/A',
-    'Seeded',
-    '127.0.0.1'
-  );
+  setDoc(doc(db, 'cms', 'sustainability'), { data: content })
+    .catch(err => handleFirestoreError(err, OperationType.WRITE, 'cms/sustainability'));
 }
 
 // React Hook for CMS data with auto-refresh on changes
-export function useCMSStore() {
+export function useCMSStore(): SiteContent {
   const [content, setContent] = useState<SiteContent>(getSiteContent());
 
   useEffect(() => {
-    // Poll for changes or listen to storage events
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'site_content_dynamic') {
-        setContent(getSiteContent());
-      }
-    };
-
-    window.addEventListener('storage', handleStorage);
-    
-    // Custom event for internal tab changes
     const handleSync = () => {
       setContent(getSiteContent());
     };
+
     window.addEventListener('cms_sync', handleSync);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'ztr_cms_sync_timestamp' || e.key === 'ztr_cms_last_sync') handleSync();
+    });
 
     return () => {
-      window.removeEventListener('storage', handleStorage);
       window.removeEventListener('cms_sync', handleSync);
+      window.removeEventListener('storage', handleSync);
     };
   }, []);
 
@@ -1393,6 +1342,8 @@ export function useCMSStore() {
 }
 
 // Helper to trigger sync across components
-export function triggerCMSSync() {
-  window.dispatchEvent(new Event('cms_sync'));
+export function triggerCMSSync(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('cms_sync'));
+  }
 }

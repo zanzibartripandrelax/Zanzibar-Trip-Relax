@@ -292,94 +292,82 @@ export default function Reviews({ navigate }: ReviewsProps) {
             )}
           </div>
 
-          {/* Form write side */}
-          <div className="lg:col-span-5 bg-white rounded-3xl border border-gray-100 shadow-sm p-8 h-fit sticky top-24">
-            <h3 className="text-xl font-bold text-[#0B3B8C] mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>
-              Leave Your Feedback
-            </h3>
+          {/* Official Review Platforms side */}
+          <div className="lg:col-span-5 bg-white rounded-3xl border border-gray-100 shadow-sm p-8 h-fit sticky top-24 space-y-6">
+            <div>
+              <span className="text-[#D4A017] uppercase tracking-widest font-black text-[10px] block mb-1">
+                Verified Feedback
+              </span>
+              <h3 className="text-xl font-bold text-[#0B3B8C]" style={{ fontFamily: 'Playfair Display, serif' }}>
+                Leave a Review
+              </h3>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                We collect authentic reviews directly via our verified partner platforms. Choose your preferred platform below to share your Zanzibar Trip & Relax experience:
+              </p>
+            </div>
 
-            {status === 'success' ? (
-              <div className="bg-green-50 border border-green-200 text-green-700 rounded-2xl p-6 text-center space-y-2">
-                <CheckCircle size={28} className="mx-auto text-green-500" />
-                <h4 className="font-bold text-sm">Review Submitted!</h4>
-                <p className="text-xs">Thank you for sharing your experience. Our staff reviews feedback within 24 hours.</p>
-                <button type="button" onClick={() => setStatus('idle')} className="text-xs font-bold text-[#0B3B8C] underline pt-2 cursor-pointer block mx-auto">
-                  Submit another feedback
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleSub} className="space-y-5">
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">Your Full Name *</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    className="w-full px-4.5 py-3.5 text-xs rounded-xl border border-slate-200 focus:border-[#0B3B8C] focus:ring-4 focus:ring-[#0B3B8C]/10 focus:outline-none transition-all duration-200 placeholder-slate-400 bg-white hover:border-slate-300"
-                    placeholder="e.g. Sarah Jenkins"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">Select Rating *</label>
-                  <select
-                    name="rating"
-                    value={formData.rating}
-                    onChange={handleChange}
-                    className="w-full px-4.5 py-3.5 text-xs rounded-xl border border-slate-200 focus:border-[#0B3B8C] focus:ring-4 focus:ring-[#0B3B8C]/10 focus:outline-none transition-all duration-200 bg-white font-bold text-gray-800"
-                    required
-                  >
-                    <option value={5}>5 Stars ★★★★★ (Outstanding)</option>
-                    <option value={4}>4 Stars ★★★★☆ (Great)</option>
-                    <option value={3}>3 Stars ★★★☆☆ (Average)</option>
-                    <option value={2}>2 Stars ★★☆☆☆ (Poor)</option>
-                    <option value={1}>1 Star ★☆☆☆☆ (Very Dissatisfied)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">Tour / Package Experienced</label>
-                  <input
-                    type="text"
-                    name="packageToured"
-                    value={formData.packageToured}
-                    onChange={handleChange}
-                    className="w-full px-4.5 py-3.5 text-xs rounded-xl border border-slate-200 focus:border-[#0B3B8C] focus:ring-4 focus:ring-[#0B3B8C]/10 focus:outline-none transition-all duration-200 placeholder-slate-400 bg-white hover:border-slate-300"
-                    placeholder="e.g. Safari Blue Cruise"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">Your Thoughts *</label>
-                  <textarea
-                    name="comments"
-                    value={formData.comments}
-                    onChange={handleChange}
-                    rows={4}
-                    className="w-full px-4.5 py-3.5 text-xs rounded-xl border border-slate-200 focus:border-[#0B3B8C] focus:ring-4 focus:ring-[#0B3B8C]/10 focus:outline-none transition-all duration-200 placeholder-slate-400 bg-white hover:border-slate-300 resize-none"
-                    placeholder="Tell other travelers about your guide, snorkeling, or driver..."
-                    required
-                  />
-                </div>
-
-                {status === 'error' && (
-                  <div className="bg-red-50 text-red-600 rounded-xl p-3 text-xs flex items-center gap-1.5">
-                    <ShieldAlert size={14} /> {errorMessage}
+            <div className="space-y-3.5 pt-2">
+              <a
+                href="https://g.page/r/zanzibartripandrelax/review"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full bg-[#EA4335] hover:bg-[#d33426] text-white font-extrabold py-3.5 px-5 rounded-2xl text-xs uppercase tracking-wider shadow-sm hover:shadow-md transition-all flex items-center justify-between group no-underline"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-xl">
+                    <Star size={16} className="fill-white" />
                   </div>
-                )}
+                  <div className="text-left">
+                    <span className="block font-black text-xs">Review on Google</span>
+                    <span className="text-[10px] text-white/80 normal-case font-normal">Official Google Business Listing</span>
+                  </div>
+                </div>
+                <Award size={16} className="group-hover:translate-x-1 transition-transform" />
+              </a>
 
-                <button
-                  type="submit"
-                  disabled={status === 'submitting'}
-                  className="w-full bg-[#0B3B8C] hover:bg-[#082E6E] text-white font-extrabold py-4 rounded-xl text-xs uppercase tracking-widest shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5 active:translate-y-0 duration-200"
-                >
-                  <MessageSquare size={14} />
-                  <span>{status === 'submitting' ? 'Uploading review...' : 'Publish Guest Review'}</span>
-                </button>
-              </form>
-            )}
+              <a
+                href="https://www.tripadvisor.com/UserReview-g482882-Zanzibar_Archipelago.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full bg-[#00AA6C] hover:bg-[#008f5a] text-white font-extrabold py-3.5 px-5 rounded-2xl text-xs uppercase tracking-wider shadow-sm hover:shadow-md transition-all flex items-center justify-between group no-underline"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-xl">
+                    <Award size={16} />
+                  </div>
+                  <div className="text-left">
+                    <span className="block font-black text-xs">Review on TripAdvisor</span>
+                    <span className="text-[10px] text-white/80 normal-case font-normal">Certificate of Excellence Page</span>
+                  </div>
+                </div>
+                <Award size={16} className="group-hover:translate-x-1 transition-transform" />
+              </a>
+
+              <a
+                href="https://www.facebook.com/zanzibartripandrelax/reviews"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full bg-[#1877F2] hover:bg-[#1464cc] text-white font-extrabold py-3.5 px-5 rounded-2xl text-xs uppercase tracking-wider shadow-sm hover:shadow-md transition-all flex items-center justify-between group no-underline"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-xl">
+                    <MessageSquare size={16} />
+                  </div>
+                  <div className="text-left">
+                    <span className="block font-black text-xs">Review on Facebook</span>
+                    <span className="text-[10px] text-white/80 normal-case font-normal">Verified Facebook Community</span>
+                  </div>
+                </div>
+                <Award size={16} className="group-hover:translate-x-1 transition-transform" />
+              </a>
+            </div>
+
+            <div className="p-4 bg-amber-50/60 border border-amber-200/60 rounded-2xl text-[11px] text-amber-900 leading-relaxed flex items-start gap-2.5">
+              <CheckCircle size={16} className="text-[#D4A017] shrink-0 mt-0.5" />
+              <span>
+                All submitted reviews are automatically synchronized and verified by our platform team to ensure transparency and trustworthiness.
+              </span>
+            </div>
           </div>
         </div>
       </section>
